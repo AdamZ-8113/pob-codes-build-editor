@@ -1,0 +1,91 @@
+diff --git a/spec/System/TestItemDBControl_spec.lua b/spec/System/TestItemDBControl_spec.lua
+index 9dbf1be931ea74fcc790f5f30a41eeca2244ffce..c897e3c76f99c817a7d05d581df8621838022a48 100644
+--- a/spec/System/TestItemDBControl_spec.lua
++++ b/spec/System/TestItemDBControl_spec.lua
+@@ -95,20 +95,28 @@ describe("ItemDBControl", function()
+ 		local control = new("ItemDBControl"):ItemDBControl(nil, { 0, 0, 100, 100 }, itemsTab, { list = { item } }, "UNIQUE")
+ 		control.sortDetail = { stat = "TotalDPS" }
+ 		control.sortOrder = { control.sortControl.STAT, control.sortControl.NAME }
++		local batchCount = 0
++		control.evaluateItemBatch = function(_, list)
++			batchCount = batchCount + 1
++			assert.are.same({ item }, list)
++		end
+ 
+ 		control:ListBuilder()
+ 		control:ListBuilder()
+ 		assert.are.equal(1, calcCount)
++		assert.are.equal(1, batchCount)
+ 		assert.are.equal(1, item.measuredPower)
+ 
+ 		itemsTab.build.outputRevision = 2
+ 		control:ListBuilder()
+ 		assert.are.equal(2, calcCount)
++		assert.are.equal(2, batchCount)
+ 		assert.are.equal(2, item.measuredPower)
+ 
+ 		itemsTab.activeItemSet.useSecondWeaponSet = true
+ 		control:ListBuilder()
+ 		assert.are.equal(3, calcCount)
++		assert.are.equal(3, batchCount)
+ 		assert.are.equal(3, item.measuredPower)
+ 	end)
+ 
+diff --git a/src/Classes/ItemDBControl.lua b/src/Classes/ItemDBControl.lua
+index 550943265ac25fbe3d4c8ea02e3ef40481840deb..e2cbeb9e1ab969f9769c1493b8152c733e5d72e7 100644
+--- a/src/Classes/ItemDBControl.lua
++++ b/src/Classes/ItemDBControl.lua
+@@ -276,6 +276,19 @@ function ItemDBClass:BuildSortOrder()
+ 	t_insert(self.sortOrder, self.sortControl.NAME)
+ end
+ 
++-- Shared candidate evaluation for serial and delegated item comparisons.
++-- The optional batch evaluator is host-independent; nil retains serial behavior.
++function ItemDBClass:EvaluateItemPower(item, calcFunc, useFullDPS)
++	local power = -math.huge
++	for slotName, slot in pairs(self.itemsTab.slots) do
++		if self.itemsTab:IsItemValidForSlot(item, slotName) and not slot.inactive and (not slot.weaponSet or slot.weaponSet == (self.itemsTab.activeItemSet.useSecondWeaponSet and 2 or 1)) and slot.shown() then
++			local output = calcFunc(item.base.flask and { toggleFlask = item } or item.base.tincture and { toggleTincture = item } or { repSlotName = slotName, repItem = item }, useFullDPS)
++			power = m_max(power, data.powerStatList.GetFromOutput(output, self.sortDetail))
++		end
++	end
++	return power
++end
++
+ function ItemDBClass:ListBuilder()
+ 	local list = { }
+ 	for id, item in pairs(self.db.list) do
+@@ -300,19 +313,23 @@ function ItemDBClass:ListBuilder()
+ 			self.statCache[cacheKey] = self.statCache[cacheKey] or { }
+ 			statCache = self.statCache[cacheKey]
+ 		end
++		local missing = { }
++		for _, item in ipairs(list) do
++			if not statCache or statCache[item] == nil then
++				t_insert(missing, item)
++			end
++		end
++		local delegated = #missing > 0 and self.evaluateItemBatch and self:evaluateItemBatch(missing)
+ 		for itemIndex, item in ipairs(list) do
+ 			local measuredPower = statCache and statCache[item]
++			if measuredPower == nil and delegated then
++				measuredPower = delegated[item]
++			end
+ 			if measuredPower == nil then
+-				measuredPower = -math.huge
+-				for slotName, slot in pairs(self.itemsTab.slots) do
+-					if self.itemsTab:IsItemValidForSlot(item, slotName) and not slot.inactive and (not slot.weaponSet or slot.weaponSet == (self.itemsTab.activeItemSet.useSecondWeaponSet and 2 or 1)) and slot.shown() then
+-						local output = calcFunc(item.base.flask and { toggleFlask = item } or item.base.tincture and { toggleTincture = item } or { repSlotName = slotName, repItem = item }, useFullDPS)
+-						measuredPower = m_max(measuredPower, data.powerStatList.GetFromOutput(output, self.sortDetail))
+-					end
+-				end
+-				if statCache then
+-					statCache[item] = measuredPower
+-				end
++				measuredPower = self:EvaluateItemPower(item, calcFunc, useFullDPS)
++			end
++			if statCache then
++				statCache[item] = measuredPower
+ 			end
+ 			item.measuredPower = measuredPower
+ 			local now = GetTime()

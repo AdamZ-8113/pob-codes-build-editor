@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "sourceRevision": "b32759ab0f31a1c8499a0d420cb0f0633d4fe478",
+  "baseFixture": "guided import parity desktop 329.txt",
+  "familyId": "abyss-zorath",
+  "jewelTypeId": 11,
+  "sourceBaseName": "AbyssZorath",
+  "itemName": "Reclaimed Malevolence",
+  "baseName": "Assembled Eye Jewel",
+  "itemId": 21,
+  "socketId": 34483,
+  "seed": 4050,
+  "seedLine": "Binding 4050 souls to phylacteries to sustain Zorath"
+}

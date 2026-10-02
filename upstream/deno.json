@@ -1,0 +1,90 @@
+{
+  "workspace": [
+    "packages/dds",
+    "packages/driver",
+    "packages/game",
+    "packages/packer"
+  ],
+  "nodeModulesDir": "auto",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": ["deno.ns", "dom", "dom.iterable", "es2022"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": ["./packages/driver/src/js/vite-env.d.ts", "@types/emscripten"]
+  },
+  "allowScripts": [
+    "npm:esbuild"
+  ],
+  "exclude": [
+    ".playwright-mcp",
+    "node_modules",
+    "vendor",
+    "packages/driver/build",
+    "packages/driver/dist",
+    "packages/driver/.vite",
+    "packages/packer/build",
+    "packages/packer/r2",
+    "packages/web/.wrangler",
+    "packages/web/.vite",
+    "packages/web/build"
+  ],
+  "imports": {
+    "@bokuweb/zstd-wasm": "npm:@bokuweb/zstd-wasm@^0.0.22",
+    "@std/assert": "jsr:@std/assert@1.0.19",
+    "@std/fs": "jsr:@std/fs@^1.0.23",
+    "@std/path": "jsr:@std/path@1.1.6",
+    "@tailwindcss/typography": "npm:@tailwindcss/typography@^0.5.20",
+    "@tailwindcss/vite": "npm:@tailwindcss/vite@^4.3.3",
+    "@types/adm-zip": "npm:@types/adm-zip@^0.5.8",
+    "@types/emscripten": "npm:@types/emscripten@^1.41.5",
+    "@types/react": "npm:@types/react@^18.3.31",
+    "@types/react-dom": "npm:@types/react-dom@^18.3.7",
+    "@vitejs/plugin-react": "npm:@vitejs/plugin-react@^5.2.0",
+    "@zenfs/archives": "npm:@zenfs/archives@1.4.0",
+    "@zenfs/core": "npm:@zenfs/core@2.6.2",
+    "@zenfs/dom": "npm:@zenfs/dom@1.2.10",
+    "adm-zip": "npm:adm-zip@^0.6.0",
+    "comlink": "npm:comlink@^4.4.1",
+    "daisyui": "npm:daisyui@^5.7.16",
+    "image-dimensions": "npm:image-dimensions@^2.5.1",
+    "missionlog": "npm:missionlog@^1.8.8",
+    "react": "npm:react@^18.3.1",
+    "react-dom": "npm:react-dom@^18.3.1",
+    "react-icons": "npm:react-icons@^5.7.0",
+    "tailwindcss": "npm:tailwindcss@^4.3.3",
+    "texture2ddecoder-wasm": "npm:texture2ddecoder-wasm@1.2.2",
+    "vite": "npm:vite@^6.4.3",
+    "vite-plugin-static-copy": "npm:vite-plugin-static-copy@^2.3.2"
+  },
+  "fmt": {
+    "exclude": [
+      ".agents",
+      ".env.pob-cool.yaml",
+      ".github/.release-please-manifest.json",
+      ".github/workflows",
+      "CHANGELOG.md",
+      "docs"
+    ],
+    "lineWidth": 120,
+    "semiColons": true,
+    "singleQuote": false
+  },
+  "lint": {
+    "rules": {
+      "tags": [
+        "recommended"
+      ],
+      "exclude": [
+        "no-namespace",
+        "no-sloppy-imports",
+        "no-window",
+        "no-window-prefix",
+        "require-await"
+      ]
+    }
+  },
+  "tasks": {
+    "vite": "vite"
+  }
+}

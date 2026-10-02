@@ -1,0 +1,28 @@
+{
+  "name": "pob-driver",
+  "version": "0.34.0",
+  "exports": {
+    "./driver": "./src/js/driver.ts",
+    "./error": "./src/js/error.ts",
+    "./renderer": "./src/js/renderer/index.ts"
+  },
+  "publish": false,
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "lib": [
+      "deno.ns",
+      "dom",
+      "dom.iterable",
+      "es2022"
+    ],
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "types": [
+      "./src/js/vite-env.d.ts",
+      "@types/emscripten"
+    ]
+  },
+  "tasks": {
+    "test": "deno test --no-check --allow-env --allow-read=../../version.json,../../node_modules,build,src,test test/unit/*.test.ts"
+  }
+}

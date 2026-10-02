@@ -1,0 +1,227 @@
+import {
+  loadPayload,
+  type PayloadController,
+  PayloadLoadError,
+  type PayloadProgress,
+} from "./payload.ts";
+import * as zenfs from "@zenfs/core";
+import * as Comlink from "comlink";
+import type { FilesystemConfig } from "./driver.ts";
+import { markEnvironmentError } from "./error.ts";
+import { FilesystemRpcHandler } from "./filesystem-handler.ts";
+import { CloudflareKV } from "./fs.ts";
+import type { PoeOAuthAuthorization } from "./poe-oauth.ts";
+import { exposeRpcPort, prepareFetchHeaders, type RpcResult } from "./rpc.ts";
+import { removeStaleSettingsSuffix } from "./settings.ts";
+import type { SubScriptWorker } from "./sub.ts";
+import { TruncatingWebAccess } from "./web-access.ts";
+import { AbyssRecords } from "./abyss-records.ts";
+import { HelperAccess } from './helper-access.ts';
+// @ts-types="./vite-worker.d.ts"
+import SubWorkerObject from "./sub.ts?worker";
+
+type BrokerCallbacks = {
+  fetch: (url: string, headers: Record<string, string>, body?: string) => Promise<unknown>;
+  oauthAuthorize: (url: string, timeoutMs: number) => Promise<PoeOAuthAuthorization>;
+  paste: () => Promise<string>;
+};
+
+class AsyncBroker {
+  private helperPorts = new Map<number, { port: MessagePort; access: HelperAccess }>();
+  async attachHelper(id: number, port: MessagePort) {
+    if (this.payloadFailed || this.helperPorts.has(id)) throw new Error('Helper port unavailable');
+    const access = new HelperAccess((operation, args, data) => this.handle(operation, args, data));
+    this.helperPorts.set(id, { port, access });
+    exposeRpcPort(port, (operation, args, data) => access.handle(operation, args, data));
+  }
+  async detachHelper(id: number) {
+    const helper = this.helperPorts.get(id);
+    if (!helper) return;
+    this.helperPorts.delete(id); helper.port.close(); await helper.access.close();
+  }
+  getFilesystemProfile() {
+    return { ...this.filesystem.profile(), payload: this.payloadController?.profile(), abyss: this.abyss?.profile() };
+  }
+  markPayloadReady() { this.payloadController?.markReady(); }
+  startPayloadPrefetch() { this.payloadController?.startPrefetch(); }
+  private callbacks: BrokerCallbacks | undefined;
+  private eventPort: MessagePort | undefined;
+  private nextSubscriptId = 1;
+  private subscripts = new Map<number, { worker: Worker; port: MessagePort }>();
+  private filesystem = new FilesystemRpcHandler();
+  private cloudDirectory: string | undefined;
+  private abyss?: AbyssRecords;
+  private payloadController: PayloadController | undefined;
+  private payloadFailureCallback: ((message: string) => void | Promise<void>) | undefined;
+  private payloadFailed = false;
+
+  async start(
+    port: MessagePort,
+    eventPort: MessagePort,
+    assetPrefix: string,
+    config: FilesystemConfig,
+    fetchCallback: BrokerCallbacks["fetch"],
+    oauthAuthorizeCallback: BrokerCallbacks["oauthAuthorize"],
+    pasteCallback: BrokerCallbacks["paste"],
+    payloadProgressCallback: (progress: PayloadProgress) => void | Promise<void>,
+    payloadFailureCallback: (message: string) => void | Promise<void>,
+  ) {
+    this.callbacks = { fetch: fetchCallback, oauthAuthorize: oauthAuthorizeCallback, paste: pasteCallback };
+    this.eventPort = eventPort;
+    this.cloudDirectory = config.cloudflareKvAccessToken ? `/user/${config.userDirectory}/Builds/Cloud` : undefined;
+    this.filesystem.reset(this.cloudDirectory);
+    this.payloadController = undefined;
+    this.payloadFailureCallback = payloadFailureCallback;
+    this.payloadFailed = false;
+    let rootFileSystem: zenfs.FileSystem;
+    try {
+      const payload = await loadPayload(assetPrefix, fetch, {
+        legacy: config.legacyPayload,
+        allowLegacyFallback: config.allowLegacyPayloadFallback,
+        eager: config.eagerPayload,
+        onProgress: payloadProgressCallback,
+      });
+      rootFileSystem = payload.filesystem;
+      this.payloadController = payload.controller;
+      this.abyss = payload.controller ? new AbyssRecords(payload.controller) : undefined;
+      this.filesystem.setPayloadGate(payload.controller);
+    } catch (error) {
+      throw markEnvironmentError(error, "assetLoad");
+    }
+
+    let userFileSystem: Awaited<ReturnType<typeof zenfs.resolveMountConfig<typeof TruncatingWebAccess>>>;
+    try {
+      const userDirectory = await navigator.storage.getDirectory();
+      userFileSystem = await zenfs.resolveMountConfig({
+        backend: TruncatingWebAccess,
+        handle: userDirectory,
+        disableAsyncCache: true,
+      });
+    } catch (error) {
+      throw markEnvironmentError(error, "storage");
+    }
+
+    await zenfs.configure({
+      mounts: {
+        "/root": rootFileSystem,
+        "/user": userFileSystem,
+      },
+    });
+    // Explicit localhost legacy diagnostics already hold the entire root ZIP.
+    // Read its native shards through the same extractor, without downloading
+    // a second representation. Import2 forbids this unverified legacy path.
+    const legacyIndex = '/root/Data/TimelessJewelData/AbyssRecords/index.json';
+    if (!this.payloadController && await zenfs.promises.exists(legacyIndex)) {
+      const index = JSON.parse(new TextDecoder().decode(await zenfs.promises.readFile(legacyIndex)));
+      this.abyss = new AbyssRecords({manifest:{sourceRevision:index.pin},
+        readVerifiedFile: async path => new Uint8Array(await zenfs.promises.readFile(path))});
+    }
+    const settingsPath = `/user/${config.userDirectory}/Settings.xml`;
+    if (await removeStaleSettingsSuffix(settingsPath, config.settingsRootElement)) {
+      console.warn("Removed stale data after game settings", { settingsPath });
+    }
+    if (config.cloudflareKvAccessToken) {
+      const cloud = await zenfs.resolveMountConfig({
+        backend: CloudflareKV,
+        prefix: config.cloudflareKvPrefix,
+        token: config.cloudflareKvAccessToken,
+        namespace: config.cloudflareKvUserNamespace,
+        disableAsyncCache: true,
+      });
+      const directory = this.cloudDirectory!;
+      if (!(await zenfs.promises.exists(directory))) await zenfs.promises.mkdir(directory, { recursive: true });
+      zenfs.mount(directory, cloud);
+      if (!(await zenfs.promises.exists(`${directory}/Public`))) await zenfs.promises.mkdir(`${directory}/Public`);
+    }
+    exposeRpcPort(port, (operation, args, data) => this.handle(operation, args, data));
+  }
+
+  private async handle(operation: string, args: unknown[], data?: Uint8Array): Promise<RpcResult> {
+    try {
+      if (this.filesystem.handles(operation)) return await this.filesystem.handle(operation, args, data);
+      return await this.handleOperation(operation, args, data);
+    } catch (error) {
+      if (error instanceof PayloadLoadError) return await this.failPayload(error);
+      throw error;
+    }
+  }
+
+  private async failPayload(error: PayloadLoadError): Promise<never> {
+    if (!this.payloadFailed) {
+      this.payloadFailed = true;
+      for (const id of [...this.subscripts.keys()]) this.finishSubscript(id);
+      try {
+        await this.payloadFailureCallback?.(`Path of Building data failed to load: ${error.message}`);
+      } catch {
+        // The broker still withholds the filesystem reply so Lua cannot continue.
+      }
+    }
+    return await new Promise<never>(() => {});
+  }
+
+  private async handleOperation(operation: string, args: unknown[], data?: Uint8Array): Promise<RpcResult> {
+    switch (operation) {
+      case "abyss-record": {
+        if (!this.abyss) throw new PayloadLoadError("abyss-records", "Abyss record manifest unavailable");
+        return {value: 0, data: await this.abyss.read(args[0] as number, args[1] as number, args[2] as number, args[3] as boolean, args[4] as string)};
+      }
+      case "fetch": {
+        const headers = prepareFetchHeaders(args[1] as Record<string, string>);
+        return {
+          value: await this.callbacks!.fetch(args[0] as string, headers, args[2] as string | undefined),
+        };
+      }
+      case "paste":
+        return { value: await this.callbacks!.paste() };
+      case "oauth_authorize":
+        return { value: await this.callbacks!.oauthAuthorize(args[0] as string, args[1] as number) };
+      case "subscript_start": {
+        const id = this.nextSubscriptId++;
+        const worker = new SubWorkerObject();
+        const remote = Comlink.wrap<SubScriptWorker>(worker);
+        const channel = new MessageChannel();
+        this.subscripts.set(id, { worker, port: channel.port1 });
+        exposeRpcPort(
+          channel.port1,
+          (nestedOperation, nestedArgs, nestedData) => this.handle(nestedOperation, nestedArgs, nestedData),
+        );
+        const finish = (result: Uint8Array) => {
+          if (!this.subscripts.has(id)) return;
+          this.eventPort?.postMessage({ type: "subscript_finished", id, data: result }, [result.buffer]);
+          this.finishSubscript(id);
+        };
+        const fail = (message: string) => {
+          if (!this.subscripts.has(id)) return;
+          this.eventPort?.postMessage({ type: "subscript_error", id, message });
+          this.finishSubscript(id);
+        };
+        void remote
+          .start(
+            args[0] as string,
+            data!,
+            Comlink.transfer(channel.port2, [channel.port2]),
+            Comlink.proxy(finish),
+            Comlink.proxy(fail),
+          )
+          .catch((error) => fail(error instanceof Error ? error.message : String(error)));
+        return { value: id };
+      }
+      case "subscript_abort":
+        this.finishSubscript(args[0] as number);
+        return { value: 0 };
+      case "subscript_running":
+        return { value: this.subscripts.has(args[0] as number) };
+      default:
+        throw new Error(`Unknown RPC operation: ${operation}`);
+    }
+  }
+
+  private finishSubscript(id: number) {
+    const subscript = this.subscripts.get(id);
+    subscript?.worker.terminate();
+    subscript?.port.close();
+    this.subscripts.delete(id);
+  }
+}
+
+Comlink.expose(new AsyncBroker());

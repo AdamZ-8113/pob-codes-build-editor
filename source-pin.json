@@ -1,0 +1,319 @@
+{
+  "schemaVersion": 2,
+  "repository": "https://github.com/PathOfBuildingCommunity/PathOfBuilding.git",
+  "branch": "beta",
+  "revision": "a431f3a28823270acbdd6864c644f93678581f1e",
+  "adapters": {
+    "calculationScheduling": {
+      "version": 1,
+      "resultBlobHashes": {
+        "src/Modules/Build.lua": "b90a6525a96a355caafbc9e78c186e635ce59ebd",
+        "src/Classes/ConfigTab.lua": "090985ab6ffb11215d12e81f24244ffc1c8a20f0",
+        "src/Classes/EditControl.lua": "140a4ebc1ba88dcab684d63da38261b6cff513f2",
+        "src/Classes/CalcsTab.lua": "42fb04c4418acfa1863699fc1d20d61a3e03641e",
+        "src/Classes/ItemsTab.lua": "7649e17228ab87a2a13bde8b8dc738ba9a9019b2",
+        "src/Modules/Main.lua": "ba137678649df496950c11751ad609b8d8232f8f"
+      }
+    },
+    "uniqueComparisonDelay": {
+      "version": 1,
+      "resultBlobHashes": {
+        "src/Classes/ItemDBControl.lua": "550943265ac25fbe3d4c8ea02e3ef40481840deb",
+        "src/Classes/ItemsTab.lua": "7649e17228ab87a2a13bde8b8dc738ba9a9019b2",
+        "src/Classes/ListControl.lua": "9b49a46f6bd23ed14cd2cae60d6e18ad5224304e",
+        "src/Classes/ControlHost.lua": "83563f758b45121e91b3d3e4bac3efc99bb4f53b",
+        "src/Modules/Common.lua": "b71053f5f24b64244e650a92158f4d6bb10bdfd9"
+      }
+    },
+    "sparseTimelessSeeds": {
+      "version": 1,
+      "resultBlobHashes": {
+        "src/Modules/DataLegionLookUpTableHelper.lua": "a936f6e0f01b6963978b40c8a55eb6a5362f664f",
+        "src/Modules/DataJewelFileLoader.lua": "07ce80e52eba4cdeca6a14488acc6fd815241997"
+      }
+    },
+    "uniqueSortDelegation": {
+      "version": 1,
+      "patchFile": "patches/unique-sort-delegation.patch",
+      "patchSha256": "c220a02dc8f792799efb96bdc857ab7aab2567f1e9e466437bff146fa3f73e64",
+      "sourceBlobHashes": {
+        "src/Classes/ItemDBControl.lua": "550943265ac25fbe3d4c8ea02e3ef40481840deb"
+      },
+      "resultBlobHashes": {
+        "src/Classes/ItemDBControl.lua": "e2cbeb9e1ab969f9769c1493b8152c733e5d72e7"
+      }
+    },
+    "gemDropdownHover": {
+      "version": 1,
+      "patchFile": "patches/gem-dropdown-hover-tooltip.patch",
+      "patchSha256": "6df3ff9dff331dbb637fdea199895739cc66da6c541ceb0eec92ce7e529cdd0b",
+      "sourceBlobHashes": {
+        "src/Classes/GemSelectControl.lua": "e1a243fcca307e80188764d8fa91a5e675eaccfa"
+      },
+      "resultBlobHashes": {
+        "src/Classes/GemSelectControl.lua": "850bd569f3d1ddbfe1e4c3b5a0a9bf1795c3a016"
+      }
+    },
+    "limitedUniqueItemComparisons": {
+      "version": 1,
+      "patchFile": "patches/limited-unique-item-comparisons.patch",
+      "patchSha256": "27361f45e1b27c127b60ac980dfe9617d35051bdc2225ec987d66dab23f34519",
+      "sourceBlobHashes": {
+        "src/Classes/ItemsTab.lua": "7649e17228ab87a2a13bde8b8dc738ba9a9019b2"
+      },
+      "resultBlobHashes": {
+        "src/Classes/ItemsTab.lua": "0fcf0d30100e3b137f7baaeed05bfdbb8d89c5a4"
+      }
+    },
+    "calculationOnlyJewelSpecs": {
+      "version": 1,
+      "patchFile": "patches/calculation-only-jewel-specs.patch",
+      "patchSha256": "2c537a136088daf1381bcdf55daeade47f4fa8ad2f6a7cdf0bed3f1d132325e6",
+      "upstreamPr": {
+        "number": 9863,
+        "url": "https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/9863",
+        "head": "5cafb7f4f05299f08f2e68e6aadfd13396c71642",
+        "scope": "Narrow calculation-only temporary jewel-spec subset; excludes output-cache and CompareTab changes"
+      },
+      "localChanges": [
+        "Omit unused nodeCopy.power allocation only in temporary jewel-comparison clones; this addition is not part of upstream PR #9863"
+      ],
+      "preparedSourceBlobHashes": {
+        "src/Classes/ItemsTab.lua": "7649e17228ab87a2a13bde8b8dc738ba9a9019b2",
+        "src/Classes/PassiveSpec.lua": "3e64512407177351c7a790ff2dcf6ab2419bd398"
+      },
+      "sourceBlobHashes": {
+        "src/Classes/ItemsTab.lua": "0fcf0d30100e3b137f7baaeed05bfdbb8d89c5a4",
+        "src/Classes/PassiveSpec.lua": "3e64512407177351c7a790ff2dcf6ab2419bd398"
+      },
+      "resultBlobHashes": {
+        "src/Classes/ItemsTab.lua": "0ed4d0e84c575bc8f955460901da14271dad9ef7",
+        "src/Classes/PassiveSpec.lua": "4bc4f97aa456b4abd5569731b47480bf6b73904c"
+      }
+    },
+    "abyssRecordDelivery": {
+      "version": 1,
+      "sourceBase": "a431f3a28823270acbdd6864c644f93678581f1e",
+      "format": 1,
+      "abysBucketSeeds": 512,
+      "abynBucketSeeds": 32,
+      "pureCodecSha256": "48c591a3d71222d4e9740faa7bab650da9938bfd772a9115d38a65f48599d176",
+      "sourceBlobHashes": {
+        "src/Modules/DataAbyssJewelLookUpTableHelper.lua": "78c32af2a4d14497f59ce920d4593d41e5ecf5cf",
+        "src/Classes/TreeTab.lua": "7dba225173246e145868275fa34856f5dcd54afb"
+      }
+    }
+  },
+  "overlays": [
+    {
+      "kind": "upstream-pr",
+      "number": 10360,
+      "url": "https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10360",
+      "base": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
+      "head": "c43b00bcc59127e1853f8f66477b3ae46f714eb5",
+      "patchFile": "patches/upstream/pr-10360.diff",
+      "patchSha256": "03c686478bdc68f19e825e08f6784f3c4e07cfc51a4bf97d17193492a5fee900",
+      "files": [
+        "spec/System/TestGemSocketQuality_spec.lua",
+        "spec/System/TestImport_spec.lua",
+        "spec/System/TestItemListControl_spec.lua",
+        "spec/System/TestItemMods_spec.lua",
+        "spec/System/TestSkills_spec.lua",
+        "src/Classes/CalcSectionControl.lua",
+        "src/Classes/CalcsTab.lua",
+        "src/Classes/CheckBoxControl.lua",
+        "src/Classes/ConfigTab.lua",
+        "src/Classes/DropDownControl.lua",
+        "src/Classes/EditControl.lua",
+        "src/Classes/GemSelectControl.lua",
+        "src/Classes/ImportTab.lua",
+        "src/Classes/ItemDBControl.lua",
+        "src/Classes/ItemListControl.lua",
+        "src/Classes/ItemSlotControl.lua",
+        "src/Classes/ItemsTab.lua",
+        "src/Classes/ListControl.lua",
+        "src/Classes/SectionControl.lua",
+        "src/Classes/SharedItemListControl.lua",
+        "src/Classes/SkillListControl.lua",
+        "src/Classes/SkillsTab.lua",
+        "src/Classes/Tooltip.lua",
+        "src/Classes/TreeTab.lua",
+        "src/Modules/AddImplicitPopup.lua",
+        "src/Modules/Build.lua",
+        "src/Modules/CalcSections.lua",
+        "src/Modules/CalcSetup.lua",
+        "src/Modules/ConfigModBrowser.lua",
+        "src/Modules/Data.lua",
+        "src/Modules/ItemSocketControls.lua",
+        "src/Modules/Main.lua"
+      ]
+    },
+    {
+      "kind": "upstream-pr",
+      "number": 10371,
+      "url": "https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10371",
+      "base": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
+      "head": "3068a1325f2c483fe43c24bb9f7e2d05a6fd04e4",
+      "patchFile": "patches/upstream/pr-10371.diff",
+      "patchSha256": "0b3dd02a1637ffac915af79dcec532dbd09925decbf97157b60de7f8a6a49dc5",
+      "files": [
+        "spec/System/TestItemDBControl_spec.lua",
+        "src/Classes/ItemDBControl.lua"
+      ]
+    },
+    {
+      "kind": "upstream-pr",
+      "number": 10372,
+      "url": "https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10372",
+      "base": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
+      "head": "57ddd73ef6ecb13b3d8ec691757220fec72ad155",
+      "patchFile": "patches/upstream/pr-10372.diff",
+      "patchSha256": "64b152b3ecab1185446044e2556186ec54723b6ae668b215c026c226b0365537",
+      "files": [
+        "spec/System/TestItemDBControl_spec.lua",
+        "src/Classes/ItemDBControl.lua"
+      ]
+    },
+    {
+      "kind": "upstream-pr",
+      "number": 10373,
+      "url": "https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10373",
+      "base": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
+      "head": "9367777249dd28b945ea1de8eb95e4a63be3dfd7",
+      "patchFile": "patches/upstream/pr-10373.diff",
+      "patchSha256": "44819998020ca7463f988ce40cbf2e321b73a72cc4f2398f7833ec65acae87ef",
+      "files": [
+        "spec/System/TestPowerReport_spec.lua",
+        "src/Classes/CalcsTab.lua"
+      ]
+    },
+    {
+      "kind": "local-patch",
+      "id": "gem-dropdown-hover",
+      "sourceBase": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
+      "patchFile": "patches/gem-dropdown-hover-tooltip.patch",
+      "patchSha256": "6df3ff9dff331dbb637fdea199895739cc66da6c541ceb0eec92ce7e529cdd0b",
+      "files": [
+        "spec/System/TestGemSelectControl_spec.lua",
+        "src/Classes/GemSelectControl.lua"
+      ],
+      "applicationStage": "pack-time",
+      "upstreamPr": null,
+      "lastObserved": "2026-09-30"
+    },
+    {
+      "kind": "local-patch",
+      "id": "limited-unique-item-comparisons",
+      "sourceBase": "a431f3a28823270acbdd6864c644f93678581f1e",
+      "patchFile": "patches/limited-unique-item-comparisons.patch",
+      "patchSha256": "27361f45e1b27c127b60ac980dfe9617d35051bdc2225ec987d66dab23f34519",
+      "files": [
+        "src/Classes/ItemsTab.lua"
+      ],
+      "applicationStage": "pack-time",
+      "upstreamPr": null,
+      "lastObserved": "2026-10-01"
+    },
+    {
+      "kind": "local-patch",
+      "id": "calculation-only-jewel-specs",
+      "sourceBase": "a431f3a28823270acbdd6864c644f93678581f1e",
+      "patchFile": "patches/calculation-only-jewel-specs.patch",
+      "patchSha256": "2c537a136088daf1381bcdf55daeade47f4fa8ad2f6a7cdf0bed3f1d132325e6",
+      "files": [
+        "src/Classes/ItemsTab.lua",
+        "src/Classes/PassiveSpec.lua"
+      ],
+      "applicationStage": "pack-time",
+      "upstreamPr": {
+        "number": 9863,
+        "url": "https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/9863",
+        "head": "5cafb7f4f05299f08f2e68e6aadfd13396c71642",
+        "scope": "Narrow calculation-only temporary jewel-spec subset; excludes output-cache and CompareTab changes"
+      },
+      "localChanges": [
+        "Omit unused nodeCopy.power allocation only in temporary jewel-comparison clones; this addition is not part of upstream PR #9863"
+      ],
+      "lastObserved": "2026-10-01"
+    }
+  ],
+  "compositePatch": {
+    "patchFile": "patches/pob-pr-composite.patch",
+    "patchSha256": "ab7e2808e25b0ec66e24fd7a0162623bcdb744ca694844e34a4e118568209605",
+    "baseRevision": "a431f3a28823270acbdd6864c644f93678581f1e",
+    "upstreamBase": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
+    "resultTree": "d0a7d98fd0aff990d3fd8884f4b55b37a7aaef42",
+    "files": [
+      "spec/System/TestGemSocketQuality_spec.lua",
+      "spec/System/TestImport_spec.lua",
+      "spec/System/TestItemDBControl_spec.lua",
+      "spec/System/TestItemListControl_spec.lua",
+      "spec/System/TestItemMods_spec.lua",
+      "spec/System/TestPowerReport_spec.lua",
+      "spec/System/TestSkills_spec.lua",
+      "src/Classes/CalcSectionControl.lua",
+      "src/Classes/CalcsTab.lua",
+      "src/Classes/CheckBoxControl.lua",
+      "src/Classes/ConfigTab.lua",
+      "src/Classes/DropDownControl.lua",
+      "src/Classes/EditControl.lua",
+      "src/Classes/GemSelectControl.lua",
+      "src/Classes/ImportTab.lua",
+      "src/Classes/ItemDBControl.lua",
+      "src/Classes/ItemListControl.lua",
+      "src/Classes/ItemSlotControl.lua",
+      "src/Classes/ItemsTab.lua",
+      "src/Classes/ListControl.lua",
+      "src/Classes/SectionControl.lua",
+      "src/Classes/SharedItemListControl.lua",
+      "src/Classes/SkillListControl.lua",
+      "src/Classes/SkillsTab.lua",
+      "src/Classes/Tooltip.lua",
+      "src/Classes/TreeTab.lua",
+      "src/Modules/AddImplicitPopup.lua",
+      "src/Modules/Build.lua",
+      "src/Modules/CalcSections.lua",
+      "src/Modules/CalcSetup.lua",
+      "src/Modules/ConfigModBrowser.lua",
+      "src/Modules/Data.lua",
+      "src/Modules/ItemSocketControls.lua",
+      "src/Modules/Main.lua"
+    ],
+    "resultBlobHashes": {
+      "spec/System/TestGemSocketQuality_spec.lua": "3f54c87649455c045ed2bd15dcca05e64653b769",
+      "spec/System/TestImport_spec.lua": "fdb3083fd39912ba6eab23bea75b848d4d35bdbb",
+      "spec/System/TestItemDBControl_spec.lua": "9dbf1be931ea74fcc790f5f30a41eeca2244ffce",
+      "spec/System/TestItemListControl_spec.lua": "0362a5f8645f928a0d08467e3663d07aef34ec7e",
+      "spec/System/TestItemMods_spec.lua": "362ce3a1c80bad43b773bbec9ca78b0cb73bca04",
+      "spec/System/TestPowerReport_spec.lua": "899c5e57ad05117d8d0c89579bba199d0f619aeb",
+      "spec/System/TestSkills_spec.lua": "8e90b9f5b5359948f71a9e88e8dca44a7b803aa7",
+      "src/Classes/CalcSectionControl.lua": "cbe1bd74b832ead2c16d1aa4cc6664d34c903e0d",
+      "src/Classes/CalcsTab.lua": "42fb04c4418acfa1863699fc1d20d61a3e03641e",
+      "src/Classes/CheckBoxControl.lua": "e8b08226de2aaf098a13ca028eeedfbad53d982e",
+      "src/Classes/ConfigTab.lua": "090985ab6ffb11215d12e81f24244ffc1c8a20f0",
+      "src/Classes/DropDownControl.lua": "098783802834c16ea57886630a387b1d180adc93",
+      "src/Classes/EditControl.lua": "140a4ebc1ba88dcab684d63da38261b6cff513f2",
+      "src/Classes/GemSelectControl.lua": "e1a243fcca307e80188764d8fa91a5e675eaccfa",
+      "src/Classes/ImportTab.lua": "ba2af22a92f5c533e1011ec3d7dfffb87ea0f608",
+      "src/Classes/ItemDBControl.lua": "550943265ac25fbe3d4c8ea02e3ef40481840deb",
+      "src/Classes/ItemListControl.lua": "0ebf59105330a3b2f3f5c1ab3514b0732cfd6044",
+      "src/Classes/ItemSlotControl.lua": "12ba8f2e30fa2f02ce2150b059d282c377090243",
+      "src/Classes/ItemsTab.lua": "7649e17228ab87a2a13bde8b8dc738ba9a9019b2",
+      "src/Classes/ListControl.lua": "9b49a46f6bd23ed14cd2cae60d6e18ad5224304e",
+      "src/Classes/SectionControl.lua": "a63e4bc00acf1005a2aabcdee0b2258227f45c9d",
+      "src/Classes/SharedItemListControl.lua": "2590aeebe0e1b3462d73cbc9db8d3e26d71aff5b",
+      "src/Classes/SkillListControl.lua": "1d6683433c8f0942d1f8cb31868b4b030c7985f4",
+      "src/Classes/SkillsTab.lua": "79574c523fa6a5990f83eaa3c85e4ced869b5563",
+      "src/Classes/Tooltip.lua": "bfee2e5190c316da7fae8b7f0a1c0f44812da94f",
+      "src/Classes/TreeTab.lua": "7dba225173246e145868275fa34856f5dcd54afb",
+      "src/Modules/AddImplicitPopup.lua": "41ee8c0e083be3c6453fad6389027a6f4b26fa9d",
+      "src/Modules/Build.lua": "b90a6525a96a355caafbc9e78c186e635ce59ebd",
+      "src/Modules/CalcSections.lua": "8dcf0865571872d6fc85530411019cac3036d169",
+      "src/Modules/CalcSetup.lua": "13242a8c3e9264a26073db7e3479858f0dbc8800",
+      "src/Modules/ConfigModBrowser.lua": "0b0cde3bdf8a89c31348c547a2dd89b50097510e",
+      "src/Modules/Data.lua": "3e52eb2c9bcaf0540928c14fe1e0ed32646e852a",
+      "src/Modules/ItemSocketControls.lua": "5c5d7c47be149a1d1c124eeb508bff16ec3934fc",
+      "src/Modules/Main.lua": "ba137678649df496950c11751ad609b8d8232f8f"
+    }
+  }
+}

@@ -1,0 +1,33 @@
+diff --git a/src/Classes/ItemsTab.lua b/src/Classes/ItemsTab.lua
+index 7649e17..0fcf0d3 100644
+--- a/src/Classes/ItemsTab.lua
++++ b/src/Classes/ItemsTab.lua
+@@ -4930,6 +4930,28 @@ function ItemsTabClass:AddItemStatDifferences(tooltip, item, base, slot)
+ 		end
+ 
+ 
++		-- Avoid calculating replacements the full-limit branch
++		-- would discard. Keep the original eligibility, exact equality, slot
++		-- order, and comparison helper, including passive-tree reconstruction.
++		if (item.rarity == "UNIQUE" or item.rarity == "RELIC") and item.limit then
++			local matchingCount = 0
++			for _, compareSlot in ipairs(compareSlots) do
++				local selItem = self.items[compareSlot.selItemId]
++				if selItem and item.name == selItem.name then
++					matchingCount = matchingCount + 1
++				end
++			end
++			if matchingCount == item.limit then
++				for _, compareSlot in ipairs(compareSlots) do
++					local selItem = self.items[compareSlot.selItemId]
++					if selItem and item.name == selItem.name then
++						addCompareForSlot(compareSlot)
++					end
++				end
++				return
++			end
++		end
++
+ 		local slots = {}
+ 		local isUnique = item.rarity == "UNIQUE" or item.rarity == "RELIC"
+ 		local currentSameUniqueCount = 0

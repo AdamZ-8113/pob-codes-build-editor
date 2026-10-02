@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "sourceRevision": "b32759ab0f31a1c8499a0d420cb0f0633d4fe478",
+  "baseFixture": "guided import parity desktop 329.txt",
+  "familyId": "abyss-ulaman",
+  "jewelTypeId": 8,
+  "sourceBaseName": "AbyssUlaman",
+  "itemName": "Extinguishing Grasp",
+  "baseName": "Searching Eye Jewel",
+  "itemId": 21,
+  "socketId": 34483,
+  "seed": 4050,
+  "seedLine": "Subjugating 4050 souls in the thrall of Ulaman"
+}

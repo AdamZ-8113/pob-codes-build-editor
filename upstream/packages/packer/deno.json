@@ -1,0 +1,9 @@
+{
+  "name": "pob-packer",
+  "exports": "./src/pack.ts",
+  "publish": false,
+  "tasks": {
+    "pack": "deno run --allow-env --allow-read --allow-write src/pack.ts",
+    "test": "deno test --no-check --allow-read src/packages.test.ts"
+  }
+}

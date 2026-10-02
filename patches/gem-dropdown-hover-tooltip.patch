@@ -1,0 +1,208 @@
+diff --git a/spec/System/TestGemSelectControl_spec.lua b/spec/System/TestGemSelectControl_spec.lua
+index 5535034f906caa9306e234fc9d6bef8f0105db16..d7dc3c2ce438d7b2d6f505fc046b7638abbde131 100644
+--- a/spec/System/TestGemSelectControl_spec.lua
++++ b/spec/System/TestGemSelectControl_spec.lua
+@@ -69,4 +69,118 @@ describe("GemSelectControl", function()
+ 		assert.are.equal("Arc", control.buf)
+ 		assert.are.same({ "Arc", true, nil, true }, getChange())
+ 	end)
++
++	describe("dropped-list hover", function()
++		local oldCursor, oldMain, oldPositive, oldNegative
++		before_each(function()
++			oldCursor = GetCursorPos
++			oldMain = { }
++			for _, key in ipairs({ "showThousandsSeparators", "thousandsSeparator", "decimalSeparator", "showFlavourText" }) do
++				oldMain[key] = main[key]
++			end
++			oldPositive, oldNegative = colorCodes.POSITIVE, colorCodes.NEGATIVE
++		end)
++		after_each(function()
++			_G.GetCursorPos = oldCursor
++			for _, key in ipairs({ "showThousandsSeparators", "thousandsSeparator", "decimalSeparator", "showFlavourText" }) do
++				main[key] = oldMain[key]
++			end
++			colorCodes.POSITIVE, colorCodes.NEGATIVE = oldPositive, oldNegative
++		end)
++
++		for _, imbued in ipairs({ false, true }) do
++			it("reuses hover content and refreshes changed inputs" .. (imbued and " for imbued supports" or " for gem slots"), function()
++				local control = makeControl()
++				local calls, draws, cursorY, drawY = 0, 0, 25
++				control.imbuedSelect = imbued
++				control.dropped = true
++				for i = 3, 20 do control.list[i] = "Default:Arc" end
++				control.EditControl = { Draw = function() end }
++				control.DrawControls = function() end
++				control.IsMouseOver = function() return true, control.dropped and "DROP" or "BODY" end
++				_G.GetCursorPos = function() return 10, cursorY end
++				control.skillsTab.displayGroup = { gemList = { } }
++				control.skillsTab.GetMouseOverControl = function() end
++				control.skillsTab.build.outputRevision = 1
++				control.skillsTab.build.calcsTab = { GetMiscCalculator = function() return function() end, { } end }
++				control.skillsTab.ProcessGemLevel = function(self, gem, isImbued) return isImbued and 1 or self.defaultGemLevel end
++				control.CalcOutputWithThisGem = function(self, calcFunc, gem, fullDPS)
++					calls = calls + 1
++					return { }
++				end
++				control.AddGemTooltip = function(self, gem, tooltip)
++					(tooltip or self.tooltip):AddLine(16, gem.nameSpec .. ":" .. gem.level .. ":" .. gem.quality)
++				end
++				control.skillsTab.build.AddStatComparesToTooltip = function(self, tooltip)
++					tooltip:AddLine(14, colorCodes.POSITIVE .. formatNumSep("12345.5"))
++				end
++				local function recordDraw(self, x, y)
++					draws = draws + 1
++					drawY = y
++				end
++				control.tooltip.Draw = recordDraw
++				if control.hoverTooltip then control.hoverTooltip.Draw = recordDraw end
++				local function frames(n)
++					for _ = 1, n do control:Draw({ x = 0, y = 0, width = 800, height = 600 }) end
++				end
++				frames(2)
++				assert.are.equal(0, calls)
++				frames(4)
++				assert.are.equal(1, calls)
++				assert.are.equal(4, draws)
++				local tooltip = control.hoverTooltip
++				assert.are.equal("Fireball:" .. (imbued and 1 or 20) .. ":0", tooltip.lines[1].text)
++				local original = copyTable(tooltip.lines, true)
++				control.dropped = false
++				frames(1)
++				control.dropped = true
++				frames(3)
++				assert.are.equal(1, calls)
++				assert.are.same(original, tooltip.lines)
++				local previousY = drawY
++				control.controls.scrollBar.offset = 2
++				frames(1)
++				assert.are.equal(previousY - 2, drawY)
++				assert.are.equal(1, calls)
++				cursorY = 42
++				frames(3)
++				assert.are.equal(2, calls)
++				assert.is_truthy(tooltip.lines[1].text:find("Arc", 1, true))
++				-- Sorting can replace the gem under the cursor without changing the row.
++				control.list[2] = "Default:Fireball"
++				frames(1)
++				assert.are.equal(3, calls)
++				assert.is_truthy(tooltip.lines[1].text:find("Fireball", 1, true))
++				local changes = {
++					function() control.skillsTab.build.outputRevision = 2 end,
++					function() control.sortCache = copyTable(control.sortCache) end,
++					function() control.skillsTab.defaultGemLevel = 19 end,
++					function() control.skillsTab.defaultGemQuality = 20 end,
++					function() control.skillsTab.sortGemsByDPSField = "FullDPS" end,
++					function() main.showThousandsSeparators = not main.showThousandsSeparators end,
++					function() main.thousandsSeparator = "_" end,
++					function() main.decimalSeparator = "," end,
++					function() colorCodes.POSITIVE = "^x123456" end,
++					function() colorCodes.NEGATIVE = "^x654321" end,
++					function() main.showFlavourText = not main.showFlavourText end,
++				}
++				for i, change in ipairs(changes) do
++					change()
++					frames(3)
++					assert.are.equal(3 + i, calls)
++					assert.are.equal(colorCodes.POSITIVE .. formatNumSep("12345.5"), tooltip.lines[#tooltip.lines].text)
++				end
++				-- An unavailable calculator must not leave an empty tooltip cached.
++				local getCalculator = control.skillsTab.build.calcsTab.GetMiscCalculator
++				control.skillsTab.build.calcsTab.GetMiscCalculator = function() end
++				control.skillsTab.build.outputRevision = 3
++				frames(1)
++				assert.are.equal(0, #tooltip.lines)
++				control.skillsTab.build.calcsTab.GetMiscCalculator = getCalculator
++				frames(3)
++				assert.are.equal(4 + #changes, calls)
++				assert.is_true(#tooltip.lines > 0)
++			end)
++		end
++	end)
+ end)
+diff --git a/src/Classes/GemSelectControl.lua b/src/Classes/GemSelectControl.lua
+index e87c36ecbc23b94447bd7b5561dfcc4c11896a19..80b4832393b29229553b29579595697ce5410c6a 100644
+--- a/src/Classes/GemSelectControl.lua
++++ b/src/Classes/GemSelectControl.lua
+@@ -38,6 +38,7 @@ function GemSelectClass:GemSelectControl(anchor, rect, skillsTab, index, changeF
+ 	self.controls.scrollBar.shown = function()
+ 		return self.dropped and self.controls.scrollBar.enabled
+ 	end
++	self.hoverTooltip = new("Tooltip"):Tooltip()
+ 	self.skillsTab = skillsTab
+ 	self.gems = { }
+ 	self:PopulateGemList()
+@@ -590,30 +591,38 @@ function GemSelectClass:Draw(viewPort, noTooltip)
+ 				self.hoverFrameCount = 0
+ 			end
+ 			if self.hoverFrameCount >= 2 then
+-				local calcFunc, calcBase = self.skillsTab.build.calcsTab:GetMiscCalculator(self.build)
+-				if calcFunc then
+-					self.tooltip:Clear()
+-					local gemData = self.gems[self.list[self.hoverSel]]
+-					local output= self:CalcOutputWithThisGem(calcFunc, gemData, self.skillsTab.sortGemsByDPSField == "FullDPS")
+-					local gemInstance = {
+-						level = self.skillsTab:ProcessGemLevel(gemData, self.imbuedSelect),
+-						quality = self.skillsTab.defaultGemQuality or 0,
+-						qualityId = "Default",
+-						count = 1,
+-						enabled = true,
+-						enableGlobal1 = true,
+-						enableGlobal2 = true,
+-						gemId = gemData.id,
+-						nameSpec = gemData.name,
+-						skillId = gemData.grantedEffectId,
+-						displayEffect = nil,
+-						gemData = gemData
+-					}
+-					self:AddGemTooltip(gemInstance)
+-					self.tooltip:AddSeparator(10)
+-					self.skillsTab.build:AddStatComparesToTooltip(self.tooltip, calcBase, output, "^7Selecting this gem will give you:")
+-					self.tooltip:Draw(x, y + height + 2 + (self.hoverSel - 1) * (height - 4) - scrollBar.offset, width, height - 4, viewPort)
++				local gemData = self.gems[self.list[self.hoverSel]]
++				-- The inherited tooltip is also rewritten by closed-dropdown hover handling.
++				local tooltip = self.hoverTooltip
++				if tooltip:CheckForUpdate(gemData, self.sortCache, self.skillsTab.build.outputRevision,
++					self.skillsTab.defaultGemLevel, self.skillsTab.defaultGemQuality, self.skillsTab.sortGemsByDPSField,
++					main.showThousandsSeparators, main.thousandsSeparator, main.decimalSeparator,
++					colorCodes.POSITIVE, colorCodes.NEGATIVE, main.showFlavourText) then
++					local calcFunc, calcBase = self.skillsTab.build.calcsTab:GetMiscCalculator(self.build)
++					if calcFunc then
++						local output = self:CalcOutputWithThisGem(calcFunc, gemData, self.skillsTab.sortGemsByDPSField == "FullDPS")
++						local gemInstance = {
++							level = self.skillsTab:ProcessGemLevel(gemData, self.imbuedSelect),
++							quality = self.skillsTab.defaultGemQuality or 0,
++							qualityId = "Default",
++							count = 1,
++							enabled = true,
++							enableGlobal1 = true,
++							enableGlobal2 = true,
++							gemId = gemData.id,
++							nameSpec = gemData.name,
++							skillId = gemData.grantedEffectId,
++							displayEffect = nil,
++							gemData = gemData
++						}
++						self:AddGemTooltip(gemInstance, tooltip)
++						tooltip:AddSeparator(10)
++						self.skillsTab.build:AddStatComparesToTooltip(tooltip, calcBase, output, "^7Selecting this gem will give you:")
++					else
++						tooltip:Clear(true)
++					end
+ 				end
++				tooltip:Draw(x, y + height + 2 + (self.hoverSel - 1) * (height - 4) - scrollBar.offset, width, height - 4, viewPort)
+ 			end
+ 		else
+ 			self.lastHoverSel = nil
+@@ -703,8 +712,8 @@ function GemSelectClass:CheckSupporting(gemA, gemB)
+ 		(gemA.gemData.secondaryGrantedEffect and gemA.gemData.secondaryGrantedEffect.support and not gemB.gemData.grantedEffect.support and gemA.supportEffect and gemA.supportEffect.isSupporting and gemA.supportEffect.isSupporting[gemB])
+ end
+ 
+-function GemSelectClass:AddGemTooltip(gemInstance)
+-	gemTooltip.AddGemTooltip(self.tooltip, self.skillsTab.build, gemInstance)
++function GemSelectClass:AddGemTooltip(gemInstance, tooltip)
++	gemTooltip.AddGemTooltip(tooltip or self.tooltip, self.skillsTab.build, gemInstance)
+ end
+ 
+ function GemSelectClass:OnFocusGained()

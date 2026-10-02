@@ -1,0 +1,31 @@
+# Dependencies and tool state
+node_modules/
+upstream/node_modules/
+.tools/
+.playwright-mcp/
+.wrangler/
+
+# Compiler, payload, release, and browser outputs
+.runtime/
+dist/
+build/
+upstream/packages/driver/build/
+upstream/packages/driver/dist/
+upstream/packages/packer/build/
+upstream/packages/packer/r2/
+playwright-report/
+test-results/
+reports/
+tmp/
+
+# Local configuration, credentials, and private inputs
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.pid
+*.log
+private-builds/
+captures/

@@ -1,0 +1,32 @@
+{
+  "name": "pob-codes-build-editor",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A standalone browser build of Path of Building for PoB Codes.",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": "22.x",
+    "npm": ">=10"
+  },
+  "packageManager": "npm@11.6.2",
+  "scripts": {
+    "prepare": "node scripts/prepare.mjs",
+    "prepare:runtime": "node scripts/prepare.mjs",
+    "dev": "node dev.mjs",
+    "pack": "node pack.mjs",
+    "check": "node scripts/check.mjs",
+    "test:unit": "node --test calculation-only-spec-experiment.test.mjs canonical-export.test.mjs dev-network.test.mjs import2-contract.test.mjs item-comparison-patch.test.mjs jewel-spec-patch.test.mjs local-services.test.mjs mobile-profile.test.mjs process-memory.test.mjs source-ledger.test.mjs && node scripts/test-deno-unit.mjs",
+    "test:native": "node build-runtime.mjs --test",
+    "test:e2e": "playwright test",
+    "bench": "node scripts/benchmark.mjs",
+    "build:release": "node build-runtime.mjs --test && node pack.mjs && node materialize-import2.mjs && node scripts/create-release-record.mjs && node scripts/archive-release.mjs",
+    "verify:release": "node verify-import2-release.mjs && node scripts/verify-release-record.mjs",
+    "test:e2e:production-smoke": "node profile-import2-production.mjs"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.59.1",
+    "sharp": "0.35.4",
+    "wrangler": "4.146.0"
+  }
+}

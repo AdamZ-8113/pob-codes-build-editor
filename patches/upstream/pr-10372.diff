@@ -1,0 +1,105 @@
+diff --git a/spec/System/TestItemDBControl_spec.lua b/spec/System/TestItemDBControl_spec.lua
+index 98d4605c4a21fa8be397a8f1c72288a938a87d96..f30a964522ff06358f51b8bd21e7bb02f7828c4a 100644
+--- a/spec/System/TestItemDBControl_spec.lua
++++ b/spec/System/TestItemDBControl_spec.lua
+@@ -62,6 +62,56 @@ describe("ItemDBControl", function()
+ 		assert.are.equal(-math.huge, invalidItem.measuredPower)
+ 	end)
+ 
++	it("reuses unique stat values until relevant build state changes", function()
++		local calcCount = 0
++		local item = {
++			name = "Test Item",
++			base = { },
++			enchantModLines = { },
++			implicitModLines = { },
++			explicitModLines = { },
++			baseModList = { },
++		}
++		local itemsTab = {
++			activeItemSet = { useSecondWeaponSet = false },
++			slots = { ["Body Armour"] = { } },
++			build = {
++				outputRevision = 1,
++				characterLevel = 100,
++				calcsTab = {
++					mainOutput = { Str = 100, Dex = 100, Int = 100 },
++					GetMiscCalculator = function()
++						return function()
++							calcCount = calcCount + 1
++							return { TotalDPS = calcCount }
++						end
++					end,
++				},
++			},
++			IsItemValidForSlot = function()
++				return true
++			end,
++		}
++		local control = new("ItemDBControl"):ItemDBControl(nil, { 0, 0, 100, 100 }, itemsTab, { list = { item } }, "UNIQUE")
++		control.sortDetail = { stat = "TotalDPS" }
++		control.sortOrder = { control.sortControl.STAT, control.sortControl.NAME }
++
++		control:ListBuilder()
++		control:ListBuilder()
++		assert.are.equal(1, calcCount)
++		assert.are.equal(1, item.measuredPower)
++
++		itemsTab.build.outputRevision = 2
++		control:ListBuilder()
++		assert.are.equal(2, calcCount)
++		assert.are.equal(2, item.measuredPower)
++
++		itemsTab.activeItemSet.useSecondWeaponSet = true
++		control:ListBuilder()
++		assert.are.equal(3, calcCount)
++		assert.are.equal(3, item.measuredPower)
++	end)
++
+ 	it("searches Foulborn modifier text without case sensitivity", function()
+ 		local item = new("Item"):Item([[
+ 			Rarity: Unique
+diff --git a/src/Classes/ItemDBControl.lua b/src/Classes/ItemDBControl.lua
+index bc5c227bf3dedb6655fd4f3424b61cbe90d73916..55f72268b96e212d512d0e019a860c7664eba18a 100644
+--- a/src/Classes/ItemDBControl.lua
++++ b/src/Classes/ItemDBControl.lua
+@@ -256,15 +256,33 @@ function ItemDBClass:ListBuilder()
+ 		local useFullDPS = self.sortDetail.stat == "FullDPS"
+ 		local start = GetTime()
+ 		local calcFunc, calcBase = self.itemsTab.build.calcsTab:GetMiscCalculator(self.build)
++		local statCache
++		if self.dbType == "UNIQUE" then
++			local outputRevision = self.itemsTab.build.outputRevision
++			if self.statCacheOutputRevision ~= outputRevision then
++				self.statCache = { }
++				self.statCacheOutputRevision = outputRevision
++			end
++			local cacheKey = self.sortDetail.stat..":"..(self.itemsTab.activeItemSet.useSecondWeaponSet and "2" or "1")
++			self.statCache = self.statCache or { }
++			self.statCache[cacheKey] = self.statCache[cacheKey] or { }
++			statCache = self.statCache[cacheKey]
++		end
+ 		for itemIndex, item in ipairs(list) do
+-			item.measuredPower = -math.huge
+-			for slotName, slot in pairs(self.itemsTab.slots) do
+-				if self.itemsTab:IsItemValidForSlot(item, slotName) and not slot.inactive and (not slot.weaponSet or slot.weaponSet == (self.itemsTab.activeItemSet.useSecondWeaponSet and 2 or 1)) then
+-					local output = calcFunc(item.base.flask and { toggleFlask = item } or item.base.tincture and { toggleTincture = item } or { repSlotName = slotName, repItem = item }, useFullDPS)
+-					local measuredPower = data.powerStatList.GetFromOutput(output, self.sortDetail)
+-					item.measuredPower = m_max(item.measuredPower, measuredPower)
++			local measuredPower = statCache and statCache[item]
++			if measuredPower == nil then
++				measuredPower = -math.huge
++				for slotName, slot in pairs(self.itemsTab.slots) do
++					if self.itemsTab:IsItemValidForSlot(item, slotName) and not slot.inactive and (not slot.weaponSet or slot.weaponSet == (self.itemsTab.activeItemSet.useSecondWeaponSet and 2 or 1)) then
++						local output = calcFunc(item.base.flask and { toggleFlask = item } or item.base.tincture and { toggleTincture = item } or { repSlotName = slotName, repItem = item }, useFullDPS)
++						measuredPower = m_max(measuredPower, data.powerStatList.GetFromOutput(output, self.sortDetail))
++					end
++				end
++				if statCache then
++					statCache[item] = measuredPower
+ 				end
+ 			end
++			item.measuredPower = measuredPower
+ 			local now = GetTime()
+ 			if now - start > 50 then
+ 				self.defaultText = "^7Sorting... ("..m_floor(itemIndex/#list*100).."%)"

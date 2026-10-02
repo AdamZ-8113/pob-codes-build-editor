@@ -1,0 +1,13 @@
+@import "tailwindcss" prefix(pw);
+@source "./**/*.{ts,tsx}";
+@plugin "@tailwindcss/typography";
+
+@plugin "daisyui" {
+  theme: dark --default;
+  logs: false;
+}
+
+/* https://github.com/saadeghi/daisyui/issues/3040 */
+html {
+  scrollbar-gutter: auto !important;
+}

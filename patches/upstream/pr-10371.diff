@@ -1,0 +1,26 @@
+diff --git a/spec/System/TestItemDBControl_spec.lua b/spec/System/TestItemDBControl_spec.lua
+index 98d4605c4a21fa8be397a8f1c72288a938a87d96..023510bc33730ed4573e3a52866222a7e14184b8 100644
+--- a/spec/System/TestItemDBControl_spec.lua
++++ b/spec/System/TestItemDBControl_spec.lua
+@@ -29,7 +29,7 @@ describe("ItemDBControl", function()
+ 		}
+ 		local itemsTab = {
+ 			activeItemSet = { useSecondWeaponSet = false },
+-			slots = { ["Body Armour"] = {} },
++			slots = { ["Body Armour"] = { shown = function() return true end } },
+ 			build = {
+ 				calcsTab = {
+ 					GetMiscCalculator = function()
+diff --git a/src/Classes/ItemDBControl.lua b/src/Classes/ItemDBControl.lua
+index bc5c227bf3dedb6655fd4f3424b61cbe90d73916..c0612ef7c75930fd4bd73c1d33f71378ad7738c3 100644
+--- a/src/Classes/ItemDBControl.lua
++++ b/src/Classes/ItemDBControl.lua
+@@ -259,7 +259,7 @@ function ItemDBClass:ListBuilder()
+ 		for itemIndex, item in ipairs(list) do
+ 			item.measuredPower = -math.huge
+ 			for slotName, slot in pairs(self.itemsTab.slots) do
+-				if self.itemsTab:IsItemValidForSlot(item, slotName) and not slot.inactive and (not slot.weaponSet or slot.weaponSet == (self.itemsTab.activeItemSet.useSecondWeaponSet and 2 or 1)) then
++				if self.itemsTab:IsItemValidForSlot(item, slotName) and not slot.inactive and (not slot.weaponSet or slot.weaponSet == (self.itemsTab.activeItemSet.useSecondWeaponSet and 2 or 1)) and slot.shown() then
+ 					local output = calcFunc(item.base.flask and { toggleFlask = item } or item.base.tincture and { toggleTincture = item } or { repSlotName = slotName, repItem = item }, useFullDPS)
+ 					local measuredPower = data.powerStatList.GetFromOutput(output, self.sortDetail)
+ 					item.measuredPower = m_max(item.measuredPower, measuredPower)

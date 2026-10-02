@@ -1,0 +1,22 @@
+* text=auto
+*.mjs text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+*.tsx text eol=lf
+*.json text eol=lf
+*.jsonc text eol=lf
+*.md text eol=lf
+*.lua text eol=lf
+*.c text eol=lf
+*.h text eol=lf
+*.html text eol=lf
+*.css text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+patches/**/*.patch text eol=lf -whitespace
+patches/**/*.diff text eol=lf -whitespace
+*.woff binary
+*.png binary
+*.jpg binary
+*.wasm binary
+*.zip binary
