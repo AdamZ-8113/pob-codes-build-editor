@@ -5,27 +5,6 @@ import { guardJewelInflate, sparseTimelessSeeds } from "./timeless-adapter.ts";
 import { stalePackageHashes, validatePayloadManifest } from "../../../payload-manifest.ts";
 import { applyGemHoverPatch, blobHash } from "../../../../scripts/patches/gem-hover-patch.mjs";
 import { applyUniqueSortPatch } from "../../../../scripts/patches/unique-sort-patch.mjs";
-import { shardFamily, adaptAbyssSearch, adaptAbyssReader } from './abyss-records.mjs';
-import { deflateSync } from 'node:zlib';
-import { parseAbyssLookup, buildAbyssMiniatureLookup } from '../../../abyss-lookup-format.js';
-
-Deno.test('desktop Abyss shards preserve native range edges and exclude original representation', async () => {
-  const data = Buffer.concat([Buffer.from([65,66,89,83,1,7,100,0,64,31,1,0,1,1,187,9]),Buffer.alloc(7901)]);
-  const {entries} = shardFamily([deflateSync(data)],7);
-  assertEquals(entries.length,16);
-  for (const [i,entry] of entries.entries()) {
-    const native = parseAbyssLookup(entry.data);
-    assertEquals(native.seedMinimum,100+i*512);
-    for (const seed of [native.seedMinimum,native.seedMaximum]) assertEquals(buildAbyssMiniatureLookup(native,{seed,socketId:2491}),buildAbyssMiniatureLookup(parseAbyssLookup(data),{seed,socketId:2491}));
-  }
-  const packages = await createPackages([
-    {path:'GameVersions.lua',data:new TextEncoder().encode('treeVersionList={"3_29"}')},
-    {path:'TreeData/3_29/tree.lua',data:new Uint8Array([1])}, ...entries,
-  ],'a'.repeat(40));
-  assertEquals(packages.manifest.packages.filter(p=>p.id.startsWith('abyss-')).length,16);
-  assertEquals(packages.manifest.packages.filter(p=>p.id.startsWith('abyss-')).every(p=>!p.startup),true);
-  assertThrows(()=>adaptAbyssSearch('changed upstream'));
-});
 const revision = "a".repeat(40);
 const sourcePin = JSON.parse(await Deno.readTextFile(new URL("../../../../source-pin.json", import.meta.url)));
 const preparedSource = `../../../../.runtime/source-${sourcePin.compositePatch.patchSha256.slice(0, 12)}`;
@@ -34,14 +13,6 @@ let hasGemSource = false;
 try { hasGemSource = (await Deno.stat(gemSource)).isFile; } catch (error) {
   if (!(error instanceof Deno.errors.NotFound)) throw error;
 }
-Deno.test({name:'Abyss reader indexes native records before using direct offsets',ignore:!hasGemSource,fn:async()=>{
-  const source=(await Deno.readTextFile(new URL(`${preparedSource}/src/Modules/DataAbyssJewelLookUpTableHelper.lua`,import.meta.url))).replaceAll('\r\n','\n');
-  const helper=await Deno.readTextFile(new URL('./abyss-records.lua',import.meta.url));
-  const output=adaptAbyssReader(source,helper);
-  for(const key of ['socketId','nodeId','"ascendancy:" .. ascendancyName']) assertEquals(output.includes(`jewelLUT.seedOffsets[${key}] = offsets`),true);
-  assertEquals(output.includes('local offsets = jewelLUT.seedOffsets[nodeId]'),true);
-  assertThrows(()=>adaptAbyssReader(source.replace('for _, socketId in ipairs(socketIds) do','for _, id in ipairs(socketIds) do'),helper));
-}});
 Deno.test({ name: "gem hover patch preserves pin, rejects tampering and duplicate application", ignore: !hasGemSource, fn: async () => {
   const pin = sourcePin.adapters.gemDropdownHover;
   const patch = await Deno.readFile(new URL(`../../../../${pin.patchFile}`, import.meta.url));

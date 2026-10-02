@@ -31,12 +31,10 @@ function getRuntimeProfile(reset)
     if getCalculationSchedulingProfile then result = result:sub(1,-2) .. ',"scheduler":' .. getCalculationSchedulingProfile() .. '}' end
     if getUniqueComparisonProfile then result = result:sub(1,-2) .. ',"uniqueComparisons":' .. getUniqueComparisonProfile() .. '}' end
     if getItemTooltipCacheProfile then result = result:sub(1,-2) .. ',"itemTooltipCache":' .. getItemTooltipCacheProfile() .. '}' end
-    if getMobilePolicyProfile then result = result:sub(1,-2) .. ',"mobile":' .. getMobilePolicyProfile() .. '}' end
-    if getAbyssRecordCacheProfile then result = result:sub(1,-2) .. ',"abyssCache":' .. getAbyssRecordCacheProfile() .. '}' end
-    local loaded = getAbyssLoadedMask and getAbyssLoadedMask() or 0
+    local loaded = 0
     for family = 1, 11 do
         local lut = data and data.timelessJewelLUTs and data.timelessJewelLUTs[family]
-        if lut and lut.data and math.floor(loaded / 2 ^ (family - 1)) % 2 == 0 then loaded = loaded + 2 ^ (family - 1) end
+        if lut and lut.data then loaded = loaded + 2 ^ (family - 1) end
     end
     result = result:sub(1,-2) .. ',"luaKiB":' .. collectgarbage('count') .. ',"timelessLoadedMask":' .. loaded .. ',"gcPause":' .. (runtimeGCPolicy and runtimeGCPolicy.pause or 400) .. '}'
     local db = activeBuild and activeBuild.itemsTab and activeBuild.itemsTab.controls.uniqueDB

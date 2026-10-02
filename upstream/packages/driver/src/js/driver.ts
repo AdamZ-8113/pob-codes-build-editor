@@ -71,8 +71,6 @@ export type DriverLifecycleCallbacks = {
   onPayloadProgress?: (progress: PayloadProgress) => void;
 };
 
-import { selectDevicePolicy, type DevicePolicy } from "../../../../../src/device-profile.ts";
-
 export class Driver {
   private helpers: HelperPool | undefined;
   private readonly requestedHelpers = Number(new URLSearchParams(location.search).get('helpers') ?? 3);
@@ -132,7 +130,6 @@ export class Driver {
     readonly assetPrefix: string,
     readonly hostCallbacks: HostCallbacks,
     readonly lifecycleCallbacks: DriverLifecycleCallbacks = {},
-    readonly devicePolicy: DevicePolicy = selectDevicePolicy(navigator),
   ) {
     this.backgroundPromises = new BackgroundPromiseOwner(
       (operation, error) => {
@@ -214,7 +211,6 @@ export class Driver {
           new URLSearchParams(location.search).get('tooltipCache') === 'off' ? -1
             : new URLSearchParams(location.search).get('tooltipCache') === 'calculator' ? 0 : 1,
           new URLSearchParams(location.search).get('textWidthCache') !== 'off',
-          this.devicePolicy,
         ),
       ]);
     } catch (error) {
@@ -255,7 +251,7 @@ export class Driver {
     const [runtime, filesystem] = await Promise.all([
       this.driverWorker?.getRuntimeProfile(reset), this.broker?.getFilesystemProfile(),
     ]);
-    return { ...runtime, devicePolicy: this.devicePolicy, filesystem, helpers: this.helpers
+    return { ...runtime, filesystem, helpers: this.helpers
       ? { ...this.helpers.profile(), startPolicy: this.eagerHelpers ? 'eager' : 'on-demand' } : undefined };
   }
 
@@ -271,7 +267,7 @@ export class Driver {
     const requested = this.requestedHelpers;
     const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
     if (this.build === 'release' && Number.isInteger(requested) && requested > 0 && navigator.hardwareConcurrency >= 6 &&
-        (memory === undefined || memory >= 8) && this.devicePolicy.helpers) {
+        (memory === undefined || memory >= 8) && !/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)) {
       const count = Math.min(requested, 3, navigator.hardwareConcurrency - 2);
       if (this.eagerHelpers) {
         // Keep first-sort latency low; lazy startup remains an opt-in experiment.
@@ -292,11 +288,6 @@ export class Driver {
     this.worker = undefined;
     this.driverWorker = undefined;
     this.hostCallbacks.onError(markEnvironmentError(new Error(message), "assetLoad"));
-  }
-
-  async requestMobileAction(action: string) {
-    this.mouseMoves.flushPending();
-    await this.driverWorker?.requestMobileAction(action);
   }
 
   async configureCalculationScheduling(enabled: boolean) {
@@ -324,8 +315,6 @@ export class Driver {
       minWidth: this.MIN_CANVAS_WIDTH,
       minHeight: this.MIN_CANVAS_HEIGHT,
       toolbarSize: toolbarTarget ? 0 : this.TOOLBAR_SIZE,
-      pixelRatioCap: this.devicePolicy.pixelRatioCap,
-      minimumInitialScale: this.devicePolicy.minimumInitialScale,
     };
 
     this.canvasManager = new CanvasManager(canvasConfig);
@@ -641,15 +630,6 @@ export class Driver {
       performanceVisible: this.performanceVisible,
       externalComponent: this.externalComponent,
     });
-  }
-
-  getViewport() { return { ...this.canvasManager?.getRenderingSize(), ...this.canvasManager?.transform }; }
-
-  setViewport(scale: number, x = 0, y = 0) {
-    this.canvasManager?.resetTransform();
-    this.canvasManager?.zoomTo(scale, 0, 0);
-    this.canvasManager?.pan(x, y);
-    this.updateOverlayWithTransform();
   }
 
   resetTransform() {

@@ -34,40 +34,6 @@ static int GetRuntimeItemTooltipCacheMode(lua_State *L) {
     return 1;
 }
 
-static int CopyAbyssRecord(lua_State *L) {
-    lua_pushlstring(L, lua_touserdata(L, 1), (size_t)lua_tointeger(L, 2));
-    return 1;
-}
-
-static int GetAbyssRecord(lua_State *L) {
-    luaL_checkstack(L, 4, "Abyss record result");
-    int type = luaL_checkinteger(L, 1), seed = luaL_checkinteger(L, 2), socket = luaL_checkinteger(L, 3);
-    int bulk = lua_toboolean(L, 4);
-    const char *selector = luaL_optstring(L, 5, "");
-    size_t size = 0;
-    char *bytes = (char *)EM_ASM_PTR({
-        // The RPC protocol omits zero-length data. Native out-of-range seeds
-        // and unsupported sockets intentionally resolve to an empty lookup.
-        var result = Module.rpcCall("abyss-record", [$0, $1, $2, !!$3, UTF8ToString($5)], undefined, 1024 * 1024).data ?? new Uint8Array();
-        HEAPU32[$4 >> 2] = result.length;
-        var ptr = _malloc(Math.max(1, result.length));
-        if (!ptr) throw new Error("Abyss record allocation failed");
-        HEAPU8.set(result, ptr); return ptr;
-    }, type, seed, socket, bulk, &size, selector);
-    lua_pushcfunction(L, CopyAbyssRecord);
-    lua_pushlightuserdata(L, bytes);
-    lua_pushinteger(L, size);
-    int status = lua_pcall(L, 2, 1, 0);
-    free(bytes);
-    if (status != LUA_OK) return lua_error(L);
-    return 1;
-}
-
-static int IsMobileRuntime(lua_State *L) {
-    lua_pushboolean(L, EM_ASM_INT({ return Module.runtimeMobile ? 1 : 0; }));
-    return 1;
-}
-
 static int UniqueSortAvailable(lua_State *L) {
     lua_pushinteger(L, EM_ASM_INT({ return Module.uniqueSortAvailable ? Module.uniqueSortAvailable() : 0; }));
     return 1;
@@ -313,8 +279,6 @@ int init() {
 
     // Open standard libraries
     luaL_openlibs(GL);
-    lua_register(GL, "GetAbyssRecord", GetAbyssRecord);
-    lua_register(GL, "IsMobileRuntime", IsMobileRuntime);
     lua_register(GL, "BeginUniqueSort", BeginUniqueSort);
     lua_register(GL, "GetRuntimeGCPause", GetRuntimeGCPause);
     lua_register(GL, "GetRuntimeItemTooltipCacheMode", GetRuntimeItemTooltipCacheMode);
@@ -702,25 +666,4 @@ const char* apply_build_configuration(const char *request) {
     if (result) s_configuration_result = strdup(result);
     lua_pop(L, 1);
     return s_configuration_result;
-}
-
-EMSCRIPTEN_KEEPALIVE
-int request_mobile_action(const char *action) {
-    if (!GL) return 1;
-    lua_getglobal(GL, "requestMobileAction");
-    lua_pushstring(GL, action);
-    if (lua_pcall(GL, 1, 0, 0) != LUA_OK) { OnError(GL); lua_pop(GL, 1); return 1; }
-    return 0;
-}
-
-EMSCRIPTEN_KEEPALIVE
-const char *get_mobile_action_state(void) {
-    static char *state;
-    free(state); state = NULL;
-    if (!GL) return "{}";
-    lua_getglobal(GL, "getMobilePolicyProfile");
-    if (lua_pcall(GL, 0, 1, 0) != LUA_OK) { lua_pop(GL, 1); return "{}"; }
-    const char *text=lua_tostring(GL,-1);
-    if (text) state=strdup(text);
-    lua_pop(GL,1); return state ? state : "{}";
 }

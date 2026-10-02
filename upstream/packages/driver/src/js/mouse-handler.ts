@@ -443,13 +443,6 @@ export class MouseHandler {
     }
 
     if (e.touches.length === 0) {
-      if (this._multiTouchPreventionTimer) clearTimeout(this._multiTouchPreventionTimer);
-      this._multiTouchPreventionTimer = null;
-      this._allowMouseUpdates = true;
-      const finalTouch = e.changedTouches[0];
-      if (finalTouch && !this._isZooming && !this._isPanning && !this._threeFingerPanning) {
-        this.updateMouseState(this.getTouchPosition(finalTouch));
-      }
       if (!this._panModeEnabled) {
         if (this._isPanModeActive) {
           this._isPanModeActive = false;
@@ -486,8 +479,6 @@ export class MouseHandler {
     e.preventDefault();
 
     this._touches.clear();
-    if (this._multiTouchPreventionTimer) clearTimeout(this._multiTouchPreventionTimer);
-    this._multiTouchPreventionTimer = null;
 
     if (this._longPressTimer) {
       clearTimeout(this._longPressTimer);
@@ -497,7 +488,6 @@ export class MouseHandler {
     if (this._isPanModeActive && this._isTouchLeftButtonDown) {
       this.pobKeyboardState.keyup("LEFTBUTTON" as PoBKey);
     }
-    this._isTouchLeftButtonDown = false;
 
     this._isZooming = false;
     this._isPanning = false;

@@ -7,7 +7,6 @@ export class HelperAccess {
   constructor(private dispatch: (operation: string, args: unknown[], data?: Uint8Array) => Promise<RpcResult>) {}
   async handle(operation: string, args: unknown[], data?: Uint8Array): Promise<RpcResult> {
     if (this.closed) throw new Error('Helper port closed');
-    if (operation === 'abyss-record') return this.dispatch(operation, args, data);
     const path = args[0];
     const root = typeof path === 'string' && (path === '/root' || path.startsWith('/root/')) &&
       !path.includes('\\') && !path.includes('\0') && !path.split('/').some(p => p === '.' || p === '..');

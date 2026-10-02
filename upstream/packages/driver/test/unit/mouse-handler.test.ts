@@ -29,33 +29,6 @@ function setup() {
   return { events, win, doc, el, keys, handler, send, focuses: () => focuses };
 }
 
-Deno.test('quick touch delivers final position before click even before the multi-touch timer', async () => {
-  const previous = globalThis.window;
-  Object.assign(globalThis, {window:globalThis});
-  const h = setup();
-  const touch = {identifier:1,clientX:110,clientY:120};
-  const event = (touches:unknown[],changed:unknown[]) => Object.assign(new Event('touch',{cancelable:true}),{touches,changedTouches:changed}) as unknown as TouchEvent;
-  try {
-    h.handler.handleTouchStart(event([touch],[touch]));
-    h.events.length=0;
-    h.handler.handleTouchEnd(event([],[{...touch,clientX:210,clientY:220}]));
-    assertEquals(h.events.slice(0,2),[['move',200,200,[]],['down','LEFTBUTTON']]);
-    await new Promise(resolve=>setTimeout(resolve,60));
-    assertEquals(h.events,[['move',200,200,[]],['down','LEFTBUTTON'],['up','LEFTBUTTON']]);
-  } finally {h.handler.destroy(); Object.assign(globalThis,{window:previous});}
-});
-
-Deno.test('cancelled quick touch cannot deliver delayed movement or clicks', async () => {
-  const previous=globalThis.window;Object.assign(globalThis,{window:globalThis});const h=setup();
-  const touch={identifier:1,clientX:110,clientY:120};
-  const event=(touches:unknown[])=>Object.assign(new Event('touch',{cancelable:true}),{touches,changedTouches:[touch]}) as unknown as TouchEvent;
-  try{
-    h.handler.handleTouchStart(event([touch]));h.events.length=0;
-    h.handler.handleTouchCancel(event([]));await new Promise(resolve=>setTimeout(resolve,60));
-    assertEquals(h.events,[]);
-  }finally{h.handler.destroy();Object.assign(globalThis,{window:previous});}
-});
-
 Deno.test("release outside the canvas forwards final position before releasing, without stealing focus", () => {
   const h = setup();
   h.send("mousedown", 1);

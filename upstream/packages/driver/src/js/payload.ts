@@ -227,8 +227,7 @@ export class PayloadController {
     private readonly onProgress?: ProgressCallback,
   ) {
     for (const entry of manifest.packages) {
-      // Even diagnostic eager mode must not inflate the complete Abyss dataset.
-      const startup = !entry.id.startsWith("abyss-") && (eager || entry.startup);
+      const startup = eager || entry.startup;
       const pkg = new LazyPackage(entry, !startup, prefix, fetcher.bind(globalThis), (source, loaded, phase, message) =>
         this.progress(source, loaded, phase, message));
       pkg.activeReason = startup ? "startup" : "prefetch";
@@ -248,23 +247,6 @@ export class PayloadController {
     await Promise.all([0, 1].map(async () => {
       while (next < packages.length) await packages[next++].ensure("startup");
     }));
-  }
-
-  async readVerifiedFile(rootPath: string, release = false): Promise<Uint8Array> {
-    const path = normalizeRootPath(rootPath);
-    const pkg = this.paths.get(path);
-    if (!pkg) throw new PayloadLoadError("abyss-records", "Abyss file missing from manifest");
-    await this.ensurePath(rootPath);
-    try {
-      const expected = pkg.entry.files.find(f => "/" + f.path === path)!;
-      const bytes = new Uint8Array(expected.bytes);
-      await pkg.source!.read(path, bytes, 0, bytes.length);
-      return bytes;
-    } finally {
-      // Drop ZIP AND all mounted file-source references. The dedicated broker
-      // LRU owns the verified raw block; no second unbounded archive cache.
-      if (release) { pkg.source = undefined; pkg.inFlight = undefined; for (const file of pkg.files) file.source = undefined; }
-    }
   }
 
   async ensurePath(rootPath: string) {
@@ -289,7 +271,7 @@ export class PayloadController {
   startPrefetch() {
     if (this.prefetchStarted) return;
     this.prefetchStarted = true;
-    const unloaded = [...this.packages.values()].filter((pkg) => !pkg.source && !pkg.entry.id.startsWith("abyss-"));
+    const unloaded = [...this.packages.values()].filter((pkg) => !pkg.source);
     unloaded.sort((a, b) => prefetchRank(a.entry.id) - prefetchRank(b.entry.id) || a.entry.id.localeCompare(b.entry.id));
     void (async () => {
       for (const pkg of unloaded) {

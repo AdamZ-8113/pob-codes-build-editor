@@ -3,15 +3,6 @@ import { calculateRenderingSize, CanvasManager, MAX_RENDERING_DIMENSION } from "
 
 const makeCanvas = () => new CanvasManager({ minWidth: 800, minHeight: 600, toolbarSize: 60 });
 
-Deno.test('startup mobile DPR caps preserve logical size and the existing texture limit', () => {
-  const mobile = calculateRenderingSize(1550,800,3,1.5);
-  assertEquals([mobile.styleWidth,mobile.styleHeight],[1550,800]);
-  assertEquals([mobile.renderingWidth,mobile.renderingHeight],[2325,1200]);
-  const low = calculateRenderingSize(1550,800,3,1);
-  assertEquals([low.renderingWidth,low.renderingHeight],[1550,800]);
-  assertEquals(calculateRenderingSize(10000,10000,3,1.5).renderingWidth,4096);
-});
-
 Deno.test("canvas and screen coordinate transforms remain inverse", () => {
   const canvas = makeCanvas();
   canvas.zoom(1.5, 400, 300);

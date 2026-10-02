@@ -2,17 +2,12 @@ import { Driver } from "../upstream/packages/driver/src/js/driver.ts";
 import { assertDriverCapabilities } from "../upstream/packages/driver/src/js/capability.ts";
 import type { PayloadProgress } from "../upstream/packages/driver/src/js/payload.ts";
 import "./style.css";
-import { selectDevicePolicy } from "./device-profile.ts";
 import { createCharacterHostV1, createDisabledCharacterTransport } from "./character-host-v1.js";
 import type { CharacterTransportV1 } from "./character-host-v1.js";
 import { createTelemetryV1 } from "./telemetry-v1.js";
 import { createConfigurationBridgeV1 } from "./configuration-v1.js";
 import type { ConfigurationRequestV1 } from "./configuration-v1.js";
 import { createBuildTransferV1 } from "./build-transfer-v1.js";
-const devicePolicy = selectDevicePolicy(navigator, import.meta.env.DEV ? new URLSearchParams(location.search).get("deviceProfile") : undefined,
-  import.meta.env.DEV && new URLSearchParams(location.search).get("mobileDpr") === "1" ? 1 : 1.5);
-document.documentElement.dataset.deviceProfile = devicePolicy.kind;
-
 declare const __IMPORT2_PREVIEW__: boolean;
 declare const __IMPORT2_PAYLOAD_PREFIX__: string;
 declare const __DESKTOP_DEV_LAN_HOSTS__: string[];
@@ -29,7 +24,7 @@ const publicRuntime = Object.freeze({
 const performancePrefix = "pob-import2";
 const startupAt = performance.now();
 const appVersion = __IMPORT2_PAYLOAD_PREFIX__.match(/[a-f0-9]{12,64}/)?.[0] ?? "";
-const telemetry = createTelemetryV1({ endpoint: publicRuntime.telemetryEndpoint, appVersion, deviceClass: devicePolicy.kind });
+const telemetry = createTelemetryV1({ endpoint: publicRuntime.telemetryEndpoint, appVersion });
 telemetry.emit("build_editor_open_v1", { result: "opened", actionTarget: location.hash.includes("build=") ? "saved-build" : location.hash.includes("code=") ? "fragment" : "direct" });
 if (import2Preview) performance.mark(`${performancePrefix}-shell-start`);
 
@@ -123,17 +118,11 @@ async function main() {
     onTitleChange: (title) => { document.title = `${title} · ${publicRuntime.productName}`; },
   }, {
     onDiagnostic: (event) => {
-      if (event.event === "mobile-actions") {
-        const compare = document.getElementById("mobile-compare") as HTMLButtonElement | null;
-        const sort = document.getElementById("mobile-sort") as HTMLButtonElement | null;
-        if (compare) compare.disabled = !event.data?.compareAvailable;
-        if (sort) { sort.disabled = !event.data?.statSort; sort.textContent = `Sort (${event.data?.candidates ?? 0})`; }
-      }
       if (event.event === "calculations-pending") calculationStatus.hidden = !event.data?.pending;
       if (event.level === "error" || event.event === "destroy") calculationStatus.hidden = true;
     },
     onPayloadProgress: (progress) => payloadProgress.update(progress),
-  }, devicePolicy);
+  });
   configuration = createConfigurationBridgeV1({
     getBuildCode: () => driver!.getBuildCode(), loadBuildFromCode: code => driver!.loadBuildFromCode(code),
     applyConfiguration: request => driver!.applyConfiguration(request),
@@ -164,22 +153,6 @@ async function main() {
   if (options.get("synchronousCalculations") === "1") await driver.configureCalculationScheduling(false);
   if (options.get("renderReuse") === "0") await driver.configureRenderReuse(false);
   await driver.attachToDOM(element("window"), element("editor-accessibility"));
-  if (devicePolicy.kind === "mobile") {
-    const actions = document.createElement("div");
-    actions.className = "mobile-actions";
-    actions.setAttribute("role", "group"); actions.setAttribute("aria-label", "Item calculations");
-    for (const [action, label] of [["compare", "Compare"], ["sort", "Sort"]]) {
-      const button = document.createElement("button"); button.type = "button";
-      button.className = "btn btn-secondary"; button.id = `mobile-${action}`;
-      button.textContent = label; button.disabled = true;
-      button.title = action === "compare" ? "Compare the inspected item using exact PoB calculations" : "Sort filtered unique items by the selected stat";
-      button.onclick = () => { void driver!.requestMobileAction(action).catch(report); };
-      actions.append(button);
-    }
-    const hint = document.createElement("span"); hint.className = "mobile-pan-hint";
-    hint.textContent = "Three-finger drag to pan · Pinch to zoom · Tap, then Compare";
-    actions.append(hint); element("editor-accessibility").append(actions);
-  }
   const deadline = performance.now() + 90_000;
   while (!hasDrawn) {
     if (errors.length) throw new Error(errors[errors.length - 1]);
@@ -195,7 +168,7 @@ async function main() {
   const beginBackgroundWork = () => {
     driver?.startHelpers();
     const prefetch = import2Preview ? options.get("payloadPrefetch") === "1" : options.get("payloadPrefetch") !== "0";
-    if (devicePolicy.prefetch && prefetch) void driver?.startPayloadPrefetch();
+    if (prefetch) void driver?.startPayloadPrefetch();
   };
   if ("requestIdleCallback" in window) window.requestIdleCallback(beginBackgroundWork);
   else setTimeout(beginBackgroundWork, 0);
@@ -212,10 +185,6 @@ async function main() {
 // Local acceptance harness: these methods address the same displayed Lua instance.
 Object.defineProperty(window, "__DESKTOP_POB__", { value: {
   publicRuntime,
-  get devicePolicy() { return devicePolicy; },
-  getViewport: () => driver!.getViewport(),
-  setViewport: (scale: number, x = 0, y = 0) => driver!.setViewport(scale, x, y),
-  requestMobileAction: (action: string) => driver!.requestMobileAction(action),
   get ready() { return ready; }, get frames() { return frames; }, get stats() { return lastStats; },
   get errors() { return [...errors]; },
   getRuntimeProfile: (reset = false) => driver!.getRuntimeProfile(reset),

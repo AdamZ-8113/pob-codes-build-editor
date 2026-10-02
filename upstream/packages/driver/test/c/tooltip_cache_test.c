@@ -3,8 +3,6 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
-extern const char *mobile_policy_lua;
-extern const char *mobile_policy_test_lua;
 extern const char *cache_lua;
 extern const char *cache_test_lua;
 extern const char *runtime_profile_lua;
@@ -48,9 +46,6 @@ int main(void) {
             if (lua_pcall(L, 1, 0, 0) != LUA_OK) goto failure;
             if (luaL_dostring(L, unique_workers_test_lua) != LUA_OK) goto failure;
             if (luaL_dostring(L, unique_workers_lua) != LUA_OK) goto failure;
-            if (lua_pcall(L, 1, 0, 0) != LUA_OK) goto failure;
-            if (luaL_dostring(L, mobile_policy_test_lua) != LUA_OK) goto failure;
-            if (luaL_dostring(L, mobile_policy_lua) != LUA_OK) goto failure;
             if (lua_pcall(L, 1, 0, 0) != LUA_OK) goto failure;
             lua_close(L);
             puts("Item tooltip cache regression tests passed");

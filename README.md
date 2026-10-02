@@ -57,9 +57,9 @@ The browser-runtime work developed here has also been submitted back to
 - [pob-web #226](https://github.com/atty303/pob-web/pull/226) caches repeated text
   measurements before they cross from WebAssembly into JavaScript.
 
-This repository also adds mobile/touch behavior, more reliable high-frequency
-mouse input, lazy and integrity-checked data loading, bounded helper workers for
-large unique-item sorts, and targeted tooltip/calculation scheduling. These
+This repository also adds more reliable high-frequency mouse input, lazy and
+integrity-checked data loading, bounded helper workers for large unique-item
+sorts, and targeted tooltip/calculation scheduling. These
 changes keep the original PoB UI and math authoritative; technical details and
 validation evidence live in [`upstream/PROVENANCE.md`](upstream/PROVENANCE.md).
 

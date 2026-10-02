@@ -185,7 +185,6 @@ mainObject["OnInit"] = function(self)
     self.main.OnFrame = function(main, ...)
         if main.newMode then calculationScheduler.flush() end
         calculationScheduler.beforeFrame(main.inputEvents)
-        updateMobilePolicyVisibility()
         local result = table.pack(pcall(frame, main, ...))
         if not result[1] then calculationScheduler.cancel(); error(result[2], 0) end
         calculationScheduler.afterFrame()
@@ -205,9 +204,8 @@ mainObject["OnInit"] = function(self)
         installItemTooltipCache(build, nil, tooltipCacheMode == 1 and 'operations' or tooltipCacheMode == -1 and 'off' or 'calculator')
         installRuntimeProfile(build)
         calculationScheduler.install(build)
-        if not IsMobileRuntime() then installUniqueComparisonDelay(build) end
+        installUniqueComparisonDelay(build)
         installUniqueSortWorkers(build)
-        installMobilePolicy(build)
     end
 end
 

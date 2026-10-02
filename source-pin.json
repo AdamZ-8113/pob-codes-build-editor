@@ -91,18 +91,6 @@
         "src/Classes/PassiveSpec.lua": "4bc4f97aa456b4abd5569731b47480bf6b73904c"
       }
     },
-    "abyssRecordDelivery": {
-      "version": 1,
-      "sourceBase": "a431f3a28823270acbdd6864c644f93678581f1e",
-      "format": 1,
-      "abysBucketSeeds": 512,
-      "abynBucketSeeds": 32,
-      "pureCodecSha256": "48c591a3d71222d4e9740faa7bab650da9938bfd772a9115d38a65f48599d176",
-      "sourceBlobHashes": {
-        "src/Modules/DataAbyssJewelLookUpTableHelper.lua": "78c32af2a4d14497f59ce920d4593d41e5ecf5cf",
-        "src/Classes/TreeTab.lua": "7dba225173246e145868275fa34856f5dcd54afb"
-      }
-    },
     "importTabHostCapabilities": {
       "version": 1,
       "patchFile": "patches/importtab-host-capabilities.patch",

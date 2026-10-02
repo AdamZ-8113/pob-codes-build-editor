@@ -8,7 +8,6 @@ import AdmZip from "adm-zip";
 import { parseDDSDX10 } from "dds";
 import { imageDimensionsFromData } from "image-dimensions";
 import { Buffer } from "node:buffer";
-import { families, shardFamily, adaptAbyssReader, adaptAbyssSearch } from "./abyss-records.mjs";
 import { createPackages, sourceKind } from "./packages.ts";
 import { exposeExactRebuild } from "./calculation-adapter.ts";
 import { guardJewelInflate, sparseTimelessSeeds } from "./timeless-adapter.ts";
@@ -39,16 +38,6 @@ const imageIndex: string[] = [];
 const basePath = `${repoDir}/src`;
 const timelessSeedHelper = await Deno.readTextFile(new URL("./timeless-seeds.lua", import.meta.url));
 const timelessInflateHelper = await Deno.readTextFile(new URL("./timeless-inflate.lua", import.meta.url));
-const abyssHelper = await Deno.readTextFile(new URL("./abyss-records.lua", import.meta.url));
-const abyssMetadata = [];
-for (const [i, family] of families.entries()) {
-  const parts = [];
-  for (let part = 0; part < 6; part++) parts.push(Buffer.from(await Deno.readFile(`${basePath}/Data/TimelessJewelData/Abyss${family}.zip.part${part}`)));
-  const {entries, metadata} = shardFamily(parts, i + 7);
-  abyssMetadata.push(metadata);
-  for (const entry of entries) zip.addFile(entry.path, Buffer.from(entry.data));
-}
-zip.addFile("Data/TimelessJewelData/AbyssRecords/index.json", Buffer.from(JSON.stringify({pin: pin.revision, format: 1, families: abyssMetadata})));
 // Stable traversal makes the metadata and archive ordering reproducible.
 const entries = [];
 for await (const entry of walk(basePath, { includeDirs: true, followSymlinks: false })) entries.push(entry);
@@ -60,7 +49,6 @@ for (const entry of entries) {
     if (relPath) zip.addFile(`${relPath}/`, Buffer.alloc(0));
     continue;
   }
-  if (/^Data\/TimelessJewelData\/Abyss\w+\.zip(?:\.part\d+)?$/.test(relPath)) continue;
   const kind = sourceKind(relPath);
   const isDDS = entry.path.endsWith(".dds.zst");
   if (kind === "image") {
@@ -88,11 +76,7 @@ for (const entry of entries) {
     const comparisonInput = relPath === "Classes/ItemsTab.lua"
       ? new TextEncoder().encode(applyItemComparisonPatch(new TextDecoder().decode(newContent), Buffer.from(itemComparisonPatch), pin.adapters.limitedUniqueItemComparisons))
       : newContent;
-    const adapted = relPath === "Modules/DataAbyssJewelLookUpTableHelper.lua"
-      ? new TextEncoder().encode(adaptAbyssReader(new TextDecoder().decode(newContent), abyssHelper))
-      : relPath === "Classes/TreeTab.lua"
-      ? new TextEncoder().encode(adaptAbyssSearch(new TextDecoder().decode(newContent)))
-      : relPath === "Modules/Build.lua"
+    const adapted = relPath === "Modules/Build.lua"
       ? new TextEncoder().encode(exposeExactRebuild(new TextDecoder().decode(newContent)))
       : relPath === "Classes/GemSelectControl.lua"
       ? new TextEncoder().encode(applyGemHoverPatch(new TextDecoder().decode(newContent), Buffer.from(gemHoverPatch), pin.adapters.gemDropdownHover))

@@ -23,28 +23,6 @@ Generated compiler output and dependency installations are ignored local inputs.
 The selected Path of Building revision and overlay ledger are separately pinned
 by `../source-pin.json`; the browser bridge is independent of that packaged source.
 
-The October 1 mobile adapter adds an immutable phone/tablet startup policy,
-explicit native item comparisons and stat-sort requests, final quick-touch
-position ordering, and a mobile-only DPR 1.5/readable initial camera. Its embedded
-`packages/driver/mobile-policy.lua` uses the existing exact comparison/sort
-caches; it does not alter PoB math or adopt general manual recalculation.
-Desktop interaction defaults remain unchanged.
-
-`abyss-lookup-format.js` is a byte-for-byte adopted copy of the PoB Codes pure
-Abyss lookup codec at extraction. Its SHA-256 is recorded
-in `../source-pin.json` and checked by the source ledger and shared golden-file
-test. It has no main-app metadata or generated-data dependency. Desktop-owned
-packer adapters generate native ABYS/ABYN records from this app's pin, validate
-every record, and reject changes to the native reader/search/parser hooks.
-The canonical payload excludes the original Abyss part files and generic
-prefetch excludes all 1,591 shards. The native read-only broker bridge extracts
-one seed before Lua; bulk search preserves native path/ascendancy selection.
-Broker storage is bounded to 16 MiB including offset/derived-block storage and
-released mounted ZIP references, and each worker's parsed native cache to
-8 MiB. Search consumes 512-seed ABYS/32-seed ABYN blocks. Failed verified
-demands retain session-terminal containment; there is no regeneration fallback.
-The original source checkout remains untouched and owns the source archives.
-
 The ledger carries upstream PRs
 [#10360](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10360),
 [#10371](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10371),

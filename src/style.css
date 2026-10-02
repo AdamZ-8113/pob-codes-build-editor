@@ -72,18 +72,3 @@ dialog h1 { font-size: 20px; }
   .payload-progress-grid { grid-template-columns: repeat(15, minmax(0, 18.12px)); gap: 3px; }
 }
 @media (max-width: 420px) { .site-header-links { gap: 8px; } }
-
-
-html[data-device-profile="mobile"] #editor-accessibility { flex-wrap: wrap; }
-html[data-device-profile="mobile"] #editor-accessibility button { min-height: 32px; }
-.mobile-actions { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.mobile-pan-hint { color: var(--text-dim); font-size: 0.8rem; }
-.mobile-actions .btn { border: 1px solid #2b2b2b; background: linear-gradient(180deg, #212121, #141414); color: var(--text-main); border-radius: 6px; padding: 6px 14px; transition: border-color 160ms ease, box-shadow 160ms ease; }
-.mobile-actions .btn:hover:not(:disabled), .mobile-actions .btn:focus-visible { border-color: #3b5788; box-shadow: inset 0 0 0 1px rgba(77, 113, 177, 0.42), 0 0 18px rgba(63, 101, 171, 0.14); }
-@media (max-width: 640px) { .mobile-pan-hint { flex-basis: 100%; } }
-
-html[data-device-profile="mobile"] #editor-accessibility { height: auto; display: flex; align-items: center; gap: 8px; }
-html[data-device-profile="mobile"] .header-status:has(#status:empty):has(#calculation-status[hidden]) { display: none; }
-@media (max-width: 640px) {
-  html[data-device-profile="mobile"] .site-header-actions { grid-column: 1 / -1; justify-content: center; }
-}

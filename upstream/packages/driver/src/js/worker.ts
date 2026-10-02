@@ -29,8 +29,6 @@ interface DriverModule extends EmscriptenModule {
   takePasteText: () => string | undefined;
 }
 
-import { selectDevicePolicy, type DevicePolicy } from "../../../../../src/device-profile.ts";
-
 type OnFetchFunction = (
   url: string,
   headers: Record<string, string>,
@@ -75,8 +73,6 @@ type Imports = {
 };
 
 export class DriverWorker {
-  private mobile = false;
-  private lastMobileState = "";
   private uniqueHelpersEnabled = 0;
   configureUniqueHelpers(count: number) { this.uniqueHelpersEnabled = count; }
   private imageRepo: ImageRepository | undefined;
@@ -111,13 +107,6 @@ export class DriverWorker {
       if (this.memoryCapacities.length >= 128) this.memoryCapacities.shift();
       this.memoryCapacities.push({ at: performance.now(), bytes });
     }
-  }
-
-  requestMobileAction(action: string) {
-    this.imports?.flushCalculations();
-    const status = this.module?.cwrap("request_mobile_action", "number", ["string"])(action);
-    if (status) throw new Error("Mobile action failed");
-    this.invalidate();
   }
 
   getRuntimeProfile(reset = false) {
@@ -161,10 +150,8 @@ export class DriverWorker {
     gcPause = 400,
     itemTooltipCacheMode = 1,
     nativeTextWidthCacheEnabled = true,
-    devicePolicy: DevicePolicy = selectDevicePolicy({}),
   ) {
     this.onDiagnostic = onDiagnostic;
-    this.mobile = devicePolicy.kind === "mobile";
     this.diagnostic("worker", "start");
     this.imageRepo = new ImageRepository(`${assetPrefix}/root/`);
 
@@ -204,7 +191,6 @@ export class DriverWorker {
     const sortReplies = new Map<number, string>();
     Object.assign(module, {
       runtimeGCPause: gcPause,
-      runtimeMobile: devicePolicy.kind === "mobile",
       runtimeItemTooltipCacheMode: itemTooltipCacheMode,
       nativeTextWidthCacheEnabled,
       uniqueSortAvailable: () => this.uniqueHelpersEnabled,
@@ -436,13 +422,6 @@ export class DriverWorker {
       this.inputFrame.clear();
       this.pasteBuffer.clear();
       this.clipboardControlPending = false;
-    }
-    if (this.mobile && this.module) {
-      const state = this.module.cwrap("get_mobile_action_state", "string", [])();
-      if (state !== this.lastMobileState) {
-        this.lastMobileState = state;
-        this.diagnostic("frame", "mobile-actions", JSON.parse(state));
-      }
     }
     const time = performance.now() - start;
     this.sampleMemory();

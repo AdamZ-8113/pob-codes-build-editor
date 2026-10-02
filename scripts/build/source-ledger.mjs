@@ -11,12 +11,6 @@ export function patchFiles(bytes) {
 export async function validateSourceLedger(appDir, suppliedPinBytes) {
   const pinBytes = suppliedPinBytes ?? await readFile(join(appDir, "source-pin.json"));
   const pin = JSON.parse(pinBytes);
-  const records = pin.adapters?.abyssRecordDelivery;
-  if (records?.version !== 1 || records.format !== 1 || records.sourceBase !== pin.revision ||
-      records.abysBucketSeeds !== 512 || records.abynBucketSeeds !== 32 ||
-      sha256(await readFile(join(appDir, 'upstream/abyss-lookup-format.js'))) !== records.pureCodecSha256) {
-    throw new Error('Abyss record delivery codec/pin identity changed');
-  }
   if (pin.schemaVersion !== 2 || pin.compositePatch?.baseRevision !== pin.revision) {
     throw new Error("Unsupported desktop PoB source-pin schema or composite base");
   }

@@ -15,7 +15,7 @@ const timeless = deflateSync(timelessXml).toString('base64url');
 const byId = new Map(manifest.packages.map(pkg => [pkg.id, pkg]));
 const startupHashes = new Set(manifest.packages.filter(pkg => pkg.startup).map(pkg => pkg.sha256));
 const tree328Hashes = new Set([byId.get('tree-3_28').sha256]);
-const timelessHashes = new Set(manifest.packages.filter(pkg => pkg.id.startsWith('abyss-11-')).map(pkg => pkg.sha256));
+const timelessHashes = new Set(manifest.packages.filter(pkg => pkg.id.startsWith('timeless-abysszorath')).map(pkg => pkg.sha256));
 const outputDirectory = process.argv[2] ? resolve(process.argv[2]) : undefined;
 if (outputDirectory) await mkdir(outputDirectory, { recursive: true });
 
@@ -124,10 +124,6 @@ async function verifyBackgroundPrefetch() {
     await page.waitForFunction(() => performance.now() > 0, null, { timeout: 1_000 });
     for (let attempts = 0; attempts < 40 && !lazyRequests.length; attempts++) await page.waitForTimeout(100);
     assert.ok(lazyRequests.length > 0, 'Idle prefetch must begin after the shell is ready');
-    const noAbyssCount=manifest.packages.filter(pkg=>!pkg.id.startsWith('abyss-')).length;
-    await page.waitForFunction(async count=>(await window.__DESKTOP_POB__.getRuntimeProfile()).filesystem.payload.loadedPackages.length===count,noAbyssCount,{timeout:120_000});
-    const abyssHashes=new Set(manifest.packages.filter(pkg=>pkg.id.startsWith('abyss-')).map(pkg=>pkg.sha256));
-    assert.equal(lazyRequests.some(hash=>abyssHashes.has(hash)),false,'Default desktop prefetch must never fetch Abyss shards');
     assert.equal(await page.locator('.payload-progress-label').textContent(), 'PoB Data Ready');
     console.log('Lazy payload background prefetch passed.');
   } finally { await context.close(); }

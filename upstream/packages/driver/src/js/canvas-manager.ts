@@ -2,8 +2,6 @@ export interface CanvasConfig {
   minWidth: number;
   minHeight: number;
   toolbarSize: number;
-  pixelRatioCap?: number;
-  minimumInitialScale?: number;
 }
 
 export interface CanvasSize {
@@ -32,14 +30,12 @@ export const calculateRenderingSize = (
   styleWidth: number,
   styleHeight: number,
   devicePixelRatio: number,
-  pixelRatioCap = Number.MAX_VALUE,
 ): CanvasRenderingSize => {
   const maximumDimension = typeof __MAX_RENDERING_DIMENSION_OVERRIDE__ === "number"
     ? __MAX_RENDERING_DIMENSION_OVERRIDE__
     : MAX_RENDERING_DIMENSION;
   const pixelRatio = Math.min(
     devicePixelRatio,
-    pixelRatioCap,
     maximumDimension / styleWidth,
     maximumDimension / styleHeight,
   );
@@ -121,7 +117,7 @@ export class CanvasManager {
     canvas.style.height = `${this.currentStyleHeight}px`;
 
     const pixelRatio = window.devicePixelRatio || 1;
-    const renderingSize = calculateRenderingSize(this.currentStyleWidth, this.currentStyleHeight, pixelRatio, this.config.pixelRatioCap);
+    const renderingSize = calculateRenderingSize(this.currentStyleWidth, this.currentStyleHeight, pixelRatio);
     canvas.width = renderingSize.renderingWidth;
     canvas.height = renderingSize.renderingHeight;
 
@@ -251,7 +247,6 @@ export class CanvasManager {
       this.currentStyleWidth,
       this.currentStyleHeight,
       window.devicePixelRatio || 1,
-      this.config.pixelRatioCap,
     );
   }
 
@@ -400,7 +395,7 @@ export class CanvasManager {
       const scaleToFitWidth = this._containerWidth / this.currentStyleWidth;
       const scaleToFitHeight = this._containerHeight / this.currentStyleHeight;
 
-      const initialScale = Math.max(scaleToFitWidth, scaleToFitHeight, this.config.minimumInitialScale ?? 0);
+      const initialScale = Math.max(scaleToFitWidth, scaleToFitHeight);
 
       this._initialScale = Math.max(this._minScale, Math.min(this._maxScale, initialScale));
       this._scale = this._initialScale;

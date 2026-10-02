@@ -15,7 +15,6 @@ import { exposeRpcPort, prepareFetchHeaders, type RpcResult } from "./rpc.ts";
 import { removeStaleSettingsSuffix } from "./settings.ts";
 import type { SubScriptWorker } from "./sub.ts";
 import { TruncatingWebAccess } from "./web-access.ts";
-import { AbyssRecords } from "./abyss-records.ts";
 import { HelperAccess } from './helper-access.ts';
 // @ts-types="./vite-worker.d.ts"
 import SubWorkerObject from "./sub.ts?worker";
@@ -40,7 +39,7 @@ class AsyncBroker {
     this.helperPorts.delete(id); helper.port.close(); await helper.access.close();
   }
   getFilesystemProfile() {
-    return { ...this.filesystem.profile(), payload: this.payloadController?.profile(), abyss: this.abyss?.profile() };
+    return { ...this.filesystem.profile(), payload: this.payloadController?.profile() };
   }
   markPayloadReady() { this.payloadController?.markReady(); }
   startPayloadPrefetch() { this.payloadController?.startPrefetch(); }
@@ -50,7 +49,6 @@ class AsyncBroker {
   private subscripts = new Map<number, { worker: Worker; port: MessagePort }>();
   private filesystem = new FilesystemRpcHandler();
   private cloudDirectory: string | undefined;
-  private abyss?: AbyssRecords;
   private payloadController: PayloadController | undefined;
   private payloadFailureCallback: ((message: string) => void | Promise<void>) | undefined;
   private payloadFailed = false;
@@ -83,7 +81,6 @@ class AsyncBroker {
       });
       rootFileSystem = payload.filesystem;
       this.payloadController = payload.controller;
-      this.abyss = payload.controller ? new AbyssRecords(payload.controller) : undefined;
       this.filesystem.setPayloadGate(payload.controller);
     } catch (error) {
       throw markEnvironmentError(error, "assetLoad");
@@ -107,15 +104,6 @@ class AsyncBroker {
         "/user": userFileSystem,
       },
     });
-    // Explicit localhost legacy diagnostics already hold the entire root ZIP.
-    // Read its native shards through the same extractor, without downloading
-    // a second representation. Import2 forbids this unverified legacy path.
-    const legacyIndex = '/root/Data/TimelessJewelData/AbyssRecords/index.json';
-    if (!this.payloadController && await zenfs.promises.exists(legacyIndex)) {
-      const index = JSON.parse(new TextDecoder().decode(await zenfs.promises.readFile(legacyIndex)));
-      this.abyss = new AbyssRecords({manifest:{sourceRevision:index.pin},
-        readVerifiedFile: async path => new Uint8Array(await zenfs.promises.readFile(path))});
-    }
     const settingsPath = `/user/${config.userDirectory}/Settings.xml`;
     if (await removeStaleSettingsSuffix(settingsPath, config.settingsRootElement)) {
       console.warn("Removed stale data after game settings", { settingsPath });
@@ -161,10 +149,6 @@ class AsyncBroker {
 
   private async handleOperation(operation: string, args: unknown[], data?: Uint8Array): Promise<RpcResult> {
     switch (operation) {
-      case "abyss-record": {
-        if (!this.abyss) throw new PayloadLoadError("abyss-records", "Abyss record manifest unavailable");
-        return {value: 0, data: await this.abyss.read(args[0] as number, args[1] as number, args[2] as number, args[3] as boolean, args[4] as string)};
-      }
       case "fetch": {
         const headers = prepareFetchHeaders(args[1] as Record<string, string>);
         return {

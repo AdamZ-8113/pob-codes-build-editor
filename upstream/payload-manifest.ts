@@ -26,10 +26,6 @@ export function packageForPath(path: string): string {
     }
     return `tree-${tree[1]}`;
   }
-  if (path === "Data/TimelessJewelData/AbyssRecords/index.json") return "core";
-  const abyssRecord = /^Data\/TimelessJewelData\/AbyssRecords\/(7|8|9|10|11)-(\d+)-(\d+)\.bin$/.exec(path);
-  if (abyssRecord) return `abyss-${abyssRecord[1]}-${abyssRecord[2]}-${abyssRecord[3]}`;
-  if (path.startsWith("Data/TimelessJewelData/AbyssRecords/")) throw new Error("Unknown Abyss record path");
   if (path.startsWith("Data/TimelessJewelData/")) {
     const file = path.slice("Data/TimelessJewelData/".length);
     if (
@@ -66,6 +62,15 @@ export function packageForPath(path: string): string {
   return "core";
 }
 
+// Release cleanup still validates one retained predecessor generation. Accept
+// the rejected experiment's package names there without allowing the current
+// packer to generate that representation again.
+function manifestPackageForPath(path: string): string {
+  if (path === "Data/TimelessJewelData/AbyssRecords/index.json") return "core";
+  const record = /^Data\/TimelessJewelData\/AbyssRecords\/(7|8|9|10|11)-(\d+)-(\d+)\.bin$/.exec(path);
+  return record ? `abyss-${record[1]}-${record[2]}-${record[3]}` : packageForPath(path);
+}
+
 /** Only hashes owned by the older generation and absent from both retained generations. */
 export function stalePackageHashes(
   current: PayloadManifest,
@@ -96,9 +101,9 @@ export function validatePayloadManifest(value: unknown): PayloadManifest {
     let total = 0;
     for (const f of p.files) {
       if (
-        !f || typeof f.path !== "string" || packageForPath(f.path) !== p.id || paths.has(f.path) ||
+        !f || typeof f.path !== "string" || manifestPackageForPath(f.path) !== p.id || paths.has(f.path) ||
         !Number.isSafeInteger(f.bytes) || f.bytes < 0
-      ) throw new Error("Invalid payload membership");
+      ) throw new Error(`Invalid payload membership: ${p.id}:${f?.path ?? "<missing>"}`);
       paths.add(f.path);
       total += f.bytes;
     }
@@ -138,4 +143,3 @@ export async function sha256(bytes: Uint8Array<ArrayBuffer>): Promise<string> {
     (b) => b.toString(16).padStart(2, "0"),
   ).join("");
 }
-

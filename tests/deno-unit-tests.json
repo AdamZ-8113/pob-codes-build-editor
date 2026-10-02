@@ -1,6 +1,5 @@
 {
   "driver": [
-    "abyss-records.test.ts",
     "bc7.test.ts",
     "canvas-manager.test.ts",
     "clipboard.test.ts",

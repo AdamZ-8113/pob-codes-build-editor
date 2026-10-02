@@ -1,9 +1,11 @@
 import {chromium} from "@playwright/test";
 import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
 import {readFile} from "node:fs/promises";
 import {fileURLToPath} from "node:url";
+import {inflateSync} from "node:zlib";
 import {lanAddresses} from "../../scripts/dev/dev-network.mjs";
-import {canonical} from "../../scripts/lib/mobile-test-support.mjs";
+import {canonicalExportTree} from "../../scripts/lib/canonical-export.mjs";
 
 const host=process.argv[2] ?? lanAddresses()[0];
 assert.ok(lanAddresses().includes(host),"Supply an active private LAN interface");
@@ -14,8 +16,7 @@ try {
   const hashes=[], results=[];
   for(const [name,url,options] of [
     ["desktop","http://127.0.0.1:3010/",{}],
-    ["phone",origin+"/",{viewport:{width:390,height:844},deviceScaleFactor:3,isMobile:true,hasTouch:true,
-      userAgent:"Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 Chrome/154 Mobile Safari/537.36"}],
+    ["lan",origin+"/",{}],
   ]) {
     // Only this test context bypasses OS certificate trust. Real devices must
     // install the CA from the HTTP setup page; Node's HTTPS probe checks trust.
@@ -28,15 +29,12 @@ try {
       try {await page.waitForFunction(()=>window.__DESKTOP_POB__?.ready||window.__DESKTOP_POB__?.errors.length,null,{timeout:60000});}
       catch(error){console.error(await page.evaluate(()=>({url:location.href,secure:isSecureContext,isolated:crossOriginIsolated,body:document.body.innerText.slice(0,400),state:window.__DESKTOP_POB__?.errors})));throw error;}
       assert.deepEqual(await page.evaluate(()=>window.__DESKTOP_POB__.errors),[]);
-      const capabilities=await page.evaluate(()=>({secure:isSecureContext,isolated:crossOriginIsolated,shared:typeof SharedArrayBuffer,policy:window.__DESKTOP_POB__.devicePolicy.kind}));
-      assert.deepEqual(capabilities,{secure:true,isolated:true,shared:"function",policy:name==="phone"?"mobile":"desktop"});
+      const capabilities=await page.evaluate(()=>({secure:isSecureContext,isolated:crossOriginIsolated,shared:typeof SharedArrayBuffer}));
+      assert.deepEqual(capabilities,{secure:true,isolated:true,shared:"function"});
       await page.evaluate(code=>window.__DESKTOP_POB__.loadBuildFromCode(code),code);
       assert.deepEqual(await page.evaluate(()=>window.__DESKTOP_POB__.errors),[]);
       hashes.push(await canonical(page));
-      if(name==="phone") {
-        const state=await page.evaluate(()=>window.__DESKTOP_POB__.getRuntimeProfile());
-        assert.equal(state.helpers.requested,0);
-        assert.equal(await page.locator("#mobile-compare").count(),1);
+      if(name==="lan") {
         for(const path of ["/.runtime/lan-dev/root-key.pem","/.runtime/lan-dev/server-key.pem","/@fs/"+fileURLToPath(new URL('../../.runtime/lan-dev/root-key.pem',import.meta.url)).replaceAll("\\","/")]) {
           const response=await context.request.get(origin+path);assert.ok(response.status()>=400,"Private certificate file must not be served: "+path);
         }
@@ -47,6 +45,18 @@ try {
       results.push({name,...capabilities,export:hashes.at(-1)});
     } finally {await context.close();}
   }
-  assert.equal(hashes[0],hashes[1],"LAN mobile import retains complete desktop export");
+  assert.equal(hashes[0],hashes[1],"LAN import retains complete desktop export");
   console.log(JSON.stringify({passed:true,origin,devices:results},null,2));
 } finally {await browser.close();}
+
+async function canonical(page) {
+  const code = await page.evaluate(() => window.__DESKTOP_POB__.getBuildCode());
+  const xml = inflateSync(Buffer.from(code,"base64url")).toString();
+  const tree = await page.evaluate(value => {
+    const root = new DOMParser().parseFromString(value,"application/xml");
+    const walk = node => node.nodeType === 1 ? [node.tagName,[...node.attributes].map(a=>[a.name,a.value]),
+      [...node.childNodes].map(walk).filter(v=>v!==null)] : node.textContent.trim() || null;
+    return walk(root.documentElement);
+  },xml);
+  return createHash("sha256").update(JSON.stringify(canonicalExportTree(tree))).digest("hex");
+}
