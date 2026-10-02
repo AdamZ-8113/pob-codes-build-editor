@@ -21,11 +21,16 @@ predecessor bytes.
 
 ## Normal release
 
-1. Dispatch `.github/workflows/deploy-import2.yml` with the public main commit
-   SHA, mode, and the pinned predecessor release tag/generation/asset ID/SHA.
-2. The build job downloads the durable predecessor release assets, verifies the
-   archive SHA, asset ID, generation, deployment configuration, and every file,
-   then passes the verified directory to `materialize-import2.mjs --retain`.
+1. Wait for the selected exact public `main` SHA's `ci.yml` push run to finish
+   successfully, including both `fast-gates` and `native-and-browser`. Dispatch
+   `.github/workflows/deploy-import2.yml` with that SHA, mode, and the pinned
+   predecessor release tag, generation, archive asset ID, and inventory asset
+   ID. The release workflow fails closed when that exact CI evidence is absent.
+2. The build job resolves the requested GitHub Release, downloads the archive
+   and inventory through those exact numeric asset IDs, downloads the unique
+   record asset from the same release, and verifies their recorded IDs, archive
+   SHA, generation, deployment configuration, and every file. Only then does it
+   pass the recovered directory to `materialize-import2.mjs --retain`.
 3. Native, unit, browser, release, and exact-inventory checks run without
    deploy credentials. Candidate archive/inventory assets are published before
    any pointer switch and a finalized release record pins their GitHub asset
@@ -39,6 +44,12 @@ predecessor bytes.
 Actions artifacts are short-lived transfer only. GitHub Release assets are the
 recovery source.
 
+Every new generation includes the exact Path of Building `LICENSE.md` blob at
+the revision in `source-pin.json`, plus its source-path/revision/hash provenance.
+The generation identity and release-record verifier cover those legal bytes,
+all shell inputs, all payload bytes, the materializer contract, and the resolved
+`PUBLIC_*` configuration.
+
 ## Rollback
 
 Download and verify the predecessor archive again; never recompile it. Publish
@@ -50,6 +61,10 @@ Keep release archives until no live pointer, rollback path, or supported open
 session references them. Capacity evidence, not Actions expiration, controls
 cleanup. A missing or tampered archive, stale live identity, changed deployment
 config, or unverified asset ID fails before upload.
+
+For a scriptless emergency disable, the workflow runs the same exact-SHA CI
+eligibility gate, materializes the standalone recovery page, and executes the
+ordinary release verifier against the disabled output before any upload.
 
 ## Protected settings
 

@@ -36,8 +36,8 @@ async function walk(root) {
   return files;
 }
 
-export async function verifyImport2Release(root = join(appDir, ".runtime/import2-release")) {
-  const config = await verifyImport2Config();
+export async function verifyImport2Release(root = join(appDir, ".runtime/import2-release"), { configFile } = {}) {
+  const config = await verifyImport2Config(configFile);
   const release = JSON.parse(await readFile(join(root, publicDirectory, "release.json"), "utf8"));
   const mode = release.mode ?? "full";
   if (!Array.isArray(release.retained) || release.retained.length > 1) throw new Error("Invalid Import2 release retention metadata");
@@ -54,7 +54,9 @@ export async function verifyImport2Release(root = join(appDir, ".runtime/import2
 
   const files = await walk(root);
   const relativeFiles = new Set(files.map((path) => relative(root, path).replaceAll("\\", "/")));
-  for (const required of ["404.html", "_headers", "_redirects", "import/index.html", `${publicDirectory}/404.html`, `${publicDirectory}/index.html`]) {
+  const requiredControls = ["404.html", "_headers", "_redirects", `${publicDirectory}/404.html`, `${publicDirectory}/index.html`];
+  if (mode === "full") requiredControls.push("import/index.html");
+  for (const required of requiredControls) {
     if (!relativeFiles.has(required)) throw new Error(`Missing Import2 control asset: ${required}`);
   }
   for (const path of relativeFiles) {
@@ -63,11 +65,11 @@ export async function verifyImport2Release(root = join(appDir, ".runtime/import2
 
   const index = await readFile(join(root, publicDirectory, "index.html"), "utf8");
   if (!/noindex,\s*nofollow/i.test(index)) throw new Error("Import2 pointer is indexable");
-  const landing = await readFile(join(root, "import/index.html"), "utf8");
-  if (/noindex/i.test(landing) || !landing.includes(`${publicRuntime.siteOrigin}/import/`) || !/<noscript>/i.test(landing) || !landing.includes("/guided-import")) {
-    throw new Error("Indexable /import/ landing contract is incomplete");
-  }
   if (mode === "full") {
+    const landing = await readFile(join(root, "import/index.html"), "utf8");
+    if (/noindex/i.test(landing) || !landing.includes(`${publicRuntime.siteOrigin}/import/`) || !/<noscript>/i.test(landing) || !landing.includes("/guided-import")) {
+      throw new Error("Indexable /import/ landing contract is incomplete");
+    }
     for (const generation of generations) {
       const generationRoot = join(root, publicDirectory, "releases", generation);
       const manifestBytes = await readFile(join(generationRoot, "payload/manifest.json"));
@@ -82,13 +84,29 @@ export async function verifyImport2Release(root = join(appDir, ".runtime/import2
       for (const required of ["shell/index.html", "payload/provenance.json", "legal/LICENSE", "legal/THIRD_PARTY_NOTICES.md", "legal/POB_WEB_LICENSE", "legal/POB_WEB_NOTICE.md", "legal/PROVENANCE.md"]) {
         if (!relativeFiles.has(`${publicDirectory}/releases/${generation}/${required}`)) throw new Error(`Incomplete Build Editor generation: ${generation}/${required}`);
       }
+      if (generation === release.current) {
+        for (const required of ["legal/PATH_OF_BUILDING_LICENSE.md", "legal/PATH_OF_BUILDING_LICENSE.provenance.json"]) {
+          if (!relativeFiles.has(`${publicDirectory}/releases/${generation}/${required}`)) throw new Error(`Current Build Editor generation is missing ${required}`);
+        }
+        const sourcePin = JSON.parse(await readFile(join(appDir, "source-pin.json"), "utf8"));
+        const licenseProvenance = JSON.parse(await readFile(join(generationRoot, "legal/PATH_OF_BUILDING_LICENSE.provenance.json"), "utf8"));
+        const licenseBytes = await readFile(join(generationRoot, "legal/PATH_OF_BUILDING_LICENSE.md"));
+        const pinnedLicenseProvenance = JSON.parse(await readFile(join(appDir, "PATH_OF_BUILDING_LICENSE.provenance.json"), "utf8"));
+        const pinnedLicenseBytes = await readFile(join(appDir, "PATH_OF_BUILDING_LICENSE.md"));
+        if (licenseProvenance.revision !== sourcePin.revision ||
+            JSON.stringify(licenseProvenance) !== JSON.stringify(pinnedLicenseProvenance) ||
+            pinnedLicenseProvenance.sha256 !== sha256(pinnedLicenseBytes) ||
+            pinnedLicenseProvenance.sha256 !== sha256(licenseBytes)) {
+          throw new Error("Pinned Path of Building license provenance mismatch");
+        }
+      }
     }
     if (!index.includes(`${publicRuntime.basePath}/releases/${release.current}/shell/`)) throw new Error("Build Editor pointer does not target the current immutable shell");
     for (const match of index.matchAll(new RegExp(`(?:src|href)="(${publicRuntime.basePath.replaceAll("/", "\\/")}\\/[^"?#]+)`, "g"))) {
       if (!relativeFiles.has(match[1].slice(1))) throw new Error(`Import2 HTML references a missing asset: ${match[1]}`);
     }
   } else {
-    if (!/preview unavailable/i.test(index) || /<script\b|modulepreload/i.test(index)) {
+    if (!/Build Editor temporarily unavailable/i.test(index) || /<script\b|modulepreload/i.test(index)) {
       throw new Error("Import2 disabled page must be scriptless");
     }
   }
@@ -99,7 +117,7 @@ export async function verifyImport2Release(root = join(appDir, ".runtime/import2
     if (!headers.includes(requirement)) throw new Error(`Import2 headers are missing: ${requirement}`);
   }
   const redirects = await readFile(join(root, "_redirects"), "utf8");
-  if (!redirects.includes("/import /import/ 308")) throw new Error("Build Editor landing slash redirect is missing");
+  if (mode === "full" && !redirects.includes("/import /import/ 308")) throw new Error("Build Editor landing slash redirect is missing");
   if (!redirects.includes(`${publicRuntime.basePath} ${publicRuntime.basePath}/ 308`)) throw new Error("Build Editor slash redirect is missing");
   const scriptText = (await Promise.all(files.filter((path) => path.endsWith(".js")).map((path) => readFile(path, "utf8")))).join("\n");
   for (const forbidden of ["/local-api/", "/analytics/events", "/payload/root.zip"]) {

@@ -8,12 +8,15 @@ implementation.
   `upstream/LICENSE` and `upstream/PROVENANCE.md`.
 - The packaged Path of Building source is fetched from
   `PathOfBuildingCommunity/PathOfBuilding` at the revision in
-  `source-pin.json`. Its own license and notices are included in the prepared
-  source and generated release payload.
+  `source-pin.json`. `PATH_OF_BUILDING_LICENSE.md` is the exact `LICENSE.md`
+  blob from that revision; `PATH_OF_BUILDING_LICENSE.provenance.json` pins its
+  source path and SHA-256. Both files are included and verified in every new
+  immutable release generation.
 - Vendored Lua and luautf8 source retain their embedded licenses under
   `upstream/vendor/`.
 - Font licenses and copyright notices are reproduced in
   `upstream/NOTICE.md`.
 
-Release archives include `LICENSE`, this file, and the detailed upstream
-license/provenance files. Keep those files with redistributed builds.
+Release archives include `LICENSE`, this file, the exact pinned Path of
+Building license and provenance, and the detailed pob-web license/provenance
+files. Keep those files with redistributed builds.

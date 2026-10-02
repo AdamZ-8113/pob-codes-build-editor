@@ -29,12 +29,12 @@ async function inventory(root) {
   return { files, bytes, largest };
 }
 
-export async function materializeImport2Disabled() {
-  await rm(staging, { recursive: true, force: true });
-  const import2Root = join(staging, "import2");
+export async function materializeImport2Disabled({ releaseDirectory = releaseDir, stagingDirectory = staging } = {}) {
+  await rm(stagingDirectory, { recursive: true, force: true });
+  const import2Root = join(stagingDirectory, "import2");
   await mkdir(join(import2Root, "releases"), { recursive: true });
-  const unavailable = "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"robots\" content=\"noindex,nofollow\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Preview unavailable</title><body><main><h1>Preview unavailable</h1><p>This private performance preview is disabled. Your browser-stored builds have not been changed. Return to <a href=\"https://pob.codes/\">PoB Codes</a>.</p></main></body></html>\n";
-  await writeFile(join(staging, "404.html"), unavailable);
+  const unavailable = "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"robots\" content=\"noindex,nofollow\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Build Editor temporarily unavailable</title><body><main><h1>Build Editor temporarily unavailable</h1><p>The Build Editor is temporarily unavailable. Your browser-stored builds have not been changed. Return to <a href=\"https://pob.codes/\">PoB Codes</a>.</p></main></body></html>\n";
+  await writeFile(join(stagingDirectory, "404.html"), unavailable);
   await writeFile(join(import2Root, "404.html"), unavailable);
   await writeFile(join(import2Root, "index.html"), unavailable);
   await writeFile(join(import2Root, "release.json"), `${JSON.stringify({
@@ -43,8 +43,8 @@ export async function materializeImport2Disabled() {
     current: null,
     retained: [],
   }, null, 2)}\n`);
-  await writeFile(join(staging, "_redirects"), "/import2 /import2/ 308\n");
-  await writeFile(join(staging, "_headers"), [
+  await writeFile(join(stagingDirectory, "_redirects"), "/import2 /import2/ 308\n");
+  await writeFile(join(stagingDirectory, "_headers"), [
     "/*",
     "  X-Robots-Tag: noindex, nofollow",
     "  Cross-Origin-Opener-Policy: same-origin",
@@ -57,20 +57,20 @@ export async function materializeImport2Disabled() {
   const inventoryFile = join(import2Root, "asset-inventory.json");
   await writeFile(inventoryFile, "{}\n");
   for (let attempt = 0; attempt < 3; attempt += 1) {
-    const measured = await inventory(staging);
+    const measured = await inventory(stagingDirectory);
     await writeFile(inventoryFile, `${JSON.stringify(measured, null, 2)}\n`);
   }
-  const measured = await inventory(staging);
-  await rm(releaseDir, { recursive: true, force: true });
+  const measured = await inventory(stagingDirectory);
+  await rm(releaseDirectory, { recursive: true, force: true });
   try {
-    await rename(staging, releaseDir);
+    await rename(stagingDirectory, releaseDirectory);
   } catch (error) {
     if (error?.code !== "EPERM" && error?.code !== "EXDEV") throw error;
-    await cp(staging, releaseDir, { recursive: true });
-    await rm(staging, { recursive: true, force: true });
+    await cp(stagingDirectory, releaseDirectory, { recursive: true });
+    await rm(stagingDirectory, { recursive: true, force: true });
   }
   console.log(`Import2 disabled rollback: ${measured.files} files, ${measured.bytes} bytes`);
-  return { directory: releaseDir, ...measured };
+  return { directory: releaseDirectory, ...measured };
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

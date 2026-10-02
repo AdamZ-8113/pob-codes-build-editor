@@ -31,6 +31,10 @@ on:
         description: Numeric durable predecessor archive asset ID
         required: false
         type: string
+      predecessor_inventory_asset_id:
+        description: Numeric durable predecessor inventory asset ID
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -58,6 +62,10 @@ jobs:
           test "$(git rev-parse "$TARGET")" = "$TARGET"
           git fetch origin main --depth=1
           git merge-base --is-ancestor "$TARGET" origin/main
+      - name: Require successful push CI for exact SHA
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: node scripts/verify-ci-eligibility.mjs --sha="${{ inputs.commit_sha }}"
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
@@ -78,12 +86,16 @@ jobs:
           TAG: ${{ inputs.predecessor_tag }}
           GENERATION: ${{ inputs.predecessor_generation }}
           ASSET_ID: ${{ inputs.predecessor_asset_id }}
+          INVENTORY_ASSET_ID: ${{ inputs.predecessor_inventory_asset_id }}
         run: |
-          test -n "$TAG" && test -n "$GENERATION" && test -n "$ASSET_ID"
+          test -n "$TAG" && test -n "$GENERATION" && test -n "$ASSET_ID" && test -n "$INVENTORY_ASSET_ID"
           mkdir -p .runtime/predecessor-assets
-          gh release download "$TAG" --dir .runtime/predecessor-assets --pattern 'release-record.json' --pattern 'release-inventory.json' --pattern '*.tar.gz'
-          archive=$(find .runtime/predecessor-assets -maxdepth 1 -name '*.tar.gz' -type f -print -quit)
-          node scripts/verify-predecessor.mjs --archive="$archive" --record=.runtime/predecessor-assets/release-record.json --inventory=.runtime/predecessor-assets/release-inventory.json --generation="$GENERATION" --asset-id="$ASSET_ID"
+          gh api "repos/${{ github.repository }}/releases/tags/$TAG" > .runtime/predecessor-assets/release-metadata.json
+          record_id=$(node scripts/verify-release-assets.mjs --metadata=.runtime/predecessor-assets/release-metadata.json --tag="$TAG" --archive-asset-id="$ASSET_ID" --inventory-asset-id="$INVENTORY_ASSET_ID")
+          gh api -H 'Accept: application/octet-stream' "repos/${{ github.repository }}/releases/assets/$ASSET_ID" > .runtime/predecessor-assets/predecessor.tar.gz
+          gh api -H 'Accept: application/octet-stream' "repos/${{ github.repository }}/releases/assets/$INVENTORY_ASSET_ID" > .runtime/predecessor-assets/release-inventory.json
+          gh api -H 'Accept: application/octet-stream' "repos/${{ github.repository }}/releases/assets/$record_id" > .runtime/predecessor-assets/release-record.json
+          node scripts/verify-predecessor.mjs --archive=.runtime/predecessor-assets/predecessor.tar.gz --record=.runtime/predecessor-assets/release-record.json --inventory=.runtime/predecessor-assets/release-inventory.json --generation="$GENERATION" --asset-id="$ASSET_ID" --inventory-asset-id="$INVENTORY_ASSET_ID"
       - name: Materialize candidate with predecessor retained
         if: inputs.mode == 'full'
         run: node materialize-import2.mjs --retain .runtime/predecessor/import2-release

@@ -13,7 +13,12 @@ if (relative(runtime, output).startsWith("..") || isAbsolute(relative(runtime, o
 const record = JSON.parse(await readFile(recordFile, "utf8"));
 if (!record.archive || record.archive.sha256 !== await fileSha256(archive)) throw new Error("Predecessor archive hash or durable asset record mismatch");
 const expectedAsset = value("asset-id");
-if (expectedAsset && Number(expectedAsset) !== record.archive.assetId) throw new Error("Predecessor archive asset ID mismatch");
+const expectedInventoryAsset = value("inventory-asset-id");
+if (!/^\d+$/.test(expectedAsset ?? "") || !/^\d+$/.test(expectedInventoryAsset ?? "")) {
+  throw new Error("Numeric predecessor archive and inventory asset IDs are required");
+}
+if (Number(expectedAsset) !== record.archive.assetId) throw new Error("Predecessor archive asset ID mismatch");
+if (Number(expectedInventoryAsset) !== record.archive.inventoryAssetId) throw new Error("Predecessor inventory asset ID mismatch");
 const expectedGeneration = value("generation");
 if (expectedGeneration && expectedGeneration !== record.generation) throw new Error("Predecessor generation mismatch");
 await rm(output, { recursive: true, force: true });

@@ -24,11 +24,20 @@ if (!publicCommit) {
 }
 const record = {
   schemaVersion: 1,
-  contractVersion: 1,
+  contractVersion: 2,
   generation: release.current,
   predecessor: release.retained[0] ?? null,
   publicCommit,
-  pob: { revision: sourcePin.revision, ledgerSha256: await fileSha256("source-pin.json"), compositePatchSha256: sourcePin.compositePatch.patchSha256 },
+  pob: {
+    revision: sourcePin.revision,
+    ledgerSha256: await fileSha256("source-pin.json"),
+    compositePatchSha256: sourcePin.compositePatch.patchSha256,
+    license: {
+      sourcePath: "LICENSE.md",
+      sha256: await fileSha256("PATH_OF_BUILDING_LICENSE.md"),
+      provenanceSha256: await fileSha256("PATH_OF_BUILDING_LICENSE.provenance.json"),
+    },
+  },
   binaries: {
     driverMjsSha256: await fileSha256("upstream/packages/driver/dist/release/driver.mjs"),
     driverWasmSha256: await fileSha256("upstream/packages/driver/dist/release/driver.wasm"),

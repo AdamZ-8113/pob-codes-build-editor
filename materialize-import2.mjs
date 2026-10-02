@@ -38,32 +38,59 @@ async function walkFiles(root) {
   return files;
 }
 
-async function releaseFingerprint() {
-  const manifest = JSON.parse(await readFile(join(payloadDir, "manifest.json"), "utf8"));
-  const inputs = [
-    "source-pin.json",
-    "index.html",
-    "src/main.ts",
-    "src/style.css",
-    "upstream/deno.lock",
-    "upstream/vite.import2.config.ts",
-    "upstream/packages/driver/dist/release/driver.mjs",
-    "upstream/packages/driver/dist/release/driver.wasm",
-  ];
-  const identity = {
-    files: Object.fromEntries(await Promise.all(inputs.map(async (path) => [path, await fileHash(join(appDir, path))]))),
-    payloadManifest: await fileHash(join(payloadDir, "manifest.json")),
-    payloadProvenance: await fileHash(join(payloadDir, "provenance.json")),
-    packages: manifest.packages.map((entry) => entry.sha256),
-    shellSources: Object.fromEntries(await Promise.all((await Promise.all([
-      join(appDir, "src"),
-      join(appDir, "upstream/packages/dds/src"),
-      join(appDir, "upstream/packages/game/src"),
-      join(appDir, "upstream/packages/driver/src/js"),
-      join(appDir, "upstream/packages/driver/public"),
-    ].map(walkFiles))).flat().sort().map(async (path) => [relative(appDir, path).replaceAll("\\", "/"), await fileHash(path)]))),
-  };
+async function hashedFiles(root, paths) {
+  const entries = [];
+  for (const path of paths.sort()) {
+    entries.push([relative(root, path).replaceAll("\\", "/"), await fileHash(path)]);
+  }
+  return Object.fromEntries(entries);
+}
+
+export function generationIdentityHash(identity) {
   return hash(JSON.stringify(identity)).slice(0, 24);
+}
+
+export const GENERATION_CONTRACT_INPUTS = Object.freeze([
+  "source-pin.json",
+  "materialize-import2.mjs",
+  "public-config.mjs",
+  "index.html",
+  "upstream/deno.lock",
+  "upstream/deno.json",
+  "upstream/vite.import2.config.ts",
+  "upstream/packages/driver/dist/release/driver.mjs",
+  "upstream/packages/driver/dist/release/driver.wasm",
+  "LICENSE",
+  "THIRD_PARTY_NOTICES.md",
+  "PATH_OF_BUILDING_LICENSE.md",
+  "PATH_OF_BUILDING_LICENSE.provenance.json",
+  "upstream/LICENSE",
+  "upstream/NOTICE.md",
+  "upstream/PROVENANCE.md",
+]);
+export const GENERATION_SHELL_ROOTS = Object.freeze([
+  "src",
+  "upstream/packages/dds/src",
+  "upstream/packages/game/src",
+  "upstream/packages/driver/src/js",
+  "upstream/packages/driver/public",
+  "upstream/node_modules",
+]);
+
+export async function releaseFingerprint(runtimeConfig = publicConfig(), {
+  root = appDir,
+  payloadRoot = payloadDir,
+} = {}) {
+  const shellRoots = GENERATION_SHELL_ROOTS.map((path) => join(root, path));
+  const payloadFiles = await walkFiles(payloadRoot);
+  const identity = {
+    buildRuntime: { node: process.version, platform: process.platform, arch: process.arch },
+    publicConfig: runtimeConfig,
+    contractInputs: await hashedFiles(root, GENERATION_CONTRACT_INPUTS.map((path) => join(root, path))),
+    shellInputs: await hashedFiles(root, (await Promise.all(shellRoots.map(walkFiles))).flat()),
+    payloadInputs: await hashedFiles(root, payloadFiles),
+  };
+  return generationIdentityHash(identity);
 }
 
 function run(command, args, cwd = appDir, env = process.env) {
@@ -114,7 +141,7 @@ export async function materializeImport2({ retainDirectory } = {}) {
   ]) {
     if (!(await exists(required))) throw new Error(`Missing Import2 build input: ${required}`);
   }
-  const release = await releaseFingerprint();
+  const release = await releaseFingerprint(publicRuntime);
   const vite = join(appDir, "upstream/node_modules/vite/bin/vite.js");
   if (!(await exists(vite))) throw new Error("Run npm run prepare:runtime first");
   run(process.execPath, [vite, "build", "--config", join(appDir, "upstream/vite.import2.config.ts")], appDir, {
@@ -137,6 +164,8 @@ export async function materializeImport2({ retainDirectory } = {}) {
   await cp(join(appDir, "upstream", "LICENSE"), join(immutableRoot, "legal", "POB_WEB_LICENSE"));
   await cp(join(appDir, "upstream", "NOTICE.md"), join(immutableRoot, "legal", "POB_WEB_NOTICE.md"));
   await cp(join(appDir, "upstream", "PROVENANCE.md"), join(immutableRoot, "legal", "PROVENANCE.md"));
+  await cp(join(appDir, "PATH_OF_BUILDING_LICENSE.md"), join(immutableRoot, "legal", "PATH_OF_BUILDING_LICENSE.md"));
+  await cp(join(appDir, "PATH_OF_BUILDING_LICENSE.provenance.json"), join(immutableRoot, "legal", "PATH_OF_BUILDING_LICENSE.provenance.json"));
   await cp(join(shellDir, "index.html"), join(import2Root, "index.html"));
   const shellHtml = await readFile(join(shellDir, "index.html"), "utf8");
   const landingHtml = shellHtml
@@ -180,7 +209,7 @@ export async function materializeImport2({ retainDirectory } = {}) {
     deployment: { resource: "pob-codes-import2", route: "pob.codes/import2*", basePath: publicRuntime.basePath },
   };
   await writeFile(join(import2Root, "release.json"), `${JSON.stringify(releaseMetadata, null, 2)}\n`);
-  const unavailable = "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"robots\" content=\"noindex,nofollow\"><title>Preview unavailable</title><body><main><h1>Preview unavailable</h1><p>This private performance preview URL is unavailable. Return to <a href=\"https://pob.codes/\">PoB Codes</a>.</p></main></body></html>\n";
+  const unavailable = "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"robots\" content=\"noindex,nofollow\"><title>Build Editor unavailable</title><body><main><h1>Build Editor unavailable</h1><p>This Build Editor page is unavailable. Return to <a href=\"https://pob.codes/\">PoB Codes</a>.</p></main></body></html>\n";
   await writeFile(join(staging, "404.html"), unavailable);
   await writeFile(join(import2Root, "404.html"), unavailable);
   await writeFile(join(staging, "_redirects"), `/import /import/ 308\n${publicRuntime.basePath} ${publicRuntime.basePath}/ 308\n`);
