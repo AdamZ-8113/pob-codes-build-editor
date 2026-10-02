@@ -7,11 +7,11 @@ must be reviewed before sharing.
 
 The recipe exercises:
 
-1. cold and warm startup (`profile-startup.mjs`);
-2. repeated and changed item hover (`profile-item-hover.mjs`);
-3. gem dropdown hover (`profile-gem-hover.mjs`);
-4. serial and helper-backed unique sorting (`profile-unique-memory.mjs`);
-5. tree movement and stable frames (`profile-interactions.mjs`); and
+1. cold and warm startup (`tools/profiles/profile-startup.mjs`);
+2. repeated and changed item hover (`tools/profiles/profile-item-hover.mjs`);
+3. gem dropdown hover (`tools/profiles/profile-gem-hover.mjs`);
+4. serial and helper-backed unique sorting (`tools/profiles/profile-unique-memory.mjs`);
+5. tree movement and stable frames (`tools/profiles/profile-interactions.mjs`); and
 6. whole-browser retained private commit where supported.
 
 Record the fixture SHA-256, `source-pin.json`, payload manifest, driver JS/Wasm,

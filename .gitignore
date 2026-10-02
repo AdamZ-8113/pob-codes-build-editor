@@ -19,6 +19,7 @@ reports/
 tmp/
 
 # Local configuration, credentials, and private inputs
+AGENTS.md
 .env
 .env.*
 !.env.example

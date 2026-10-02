@@ -2,7 +2,7 @@ import { readdir, readFile, writeFile } from "node:fs/promises";
 import { deflateSync } from "node:zlib";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { decodeBuildCode } from "../fixture-loader.mjs";
+import { decodeBuildCode } from "./lib/fixture-loader.mjs";
 
 const fixtures = resolve(dirname(fileURLToPath(import.meta.url)), "../fixtures");
 let changed = 0;

@@ -4,7 +4,7 @@ import tailwindcss from "@tailwindcss/vite";
 import { viteStaticCopy } from "vite-plugin-static-copy";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { publicConfig } from "../public-config.mjs";
+import { publicConfig } from "../scripts/lib/public-config.mjs";
 
 const upstream = dirname(fileURLToPath(import.meta.url));
 const root = dirname(upstream);

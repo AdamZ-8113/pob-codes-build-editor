@@ -13,6 +13,12 @@ Add focused coverage for changed behavior. Runtime or payload changes also need
 native and representative headless-browser acceptance. Release-affecting work
 must keep full source/patch/package/release hash verification.
 
+See `docs/DEVELOPMENT.md` for the repository layout and validation routing.
+Path of Building's Lua behavior remains authoritative. Do not edit prepared
+source, generated payloads, or generated `src/Data`/`src/TreeData` files; change
+the authoritative source, exporter, or checked adapter and regenerate. Use
+focused LuaJIT/Busted evidence when changing upstream-covered PoB behavior.
+
 Optimization pull requests should include the fixture, source and binary
 identities, browser/version/viewport, alternating before/after samples, cold and
 warm results, median and tail measurements, retained-memory bounds, cache

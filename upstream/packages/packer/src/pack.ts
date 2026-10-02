@@ -12,11 +12,11 @@ import { families, shardFamily, adaptAbyssReader, adaptAbyssSearch } from "./aby
 import { createPackages, sourceKind } from "./packages.ts";
 import { exposeExactRebuild } from "./calculation-adapter.ts";
 import { guardJewelInflate, sparseTimelessSeeds } from "./timeless-adapter.ts";
-import { applyGemHoverPatch } from "../../../../gem-hover-patch.mjs";
-import { applyItemComparisonPatch } from "../../../../item-comparison-patch.mjs";
-import { applyJewelSpecPatch } from "../../../../jewel-spec-patch.mjs";
-import { applyUniqueSortPatch } from "../../../../unique-sort-patch.mjs";
-import { applyImportTabHostPatch } from "../../../../importtab-host-patch.mjs";
+import { applyGemHoverPatch } from "../../../../scripts/patches/gem-hover-patch.mjs";
+import { applyItemComparisonPatch } from "../../../../scripts/patches/item-comparison-patch.mjs";
+import { applyJewelSpecPatch } from "../../../../scripts/patches/jewel-spec-patch.mjs";
+import { applyUniqueSortPatch } from "../../../../scripts/patches/unique-sort-patch.mjs";
+import { applyImportTabHostPatch } from "../../../../scripts/patches/importtab-host-patch.mjs";
 import { sha256, stalePackageHashes, validatePayloadManifest } from "../../../payload-manifest.ts";
 
 const [source, destination] = Deno.args;

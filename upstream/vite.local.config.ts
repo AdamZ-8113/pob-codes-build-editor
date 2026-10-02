@@ -6,9 +6,9 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { createReadStream, existsSync } from "node:fs";
 import { stat } from "node:fs/promises";
-import { createLocalServices } from "../local-services.mjs";
-import { allowedDevHost, devRequestHost } from "../dev-network.mjs";
-import { publicConfig } from "../public-config.mjs";
+import { createLocalServices } from "../scripts/dev/local-services.mjs";
+import { allowedDevHost, devRequestHost } from "../scripts/dev/dev-network.mjs";
+import { publicConfig } from "../scripts/lib/public-config.mjs";
 
 const upstream = dirname(fileURLToPath(import.meta.url));
 const root = dirname(upstream);

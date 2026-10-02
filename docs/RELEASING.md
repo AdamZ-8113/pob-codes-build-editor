@@ -30,7 +30,8 @@ predecessor bytes.
    and inventory through those exact numeric asset IDs, downloads the unique
    record asset from the same release, and verifies their recorded IDs, archive
    SHA, generation, deployment configuration, and every file. Only then does it
-   pass the recovered directory to `materialize-import2.mjs --retain`.
+   pass the recovered directory to
+   `node scripts/release/materialize-import2.mjs --retain`.
 3. Native, unit, browser, release, and exact-inventory checks run without
    deploy credentials. Candidate archive/inventory assets are published before
    any pointer switch and a finalized release record pins their GitHub asset

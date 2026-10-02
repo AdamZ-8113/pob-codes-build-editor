@@ -13,16 +13,16 @@
   "scripts": {
     "prepare": "node scripts/prepare.mjs",
     "prepare:runtime": "node scripts/prepare.mjs",
-    "dev": "node dev.mjs",
-    "pack": "node pack.mjs",
+    "dev": "node scripts/dev/dev.mjs",
+    "pack": "node scripts/build/pack.mjs",
     "check": "node scripts/check.mjs",
-    "test:unit": "node --test build-transfer-v1.test.mjs calculation-only-spec-experiment.test.mjs canonical-export.test.mjs character-host-v1.test.mjs configuration-v1.test.mjs dev-network.test.mjs import2-contract.test.mjs importtab-host-patch.test.mjs item-comparison-patch.test.mjs jewel-spec-patch.test.mjs local-services.test.mjs mobile-profile.test.mjs process-memory.test.mjs public-boundary-safety.test.mjs public-config.test.mjs release-materialization-safety.test.mjs release-workflow-safety.test.mjs source-ledger.test.mjs telemetry-v1.test.mjs && node scripts/test-deno-unit.mjs",
-    "test:native": "node build-runtime.mjs --test",
+    "test:unit": "node --test \"tests/unit/*.test.mjs\" && node scripts/test-deno-unit.mjs",
+    "test:native": "node scripts/build/build-runtime.mjs --test",
     "test:e2e": "playwright test",
-    "bench": "node scripts/benchmark.mjs",
-    "build:release": "node build-runtime.mjs --test && node pack.mjs && node materialize-import2.mjs && node scripts/create-release-record.mjs && node scripts/archive-release.mjs",
-    "verify:release": "node verify-import2-release.mjs && node scripts/verify-release-record.mjs",
-    "test:e2e:production-smoke": "node profile-import2-production.mjs"
+    "bench": "node tools/profiles/benchmark.mjs",
+    "build:release": "node scripts/build/build-runtime.mjs --test && node scripts/build/pack.mjs && node scripts/release/materialize-import2.mjs && node scripts/release/create-release-record.mjs && node scripts/release/archive-release.mjs",
+    "verify:release": "node scripts/release/verify-import2-release.mjs && node scripts/release/verify-release-record.mjs",
+    "test:e2e:production-smoke": "node tools/profiles/profile-import2-production.mjs"
   },
   "devDependencies": {
     "@playwright/test": "1.59.1",

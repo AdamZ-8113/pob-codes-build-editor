@@ -62,18 +62,18 @@ The maintainer-supplied 2026-09-30 gem-dropdown hover patch is preserved in
 `../patches/gem-dropdown-hover-tooltip.patch` (SHA-256
 `6df3ff9dff331dbb637fdea199895739cc66da6c541ceb0eec92ce7e529cdd0b`).
 The packer applies its three `GemSelectControl.lua` hunks through
-`../gem-hover-patch.mjs`, verifying both source and result blob hashes from the
+`../scripts/patches/gem-hover-patch.mjs`, verifying both source and result blob hashes from the
 pin. This caches dropped-list tooltip content and its comparison calculation
 until its inputs change. The original source checkout, native bridge and
 calculator formulas are unchanged. The patch also retains the supplied upstream
 spec changes; browser acceptance and invalidation are exercised separately by
-`../profile-gem-hover.mjs`. Its Lua diagnostics are test-only, appended to
+`../tools/profiles/profile-gem-hover.mjs`. Its Lua diagnostics are test-only, appended to
 in-memory benchmark archives and never shipped in the payload.
 
 The 2026-10-01 limited-unique item comparison optimization is preserved in
 `../patches/limited-unique-item-comparisons.patch` (SHA-256
 `27361f45e1b27c127b60ac980dfe9617d35051bdc2225ec987d66dab23f34519`).
-`../item-comparison-patch.mjs` checks the patch and exact source/result blob
+`../scripts/patches/item-comparison-patch.mjs` checks the patch and exact source/result blob
 hashes before applying it to the in-memory pack input. It checks the already
 filtered slots for a filled unique limit and invokes PoB's existing comparison
 helper only for matching items. The original eligibility, exact equality, slot
@@ -91,7 +91,7 @@ skipped only for jewel comparison clones; dependencies, allocation and calculato
 socket distances remain authoritative. A separate local addition removes empty
 `nodeCopy.power` tables unused by temporary comparison calculations; that addition
 is not attributed to the upstream PR. Live specs and heatmaps are unchanged.
-`../jewel-spec-patch.mjs` checks both file inputs/results and the retained patch.
+`../scripts/patches/jewel-spec-patch.mjs` checks both file inputs/results and the retained patch.
 The source pin distinguishes untouched prepared checkout hashes from the
 ItemsTab input produced by the preceding limited-unique overlay. Browser
 acceptance includes Thread of Hope/Timeless comparisons and Split Personality.
@@ -100,7 +100,7 @@ The October 1 `../patches/importtab-host-capabilities.patch` is a checked
 pack-time adaptation of `ImportTab.lua`. It gates the OAuth section on the host
 capability table, defaults that capability off, removes the disabled section's
 layout gap, and leaves public-account plus build-code/file controls intact.
-`../importtab-host-patch.mjs` verifies the exact prepared input, patch SHA-256,
+`../scripts/patches/importtab-host-patch.mjs` verifies the exact prepared input, patch SHA-256,
 and result blob. The browser host independently refuses OAuth callbacks.
 
 The public configuration bridge adds one narrow native export through
@@ -121,7 +121,7 @@ the upstream architecture.
 
 The native filesystem integration test uses the local compiler's `build/release`
 output directory. The source pin and packaging adjustments are implemented in
-the local packer; `build-runtime.mjs` uses the toolchain image by immutable digest
+the local packer; `scripts/build/build-runtime.mjs` uses the toolchain image by immutable digest
 and the image's Make generator.
 The root Deno compiler options match the driver's DOM, JSX, and Emscripten
 environment so the surrounding localhost shell can be typechecked together
@@ -172,7 +172,7 @@ framebuffer with blending left sparse bright pixels on the internal triangle
 diagonal of solid dark panels, reproducible directly with two overlapping quads
 and visible in framebuffer readback. Single-sample rasterization removes those
 seams while preserving texture filtering and glyph alpha blending. The standalone
-`test-render-seams.mjs` checks reduced opaque/translucent quads and native
+`tests/browser/test-render-seams.mjs` checks reduced opaque/translucent quads and native
 Import/Export panels at DPR 1/2; shader precision, Lua, native draw commands,
 canvas placement and frame reuse are unchanged.
 
@@ -286,7 +286,7 @@ complete tree-family principles, not its per-file schema or source pin:
 file/directory collisions. The packer uses deterministic calendar fields/order,
 publishes verified content-addressed ZIPs before the mutable manifest, and retains
 one predecessor generation. Cleanup accepts only validated hashes owned by an
-older manifest. `pack.mjs` fingerprints generator inputs, manifest and archives.
+older manifest. `scripts/build/pack.mjs` fingerprints generator inputs, manifest and archives.
 The generated-output verifier checks every legacy file byte and directory.
 
 The broker builds the complete immutable namespace from manifest metadata, then
@@ -357,12 +357,12 @@ equivalence, memory and affected regressions; a changed callable contract
 requires adapter maintenance. An equivalent upstream hook can replace the
 carried patch during normal maintenance. No upstream merge is required.
 
-`../process-memory.mjs` samples Windows private commit for a dedicated browser
+`../scripts/lib/process-memory.mjs` samples Windows private commit for a dedicated browser
 process tree, validating process creation times on parent/child edges.
 Initial parent-ID-only results adopted unrelated processes after PID reuse
-and were rejected. `../profile-unique-memory.mjs` adds diagnostics only to
+and were rejected. `../tools/profiles/profile-unique-memory.mjs` adds diagnostics only to
 in-memory acceptance archives; it never changes packaged PoB. The finite
-`../test-helper-workers.mjs` entry point compares full-precision scores,
+`../tests/browser/test-helper-workers.mjs` entry point compares full-precision scores,
 ordering and complete canonical exports, exercises all Timeless families and
 reimports, and checks cancellation, failures, containment and mobile serial
 mode. Reports identify the exact Wasm, runtime sources, fixtures, harnesses,
@@ -383,7 +383,7 @@ item, slot, view and formatting changes and bypasses unsupported contracts.
 The former cache copied complete output graphs, including requirement-source
 item/gem references, on both misses and hits. Diagnostic switches retain the
 former cache and an uncached path for comparison; aggregate copy/cache counters
-retain no build or item strings. `profile-item-hover.mjs` appends diagnostics
+retain no build or item strings. `../tools/profiles/profile-item-hover.mjs` appends diagnostics
 only to hash-verified in-memory acceptance packages, compares full tooltip text
 and complete canonical exports, and records frame CPU rather than GPU latency.
 The operation cache requires no pinned PoB source or calculator arithmetic changes.
@@ -405,7 +405,7 @@ large exact numbers and the existing += parser behavior. The 2 GiB ceiling,
 string settings and exception mode are unchanged. The measured dlmalloc
 alternative was rejected and its experimental switch removed.
 
-The finite `../test-runtime-memory.mjs` comparison composes the existing profiler,
+The finite `../tests/browser/test-runtime-memory.mjs` comparison composes the existing profiler,
 sampler and full-export canonicalizer. Saved baseline binaries are routed only
 to the isolated test browser. It checks five fresh-build sorts, all retained
 Timeless families, a completed heatmap, exact full-precision scores/order and

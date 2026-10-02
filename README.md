@@ -31,8 +31,11 @@ npm run dev
 ```
 
 Open `http://127.0.0.1:3010`. The default server is loopback-only, rejects
-unapproved Host headers, and uses port 3010. `node dev.mjs --lan` is an explicit
+unapproved Host headers, and uses port 3010. `node scripts/dev/dev.mjs --lan` is an explicit
 private-LAN HTTPS mode; it does not enable account OAuth away from loopback.
+
+For local coding-agent guidance, copy `AGENTS.example.md` to `AGENTS.md` and
+adapt the ignored local file to your machine. Keep shared rules in tracked docs.
 
 Compiler outputs, the prepared PoB checkout, payload packages, dependencies,
 browser profiles, reports, private builds, and credentials stay local and are
@@ -87,7 +90,7 @@ empty. See `contracts/` for their exact boundaries and outstanding scope.
 ## Source updates
 
 `source-pin.json` pins the Path of Building revision, upstream PR evidence,
-local overlays, exact patch hashes, and result hashes. `node pack.mjs` prepares
+local overlays, exact patch hashes, and result hashes. `npm run pack` prepares
 an owned checkout from public inputs and refuses source or overlay drift. On an
 update, classify every overlay as absorbed, still required, partially absorbed,
 or head changed, then regenerate the composite and result hashes together.
@@ -98,7 +101,7 @@ when that happens.
 
 ## Fixtures and privacy
 
-`fixtures/` contains reviewed public build fixtures only. `fixture-loader.mjs`
+`fixtures/` contains reviewed public build fixtures only. `scripts/lib/fixture-loader.mjs`
 implements the small decoder/composer needed by browser tests without importing
 private application helpers. Private build benchmarks are optional caller inputs
 and must never be committed or included in reports; reports retain only hashes

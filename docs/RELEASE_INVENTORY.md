@@ -10,10 +10,10 @@ Release-record contract version 2 uses three durable assets:
   deployment config hash, inventory hash, archive SHA-256, and numeric GitHub
   archive and inventory asset IDs.
 
-`scripts/verify-predecessor.mjs` requires and checks both durable content asset
+`scripts/release/verify-predecessor.mjs` requires and checks both durable content asset
 IDs and all three files before extraction is accepted. Contract-version-1
 bootstrap predecessor records remain readable; every newly built record is
 version 2 and must carry the pinned Path of Building license identity.
-`scripts/verify-release-record.mjs` rejects missing, extra, or changed files.
+`scripts/release/verify-release-record.mjs` rejects missing, extra, or changed files.
 The archive contains no source checkout, compiler output, credentials, reports,
 browser state, raw private builds, captures, or private repository history.

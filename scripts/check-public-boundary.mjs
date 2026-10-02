@@ -1,13 +1,13 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { decodeBuildCode } from "../fixture-loader.mjs";
+import { decodeBuildCode } from "./lib/fixture-loader.mjs";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const excluded = new Set([".git", ".runtime", "node_modules", "build", "dist"]);
 const forbidden = [
   /apps[\\/]desktop-pob/u,
-  /\.\.[\\/]\.\.[\\/](?:scripts|test_builds|apps)[\\/]/u,
+  /\.\.[\\/]\.\.[\\/](?:test_builds|apps)[\\/]/u,
   /Vibe Code Projects/u,
   /MercenaryApiCapture/u,
   /(?:BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY|CLOUDFLARE_API_TOKEN\s*=)/u,
