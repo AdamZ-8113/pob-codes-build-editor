@@ -25,7 +25,7 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
     throw new Error("Desktop PoB upstream overlay order changed");
   }
   const local = pin.overlays.filter((entry) => entry.kind === "local-patch");
-  if (JSON.stringify(local.map((overlay) => overlay.id)) !== JSON.stringify(["gem-dropdown-hover", "limited-unique-item-comparisons", "calculation-only-jewel-specs"]) ||
+  if (JSON.stringify(local.map((overlay) => overlay.id)) !== JSON.stringify(["gem-dropdown-hover", "limited-unique-item-comparisons", "importtab-host-capabilities", "calculation-only-jewel-specs"]) ||
       local.some((overlay) => overlay.applicationStage !== "pack-time")) {
     throw new Error("Desktop PoB local overlay ownership changed");
   }
@@ -47,7 +47,11 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
     throw new Error("Item-comparison overlay and pack-time adapter identities differ");
   }
   const jewel = pin.adapters.calculationOnlyJewelSpecs;
-  const jewelOverlay = local[2];
+  const importTab = pin.adapters.importTabHostCapabilities;
+  if (importTab?.version !== 1 || importTab.patchSha256 !== local[2].patchSha256 || importTab.patchFile !== local[2].patchFile) {
+    throw new Error("ImportTab host-capability overlay identity differs");
+  }
+  const jewelOverlay = local[3];
   if (jewel?.version !== 1 || jewel.patchSha256 !== jewelOverlay.patchSha256 ||
       jewel.patchFile !== jewelOverlay.patchFile) {
     throw new Error("Jewel-spec overlay and pack-time adapter identities differ");

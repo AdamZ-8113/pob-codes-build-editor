@@ -16,6 +16,7 @@ import { applyGemHoverPatch } from "../../../../gem-hover-patch.mjs";
 import { applyItemComparisonPatch } from "../../../../item-comparison-patch.mjs";
 import { applyJewelSpecPatch } from "../../../../jewel-spec-patch.mjs";
 import { applyUniqueSortPatch } from "../../../../unique-sort-patch.mjs";
+import { applyImportTabHostPatch } from "../../../../importtab-host-patch.mjs";
 import { sha256, stalePackageHashes, validatePayloadManifest } from "../../../payload-manifest.ts";
 
 const [source, destination] = Deno.args;
@@ -29,6 +30,7 @@ const gemHoverPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.ge
 const itemComparisonPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.limitedUniqueItemComparisons.patchFile}`, import.meta.url));
 const jewelSpecPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.calculationOnlyJewelSpecs.patchFile}`, import.meta.url));
 const uniqueSortPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.uniqueSortDelegation.patchFile}`, import.meta.url));
+const importTabHostPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.importTabHostCapabilities.patchFile}`, import.meta.url));
 await ensureDir(payloadDir);
 await zstd.init();
 
@@ -100,6 +102,8 @@ for (const entry of entries) {
       ? new TextEncoder().encode(applyJewelSpecPatch(new TextDecoder().decode(comparisonInput), Buffer.from(jewelSpecPatch), pin.adapters.calculationOnlyJewelSpecs, `src/${relPath}`))
       : relPath === "Classes/PassiveSpec.lua"
       ? new TextEncoder().encode(applyJewelSpecPatch(new TextDecoder().decode(newContent), Buffer.from(jewelSpecPatch), pin.adapters.calculationOnlyJewelSpecs, `src/${relPath}`))
+      : relPath === "Classes/ImportTab.lua"
+      ? new TextEncoder().encode(applyImportTabHostPatch(new TextDecoder().decode(newContent), Buffer.from(importTabHostPatch), pin.adapters.importTabHostCapabilities))
       : relPath === "Modules/DataLegionLookUpTableHelper.lua"
       ? new TextEncoder().encode(sparseTimelessSeeds(new TextDecoder().decode(newContent), timelessSeedHelper))
       : relPath === "Modules/DataJewelFileLoader.lua"

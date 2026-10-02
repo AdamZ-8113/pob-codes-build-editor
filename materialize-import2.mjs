@@ -138,6 +138,13 @@ export async function materializeImport2({ retainDirectory } = {}) {
   await cp(join(appDir, "upstream", "NOTICE.md"), join(immutableRoot, "legal", "POB_WEB_NOTICE.md"));
   await cp(join(appDir, "upstream", "PROVENANCE.md"), join(immutableRoot, "legal", "PROVENANCE.md"));
   await cp(join(shellDir, "index.html"), join(import2Root, "index.html"));
+  const shellHtml = await readFile(join(shellDir, "index.html"), "utf8");
+  const landingHtml = shellHtml
+    .replace(/<meta name="robots" content="noindex,nofollow"\s*\/?>(?:\s*)/i, "")
+    .replace("</head>", `<link rel="canonical" href="${publicRuntime.siteOrigin}/import/"><meta name="description" content="Edit Path of Building builds in your browser."></head>`)
+    .replace("<body>", `<body><main id="import-landing"><h1>Path of Building Build Editor</h1><p>Edit a build in your browser. Public-account character import is policy-gated; build-code paste and file import remain available.</p><p><a href="/guided-import">Use guided import instead</a></p></main><noscript>This editor requires JavaScript. <a href="/guided-import">Use guided import</a>.</noscript>`);
+  await mkdir(join(staging, "import"), { recursive: true });
+  await writeFile(join(staging, "import", "index.html"), landingHtml);
 
   const retained = [];
   if (retainDirectory) {
@@ -176,14 +183,19 @@ export async function materializeImport2({ retainDirectory } = {}) {
   const unavailable = "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"robots\" content=\"noindex,nofollow\"><title>Preview unavailable</title><body><main><h1>Preview unavailable</h1><p>This private performance preview URL is unavailable. Return to <a href=\"https://pob.codes/\">PoB Codes</a>.</p></main></body></html>\n";
   await writeFile(join(staging, "404.html"), unavailable);
   await writeFile(join(import2Root, "404.html"), unavailable);
-  await writeFile(join(staging, "_redirects"), `${publicRuntime.basePath} ${publicRuntime.basePath}/ 308\n`);
+  await writeFile(join(staging, "_redirects"), `/import /import/ 308\n${publicRuntime.basePath} ${publicRuntime.basePath}/ 308\n`);
   await writeFile(join(staging, "_headers"), [
     "/*",
-    "  X-Robots-Tag: noindex, nofollow",
     "  Cross-Origin-Opener-Policy: same-origin",
     "  Cross-Origin-Embedder-Policy: require-corp",
     "  Cross-Origin-Resource-Policy: same-origin",
     "  X-Content-Type-Options: nosniff",
+    "",
+    "/404.html",
+    "  X-Robots-Tag: noindex, nofollow",
+    "",
+    `${publicRuntime.basePath}/*`,
+    "  X-Robots-Tag: noindex, nofollow",
     "",
     `${publicRuntime.basePath}/`,
     "  Cache-Control: public, max-age=0, must-revalidate",

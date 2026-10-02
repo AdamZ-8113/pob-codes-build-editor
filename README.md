@@ -70,6 +70,13 @@ API and telemetry endpoints default to empty and remain disabled. The current
 release deliberately keeps network-backed PoB features unavailable. Do not put
 tokens or ingestion credentials in these variables or in a browser bundle.
 
+`contracts/character-host-v1.md` defines the only character-window operations
+the host may translate. Production transport and OAuth are disabled pending an
+approved GGG policy contract. Contributors can exercise the checked, synthetic
+character path with `?characterMock=1` in development; build-code paste and file
+import are the supported fallback. No account or character values enter the
+optional five-event telemetry contract.
+
 ## Source updates
 
 `source-pin.json` pins the Path of Building revision, upstream PR evidence,
@@ -103,6 +110,11 @@ The Cloudflare resource remains `pob-codes-import2` and owns only
 `pob.codes/import2*`. Shell pointers revalidate; generation assets are
 content-addressed and immutable. COOP/COEP/CORP and static 404 boundaries remain
 mandatory.
+
+Release materialization also produces a candidate indexable `/import/` landing
+shell with canonical, guided-import fallback, and noscript content. `/import2/`,
+immutable generations, and 404s remain noindex. This does not expand the live
+Wrangler route; that requires a separate reviewed policy and deployment change.
 
 ## Benchmarking
 

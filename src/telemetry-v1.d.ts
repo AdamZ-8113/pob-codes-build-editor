@@ -1,0 +1,2 @@
+export declare const TELEMETRY_EVENTS_V1: readonly ["editor_open_v1", "editor_ready_v1", "editor_import_v1", "editor_export_v1", "editor_error_v1"];
+export declare function createTelemetryV1(options?: { endpoint?: string; hostname?: string; release?: string; send?: (url: string, body: string) => unknown }): { enabled: boolean; emit(name: typeof TELEMETRY_EVENTS_V1[number], outcome?: "ok" | "error" | "cancelled"): void };

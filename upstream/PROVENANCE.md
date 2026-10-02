@@ -96,6 +96,13 @@ The source pin distinguishes untouched prepared checkout hashes from the
 ItemsTab input produced by the preceding limited-unique overlay. Browser
 acceptance includes Thread of Hope/Timeless comparisons and Split Personality.
 
+The October 1 `../patches/importtab-host-capabilities.patch` is a checked
+pack-time adaptation of `ImportTab.lua`. It gates the OAuth section on the host
+capability table, defaults that capability off, removes the disabled section's
+layout gap, and leaves public-account plus build-code/file controls intact.
+`../importtab-host-patch.mjs` verifies the exact prepared input, patch SHA-256,
+and result blob. The browser host independently refuses OAuth callbacks.
+
 Local adaptations: the Deno workspace excludes the production web package and
 unneeded dependencies, standalone demo shell, and deployment/release tests; the
 local shell supplies assets, host networking/OAuth callbacks, and capability

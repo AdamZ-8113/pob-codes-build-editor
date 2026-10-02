@@ -14,13 +14,22 @@ test("Import2 deployment is an assets-only prefix route", async () => {
   assert.equal(config.routes[0].pattern, "pob.codes/import2*");
 });
 
+test("release materializer defines an indexable landing beside noindex immutable preview assets", async () => {
+  const materializer = await readFile(join(appDir, "materialize-import2.mjs"), "utf8");
+  const verifier = await readFile(join(appDir, "verify-import2-release.mjs"), "utf8");
+  assert.match(materializer, /rel=\\?"canonical/); assert.match(materializer, /<noscript>/); assert.match(materializer, /\/guided-import/);
+  assert.match(materializer, /`\$\{publicRuntime\.basePath\}\/\*`/); assert.match(materializer, /max-age=31536000, immutable/);
+  assert.match(verifier, /Indexable \/import\/ landing contract is incomplete/);
+});
+
 test("Import2 runtime is browser-only and fail-closed on legacy payloads", async () => {
   const main = await readFile(join(appDir, "src/main.ts"), "utf8");
   const payload = await readFile(join(appDir, "upstream/packages/driver/src/js/payload.ts"), "utf8");
   const productionProfile = await readFile(join(appDir, "profile-import2-production.mjs"), "utf8");
   assert.match(main, /allowLegacyPayloadFallback: !import2Preview/);
   assert.match(main, /PoB Codes Import2 Preview v1/);
-  assert.match(main, /Network access is unavailable in this browser-only preview/);
+  assert.match(main, /createDisabledCharacterTransport/);
+  assert.match(main, /OAuth is disabled in the public build editor/);
   assert.match(main, /payloadPrefetch"\) === "1"/);
   assert.match(payload, /allowLegacyFallback !== false/);
   assert.match(productionProfile, /\/cdn-cgi\//);

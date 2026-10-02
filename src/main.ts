@@ -3,6 +3,9 @@ import { assertDriverCapabilities } from "../upstream/packages/driver/src/js/cap
 import type { PayloadProgress } from "../upstream/packages/driver/src/js/payload.ts";
 import "./style.css";
 import { selectDevicePolicy } from "./device-profile.ts";
+import { createCharacterHostV1, createDisabledCharacterTransport } from "./character-host-v1.js";
+import type { CharacterTransportV1 } from "./character-host-v1.js";
+import { createTelemetryV1 } from "./telemetry-v1.js";
 const devicePolicy = selectDevicePolicy(navigator, import.meta.env.DEV ? new URLSearchParams(location.search).get("deviceProfile") : undefined,
   import.meta.env.DEV && new URLSearchParams(location.search).get("mobileDpr") === "1" ? 1 : 1.5);
 document.documentElement.dataset.deviceProfile = devicePolicy.kind;
@@ -21,6 +24,8 @@ const publicRuntime = Object.freeze({
   apiBaseUrl: __PUBLIC_API_BASE_URL__, telemetryEndpoint: __PUBLIC_TELEMETRY_ENDPOINT__,
 });
 const performancePrefix = "pob-import2";
+const telemetry = createTelemetryV1({ endpoint: publicRuntime.telemetryEndpoint, release: __IMPORT2_PAYLOAD_PREFIX__ });
+telemetry.emit("editor_open_v1");
 if (import2Preview) performance.mark(`${performancePrefix}-shell-start`);
 
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -35,6 +40,7 @@ const frameSamples: { at: number; duration: number; render: number; reused: bool
 const errors: string[] = [];
 
 function report(error: unknown) {
+  telemetry.emit("editor_error_v1", "error");
   calculationStatus.hidden = true;
   const message = error instanceof Error ? error.message : String(error);
   errors.push(message);
@@ -47,43 +53,13 @@ function report(error: unknown) {
 
 async function loadBuildFromCode(value: string) {
   await driver!.loadBuildFromCode(value);
+  telemetry.emit("editor_import_v1");
   if (import2Preview) performance.mark(`${performancePrefix}-imported-build-ready`);
 }
 
-async function post(path: string, body: unknown) {
-  if (import2Preview && !publicRuntime.apiBaseUrl) throw new Error("Network-backed Path of Building features are not configured for this deployment.");
-  if (import2Preview) throw new Error("The public API adapter is reserved but not enabled by this release contract.");
-  const response = await fetch(`/local-api/${path}`, {
-    method: "POST", headers: { "Content-Type": "application/json", "X-Pob-Local": "1" }, body: JSON.stringify(body),
-  });
-  if (!response.ok) throw new Error(await response.text());
-  return await response.json();
-}
-
 async function authorize(url: string, timeoutMs: number) {
-  if (import2Preview) {
-    return { error: "Account authorization is unavailable in this browser-only preview.", state: new URL(url).searchParams.get("state") ?? "", port: 0 };
-  }
-  const authDialog = element<HTMLDialogElement>("auth-dialog");
-  const session = await post("oauth/start", { url, timeoutMs });
-  element<HTMLAnchorElement>("authorize").href = session.url;
-  authDialog.showModal();
-  let cancelled = false;
-  const cancel = () => { cancelled = true; };
-  element<HTMLButtonElement>("cancel-auth").onclick = cancel;
-  authDialog.addEventListener("cancel", cancel);
-  try {
-    while (!cancelled) {
-      const result = await post("oauth/poll", { id: session.id });
-      if (result.done) return result.result;
-      await new Promise((resolve) => setTimeout(resolve, 500));
-    }
-    await post("oauth/cancel", { id: session.id });
-    return { error: "Authorization cancelled", state: session.state, port: session.port };
-  } finally {
-    authDialog.removeEventListener("cancel", cancel);
-    authDialog.close();
-  }
+  void timeoutMs;
+  return { error: "OAuth is disabled in the public build editor. Use public account import, a build code, or a build file.", state: new URL(url).searchParams.get("state") ?? "", port: 0 };
 }
 
 async function main() {
@@ -97,6 +73,16 @@ async function main() {
   let hasDrawn = false;
   payloadProgress.startup(0, "Downloading core data");
   const options = new URLSearchParams(location.search);
+  const contributorMock = import.meta.env.DEV && options.get("characterMock") === "1";
+  const characterTransport: CharacterTransportV1 = contributorMock ? {
+    enabled: true,
+    async request(request: { path: string }) {
+      return request.path === "/api/poe/characters"
+        ? { ok: true as const, data: { characters: [{ name: "FixtureRanger", class: "Ranger", level: 91, league: "Fixture League" }] } }
+        : { ok: true as const, data: { items: { items: [], character: { name: "FixtureRanger" } }, passiveSkills: { hashes: [1, 2, 3], hashes_ex: [], mastery_effects: {} } } };
+    },
+  } : createDisabledCharacterTransport();
+  const characterHost = createCharacterHostV1({ transport: characterTransport });
   if (import2Preview && options.get("legacyPayload") === "1") {
     throw new Error("The legacy payload is unavailable in this browser-only preview.");
   }
@@ -111,9 +97,7 @@ async function main() {
         if (import2Preview) performance.mark(`${performancePrefix}-first-pob-frame`);
       }
     },
-    onFetch: import2Preview
-      ? async () => ({ body: "", status: undefined, headers: {}, error: "Network access is unavailable in this browser-only preview." })
-      : (url, headers, body) => post("fetch", { url, headers, body }),
+    onFetch: (url, headers, body) => characterHost.onFetch(url, headers, body),
     onOAuthAuthorize: authorize,
     onOAuthLogout: () => { status.textContent = "Path of Exile disconnected"; },
     onTitleChange: (title) => { document.title = `${title} · ${publicRuntime.productName}`; },
@@ -164,6 +148,7 @@ async function main() {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   ready = true;
+  telemetry.emit("editor_ready_v1");
   await driver.markPayloadReady();
   if (import2Preview) performance.mark(`${performancePrefix}-payload-ready`);
   payloadProgress.completeStartup();
@@ -197,7 +182,7 @@ Object.defineProperty(window, "__DESKTOP_POB__", { value: {
   get frameSamples() { return [...frameSamples]; },
   clearFrameSamples: () => { frameSamples.length = 0; },
   loadBuildFromCode,
-  getBuildCode: () => driver!.getBuildCode(), flushInput: () => driver!.flushInput(),
+  getBuildCode: async () => { const code = await driver!.getBuildCode(); telemetry.emit("editor_export_v1"); return code; }, flushInput: () => driver!.flushInput(),
 } });
 window.addEventListener("pagehide", () => { driver?.detachFromDOM(); driver?.destory(); });
 void main().catch(report);

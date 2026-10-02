@@ -54,7 +54,7 @@ export async function verifyImport2Release(root = join(appDir, ".runtime/import2
 
   const files = await walk(root);
   const relativeFiles = new Set(files.map((path) => relative(root, path).replaceAll("\\", "/")));
-  for (const required of ["404.html", "_headers", "_redirects", `${publicDirectory}/404.html`, `${publicDirectory}/index.html`]) {
+  for (const required of ["404.html", "_headers", "_redirects", "import/index.html", `${publicDirectory}/404.html`, `${publicDirectory}/index.html`]) {
     if (!relativeFiles.has(required)) throw new Error(`Missing Import2 control asset: ${required}`);
   }
   for (const path of relativeFiles) {
@@ -63,6 +63,10 @@ export async function verifyImport2Release(root = join(appDir, ".runtime/import2
 
   const index = await readFile(join(root, publicDirectory, "index.html"), "utf8");
   if (!/noindex,\s*nofollow/i.test(index)) throw new Error("Import2 pointer is indexable");
+  const landing = await readFile(join(root, "import/index.html"), "utf8");
+  if (/noindex/i.test(landing) || !landing.includes(`${publicRuntime.siteOrigin}/import/`) || !/<noscript>/i.test(landing) || !landing.includes("/guided-import")) {
+    throw new Error("Indexable /import/ landing contract is incomplete");
+  }
   if (mode === "full") {
     for (const generation of generations) {
       const generationRoot = join(root, publicDirectory, "releases", generation);
@@ -95,6 +99,7 @@ export async function verifyImport2Release(root = join(appDir, ".runtime/import2
     if (!headers.includes(requirement)) throw new Error(`Import2 headers are missing: ${requirement}`);
   }
   const redirects = await readFile(join(root, "_redirects"), "utf8");
+  if (!redirects.includes("/import /import/ 308")) throw new Error("Build Editor landing slash redirect is missing");
   if (!redirects.includes(`${publicRuntime.basePath} ${publicRuntime.basePath}/ 308`)) throw new Error("Build Editor slash redirect is missing");
   const scriptText = (await Promise.all(files.filter((path) => path.endsWith(".js")).map((path) => readFile(path, "utf8")))).join("\n");
   for (const forbidden of ["/local-api/", "/analytics/events", "/payload/root.zip"]) {

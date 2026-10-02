@@ -102,6 +102,13 @@
         "src/Modules/DataAbyssJewelLookUpTableHelper.lua": "78c32af2a4d14497f59ce920d4593d41e5ecf5cf",
         "src/Classes/TreeTab.lua": "7dba225173246e145868275fa34856f5dcd54afb"
       }
+    },
+    "importTabHostCapabilities": {
+      "version": 1,
+      "patchFile": "patches/importtab-host-capabilities.patch",
+      "patchSha256": "9339bee6b660def4f87b335f6b571e57e3e856f76c5efab147f7de01bc3ded90",
+      "sourceBlobHashes": { "src/Classes/ImportTab.lua": "ba2af22a92f5c533e1011ec3d7dfffb87ea0f608" },
+      "resultBlobHashes": { "src/Classes/ImportTab.lua": "0e3271329ba0676e24fc3fb9c087293d91c34634" }
     }
   },
   "overlays": [
@@ -210,6 +217,17 @@
       "files": [
         "src/Classes/ItemsTab.lua"
       ],
+      "applicationStage": "pack-time",
+      "upstreamPr": null,
+      "lastObserved": "2026-10-01"
+    },
+    {
+      "kind": "local-patch",
+      "id": "importtab-host-capabilities",
+      "sourceBase": "a431f3a28823270acbdd6864c644f93678581f1e",
+      "patchFile": "patches/importtab-host-capabilities.patch",
+      "patchSha256": "9339bee6b660def4f87b335f6b571e57e3e856f76c5efab147f7de01bc3ded90",
+      "files": ["src/Classes/ImportTab.lua"],
       "applicationStage": "pack-time",
       "upstreamPr": null,
       "lastObserved": "2026-10-01"

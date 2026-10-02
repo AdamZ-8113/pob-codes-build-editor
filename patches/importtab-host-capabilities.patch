@@ -1,0 +1,28 @@
+diff --git a/src/Classes/ImportTab.lua b/src/Classes/ImportTab.lua
+index ba2af22..0e32713 100644
+--- a/src/Classes/ImportTab.lua
++++ b/src/Classes/ImportTab.lua
+@@ -552,9 +552,19 @@ function ImportTabClass:ImportTab(build)
+ 		"Import From Your Account")
+ 
+ 	addOAuthControls(self)
+-
+-	self.controls.sectionCharSiteImport = new("SectionControl"):SectionControl({ "TOPLEFT", self.controls.sectionOauthCharImport, "BOTTOMLEFT" },
+-		{ 0, 24, 710, 226 },
++	local hostOAuthEnabled = type(PobHostCapabilities) == "table" and PobHostCapabilities.oauth == true
++	if not hostOAuthEnabled then
++		-- Public browser builds deliberately omit OAuth until the host policy
++		-- contract explicitly enables it. Keep the controls instantiated for
++		-- upstream layout compatibility, but remove the section and its gap.
++		self.usingOauth = false
++		self.controls.sectionOauthCharImport.shown = function() return false end
++		self.controls.sectionOauthCharImport.height = function() return 0 end
++	end
++
++	self.controls.sectionCharSiteImport = new("SectionControl"):SectionControl(
++		hostOAuthEnabled and { "TOPLEFT", self.controls.sectionOauthCharImport, "BOTTOMLEFT" } or { "TOPLEFT", self, "TOPLEFT" },
++		hostOAuthEnabled and { 0, 24, 710, 226 } or { 10, 18, 710, 226 },
+ 		"Import By Account Name")
+ 	self.controls.sectionCharSiteImport.height = function()
+ 		return self.narrowLayout and self.charImportMode ~= "GETACCOUNTNAME" and NARROW_SITE_SECTION_HEIGHT or 226
+

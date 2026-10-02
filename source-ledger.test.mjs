@@ -7,9 +7,9 @@ import { validateSourceLedger } from "./source-ledger.mjs";
 
 const appDir = dirname(fileURLToPath(import.meta.url));
 
-test("desktop PoB overlay ledger owns four ordered PRs and three pack-time local patches", async () => {
+test("desktop PoB overlay ledger owns four ordered PRs and four pack-time local patches", async () => {
   const { pin, compositeBytes } = await validateSourceLedger(appDir);
-  assert.deepEqual(pin.overlays.map((entry) => entry.number ?? entry.id), [10360, 10371, 10372, 10373, "gem-dropdown-hover", "limited-unique-item-comparisons", "calculation-only-jewel-specs"]);
+  assert.deepEqual(pin.overlays.map((entry) => entry.number ?? entry.id), [10360, 10371, 10372, 10373, "gem-dropdown-hover", "limited-unique-item-comparisons", "importtab-host-capabilities", "calculation-only-jewel-specs"]);
   assert.equal(pin.compositePatch.files.includes("src/Classes/GemSelectControl.lua"), true);
   assert.equal(compositeBytes.includes(Buffer.from("GemSelectControl.lua")), true);
   assert.equal(pin.compositePatch.resultBlobHashes["src/Classes/GemSelectControl.lua"], pin.adapters.gemDropdownHover.sourceBlobHashes["src/Classes/GemSelectControl.lua"]);
