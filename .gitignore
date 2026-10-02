@@ -9,6 +9,7 @@ upstream/node_modules/
 .runtime/
 dist/
 build/
+!/scripts/build/
 upstream/packages/driver/build/
 upstream/packages/driver/dist/
 upstream/packages/packer/build/
@@ -18,8 +19,23 @@ test-results/
 reports/
 tmp/
 
-# Local configuration, credentials, and private inputs
+# Local agent workflows and planning
 AGENTS.md
+.agents/
+.codex/
+.claude/
+.local/
+CLAUDE.md
+CONTEXT_HANDOFF.md
+SKILL_LIST.MD
+to_do/
+audit/
+draft_docs/
+writeup_notes/
+codex-implementation/
+implementation-plan/
+
+# Local configuration, credentials, and private inputs
 .env
 .env.*
 !.env.example

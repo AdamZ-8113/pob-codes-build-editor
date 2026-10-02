@@ -1,18 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { readdirSync } from "node:fs";
-import { join } from "node:path";
+import { publicFileInventory } from "./lib/public-files.mjs";
 
-const excluded = new Set([".git", ".runtime", "node_modules", "build", "dist", "tmp", "reports"]);
-const modules = [];
-function visit(directory) {
-  for (const entry of readdirSync(directory, { withFileTypes: true })) {
-    if (excluded.has(entry.name)) continue;
-    const path = join(directory, entry.name);
-    if (entry.isDirectory()) visit(path);
-    else if (entry.isFile() && path.endsWith(".mjs")) modules.push(path);
-  }
-}
-visit(".");
+const modules = publicFileInventory(".").files.filter((path) => path.endsWith(".mjs"));
 
 function run(command, args) {
   const result = spawnSync(command, args, { stdio: "inherit", windowsHide: true });
