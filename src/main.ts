@@ -140,6 +140,20 @@ async function main() {
     applyConfiguration: request => driver!.applyConfiguration(request),
   });
   buildTransfer = createBuildTransferV1({ apiBaseUrl: publicRuntime.apiBaseUrl, getBuildCode: exportBuildCode });
+  const shareButton = element<HTMLButtonElement>("share-build");
+  const sharedBuild = element<HTMLAnchorElement>("shared-build");
+  shareButton.disabled = true;
+  shareButton.title = publicRuntime.apiBaseUrl ? "Upload this build and create a pob.codes viewer link" : "Sharing is not configured for this release";
+  shareButton.onclick = async () => {
+    shareButton.disabled = true; sharedBuild.hidden = true; status.classList.remove("status-error"); status.textContent = "Sharing build...";
+    try {
+      const url = buildTransfer!.hasPendingShare ? await buildTransfer!.retry() : await buildTransfer!.share();
+      sharedBuild.href = url; sharedBuild.hidden = false; shareButton.textContent = "Share again"; status.textContent = "Shared build ready";
+    } catch (error) {
+      shareButton.textContent = buildTransfer!.hasPendingShare ? "Retry share" : "Share";
+      status.textContent = error instanceof Error ? error.message : "Build sharing failed"; status.classList.add("status-error");
+    } finally { shareButton.disabled = !ready || !publicRuntime.apiBaseUrl; }
+  };
   await driver.start({
     legacyPayload: options.get("legacyPayload") === "1",
     allowLegacyPayloadFallback: !import2Preview,
@@ -174,6 +188,7 @@ async function main() {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   ready = true;
+  shareButton.disabled = !publicRuntime.apiBaseUrl;
   telemetry.emit("build_editor_ready_v1", { result: "ready", actionTarget: "cold", durationMs: Math.round(performance.now() - startupAt) });
   await driver.markPayloadReady();
   if (import2Preview) performance.mark(`${performancePrefix}-payload-ready`);
