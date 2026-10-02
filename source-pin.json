@@ -108,7 +108,7 @@
       "patchFile": "patches/importtab-host-capabilities.patch",
       "patchSha256": "9339bee6b660def4f87b335f6b571e57e3e856f76c5efab147f7de01bc3ded90",
       "sourceBlobHashes": { "src/Classes/ImportTab.lua": "ba2af22a92f5c533e1011ec3d7dfffb87ea0f608" },
-      "resultBlobHashes": { "src/Classes/ImportTab.lua": "0e3271329ba0676e24fc3fb9c087293d91c34634" }
+      "resultBlobHashes": { "src/Classes/ImportTab.lua": "0e32713d7b6fb87e6ebb3e83d0ebb29c3c8bb991" }
     }
   },
   "overlays": [

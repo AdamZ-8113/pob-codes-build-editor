@@ -26,7 +26,6 @@ export default defineConfig({
       dds: join(upstream, "packages/dds/src/index.ts"),
       "pob-game": join(upstream, "packages/game/src/index.ts"),
     },
-    dedupe: ["react", "react-dom"],
   },
   define: {
     __BPTC_SUPPORT_OVERRIDE__: "undefined",

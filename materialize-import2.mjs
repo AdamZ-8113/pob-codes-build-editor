@@ -169,7 +169,7 @@ export async function materializeImport2({ retainDirectory } = {}) {
   await cp(join(shellDir, "index.html"), join(import2Root, "index.html"));
   const shellHtml = await readFile(join(shellDir, "index.html"), "utf8");
   const landingHtml = shellHtml
-    .replace(/<meta name="robots" content="noindex,nofollow"\s*\/?>(?:\s*)/i, "")
+    .replace(/<meta name="robots" content="noindex,\s*nofollow"\s*\/?>(?:\s*)/i, "")
     .replace("</head>", `<link rel="canonical" href="${publicRuntime.siteOrigin}/import/"><meta name="description" content="Edit Path of Building builds in your browser."></head>`)
     .replace("<body>", `<body><main id="import-landing"><h1>Path of Building Build Editor</h1><p>Edit a build in your browser. Public-account character import is policy-gated; build-code paste and file import remain available.</p><p><a href="/guided-import">Use guided import instead</a></p></main><noscript>This editor requires JavaScript. <a href="/guided-import">Use guided import</a>.</noscript>`);
   await mkdir(join(staging, "import"), { recursive: true });
@@ -206,6 +206,7 @@ export async function materializeImport2({ retainDirectory } = {}) {
     },
     payloadManifestSha256: await fileHash(join(payloadDir, "manifest.json")),
     payloadProvenanceSha256: await fileHash(join(payloadDir, "provenance.json")),
+    publicConfig: publicRuntime,
     deployment: { resource: "pob-codes-import2", route: "pob.codes/import2*", basePath: publicRuntime.basePath },
   };
   await writeFile(join(import2Root, "release.json"), `${JSON.stringify(releaseMetadata, null, 2)}\n`);

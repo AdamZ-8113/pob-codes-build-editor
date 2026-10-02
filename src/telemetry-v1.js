@@ -45,9 +45,7 @@ export function createTelemetryV1(options = {}) {
 }
 
 function telemetryEndpointAllowed(endpoint) {
-  if (endpoint === "/analytics/events" || endpoint === "/api/analytics/events") return true;
-  try { const url = new URL(endpoint); return url.protocol === "https:" && ["pob.codes", "api.pob.codes"].includes(url.hostname) && ["/api/analytics/events", "/analytics/events"].includes(url.pathname) && !url.search && !url.hash; }
-  catch { return false; }
+  return endpoint === "https://api.pob.codes/analytics/events";
 }
 
 function randomSessionId() {

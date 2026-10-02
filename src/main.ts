@@ -29,8 +29,7 @@ const publicRuntime = Object.freeze({
 const performancePrefix = "pob-import2";
 const startupAt = performance.now();
 const appVersion = __IMPORT2_PAYLOAD_PREFIX__.match(/[a-f0-9]{12,64}/)?.[0] ?? "";
-const telemetryEndpoint = publicRuntime.telemetryEndpoint || (publicRuntime.apiBaseUrl ? `${publicRuntime.apiBaseUrl.replace(/\/$/, "")}/analytics/events` : "");
-const telemetry = createTelemetryV1({ endpoint: telemetryEndpoint, appVersion, deviceClass: devicePolicy.kind });
+const telemetry = createTelemetryV1({ endpoint: publicRuntime.telemetryEndpoint, appVersion, deviceClass: devicePolicy.kind });
 telemetry.emit("build_editor_open_v1", { result: "opened", actionTarget: location.hash.includes("build=") ? "saved-build" : location.hash.includes("code=") ? "fragment" : "direct" });
 if (import2Preview) performance.mark(`${performancePrefix}-shell-start`);
 

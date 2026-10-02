@@ -45,6 +45,7 @@ export async function verifyImport2Release(root = join(appDir, ".runtime/import2
   if (mode === "full" && release.contractVersion !== 1) throw new Error("Unsupported Build Editor release contract");
   if (mode === "full" && release.predecessor !== (release.retained[0] ?? null)) throw new Error("Predecessor metadata does not match retained generation");
   if (mode === "full" && (!release.pobLedgerSha256 || !release.binaryIdentities?.driverWasmSha256 || !release.payloadProvenanceSha256)) throw new Error("Release identity metadata is incomplete");
+  if (mode === "full" && JSON.stringify(release.publicConfig) !== JSON.stringify(publicRuntime)) throw new Error("Release public configuration does not match verification inputs");
   if (mode === "disabled" && (release.current !== null || release.retained.length !== 0)) throw new Error("Disabled Import2 release cannot retain runtime generations");
   if (!new Set(["full", "disabled"]).has(mode)) throw new Error(`Unknown Import2 release mode: ${mode}`);
   const generations = mode === "full" ? [release.current, ...release.retained].sort() : [];
@@ -120,8 +121,11 @@ export async function verifyImport2Release(root = join(appDir, ".runtime/import2
   if (mode === "full" && !redirects.includes("/import /import/ 308")) throw new Error("Build Editor landing slash redirect is missing");
   if (!redirects.includes(`${publicRuntime.basePath} ${publicRuntime.basePath}/ 308`)) throw new Error("Build Editor slash redirect is missing");
   const scriptText = (await Promise.all(files.filter((path) => path.endsWith(".js")).map((path) => readFile(path, "utf8")))).join("\n");
-  for (const forbidden of ["/local-api/", "/analytics/events", "/payload/root.zip"]) {
+  for (const forbidden of ["/local-api/", "/payload/root.zip"]) {
     if (scriptText.includes(forbidden)) throw new Error(`Import2 shell contains forbidden runtime path: ${forbidden}`);
+  }
+  if (publicRuntime.telemetryEndpoint && !scriptText.includes(publicRuntime.telemetryEndpoint)) {
+    throw new Error("Import2 shell is missing the configured telemetry endpoint");
   }
   const totalBytes = (await Promise.all(files.map(async (path) => (await stat(path)).size))).reduce((sum, size) => sum + size, 0);
   const inventory = JSON.parse(await readFile(join(root, publicDirectory, "asset-inventory.json"), "utf8"));

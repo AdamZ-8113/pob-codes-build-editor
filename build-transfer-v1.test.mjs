@@ -5,9 +5,9 @@ const code="abcDEF_0123456789-xyz";
 const response=(body,{ok=true,status=200,cache="no-store"}={})=>({ok,status,headers:{get(name){return name.toLowerCase()==="cache-control"?cache:null}},async json(){return body},async text(){return body}});
 test("raw codes and owned pob.codes links resolve through only the typed API contract", async () => {
   const calls=[]; const transfer=createBuildTransferV1({apiBaseUrl:"https://api.pob.codes",getBuildCode:async()=>code,fetchImpl:async(...args)=>{calls.push(args);return response(code)}});
-  assert.equal(await transfer.resolve(code),code); assert.equal(await transfer.resolve("https://pob.codes/b/abc_123"),code); assert.equal(calls[0][0],"https://api.pob.codes/abc_123/raw");
-  await assert.rejects(transfer.resolve("https://evil.example/b/abc_123"),/owned/); await assert.rejects(transfer.resolve("https://pob.codes/other/abc_123"),/Unsupported/);
-  const siteApi=createBuildTransferV1({apiBaseUrl:"https://pob.codes/api",getBuildCode:async()=>code,fetchImpl:async(url)=>{assert.equal(url,"https://api.pob.codes/abc_123/raw");return response(code)}}); await siteApi.resolve("https://pob.codes/b/abc_123");
+  assert.equal(await transfer.resolve(code),code); assert.equal(await transfer.resolve("https://pob.codes/b/abc_1234"),code); assert.equal(calls[0][0],"https://api.pob.codes/abc_1234/raw");
+  await assert.rejects(transfer.resolve("https://evil.example/b/abc_1234"),/owned/); await assert.rejects(transfer.resolve("https://pob.codes/other/abc_1234"),/Unsupported/);
+  assert.throws(()=>createBuildTransferV1({apiBaseUrl:"https://pob.codes/api",getBuildCode:async()=>code}),/api\.pob\.codes/);
 });
 test("shell sharing is an explicit user action", async () => {
   const [html,main]=await Promise.all([readFile("index.html","utf8"),readFile("src/main.ts","utf8")]); assert.match(html,/id="share-build"[^>]*disabled/); assert.match(main,/shareButton\.onclick/); assert.match(main,/buildTransfer!\.share\(\)/);

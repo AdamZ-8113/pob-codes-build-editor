@@ -24,12 +24,19 @@ function publicUrl(value, name, { allowEmpty = false } = {}) {
 }
 
 export function publicConfig(env = process.env) {
-  return Object.freeze({
+  const config = {
     basePath: pathValue(env.PUBLIC_BASE_PATH ?? DEFAULTS.basePath),
     siteOrigin: publicUrl(env.PUBLIC_SITE_ORIGIN ?? DEFAULTS.siteOrigin, "PUBLIC_SITE_ORIGIN"),
     productName: env.PUBLIC_PRODUCT_NAME?.trim() || DEFAULTS.productName,
     repositoryUrl: publicUrl(env.PUBLIC_REPOSITORY_URL ?? DEFAULTS.repositoryUrl, "PUBLIC_REPOSITORY_URL"),
     apiBaseUrl: publicUrl(env.PUBLIC_API_BASE_URL ?? DEFAULTS.apiBaseUrl, "PUBLIC_API_BASE_URL", { allowEmpty: true }),
     telemetryEndpoint: publicUrl(env.PUBLIC_TELEMETRY_ENDPOINT ?? DEFAULTS.telemetryEndpoint, "PUBLIC_TELEMETRY_ENDPOINT", { allowEmpty: true }),
-  });
+  };
+  if (config.apiBaseUrl && config.apiBaseUrl !== "https://api.pob.codes") {
+    throw new Error("PUBLIC_API_BASE_URL must be https://api.pob.codes");
+  }
+  if (config.telemetryEndpoint && config.telemetryEndpoint !== "https://api.pob.codes/analytics/events") {
+    throw new Error("PUBLIC_TELEMETRY_ENDPOINT must be https://api.pob.codes/analytics/events");
+  }
+  return Object.freeze(config);
 }

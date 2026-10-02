@@ -11,7 +11,7 @@ export function createBuildTransferV1({ apiBaseUrl, fetchImpl = fetch, getBuildC
     if (!/^https?:\/\//i.test(input)) return validateCode(input);
     const url = new URL(input);
     if (url.protocol !== "https:" || url.hostname !== "pob.codes" || url.search || url.hash) throw new Error("Only owned pob.codes build links are supported.");
-    const match = /^\/b\/([A-Za-z0-9_-]{6,128})\/?$/.exec(url.pathname);
+    const match = /^\/b\/([A-Za-z0-9_-]{8,40})\/?$/.exec(url.pathname);
     if (!match) throw new Error("Unsupported build link.");
     if (!api) throw new Error("Saved-build resolution is not configured. Paste the build code instead.");
     const response = await boundedFetch(`https://api.pob.codes/${encodeURIComponent(match[1])}/raw`, { method: "GET", headers: { accept: "text/plain" } });
@@ -40,7 +40,7 @@ export function createBuildTransferV1({ apiBaseUrl, fetchImpl = fetch, getBuildC
       const envelope = await response.json();
       if (response.status !== 201 || !response.ok || typeof envelope?.id !== "string" || typeof envelope?.shortUrl !== "string" || response.headers.get("cache-control")?.toLowerCase() !== "no-store") throw new Error("Build sharing failed; retry keeps the exported snapshot.");
       const url = new URL(envelope.shortUrl, "https://pob.codes");
-      if (url.origin !== "https://pob.codes" || !/^\/b\/[A-Za-z0-9_-]{6,128}$/.test(url.pathname) || url.search || url.hash) throw new Error("Build sharing returned an invalid link.");
+      if (url.origin !== "https://pob.codes" || !/^\/b\/[A-Za-z0-9_-]{8,40}$/.test(url.pathname) || url.search || url.hash) throw new Error("Build sharing returned an invalid link.");
       pendingShare = undefined;
       return `https://pob.codes${url.pathname}`;
     } finally { sharing = false; }
@@ -58,9 +58,8 @@ function apiOrigin(value) {
   if (!value) return "";
   const url = new URL(value);
   const worker = url.hostname === "api.pob.codes" && url.pathname === "/";
-  const site = url.hostname === "pob.codes" && ["/api", "/api/"].includes(url.pathname);
-  if (url.protocol !== "https:" || (!worker && !site) || url.search || url.hash) throw new Error("PUBLIC_API_BASE_URL must be an owned API base.");
-  return site ? `${url.origin}/api` : url.origin;
+  if (url.protocol !== "https:" || !worker || url.search || url.hash) throw new Error("PUBLIC_API_BASE_URL must be https://api.pob.codes.");
+  return url.origin;
 }
 function validateCode(code) {
   if (!/^[A-Za-z0-9_-]{16,}$/.test(code) || utf8.encode(code).byteLength > MAX_CODE_BYTES) throw new Error("Invalid Path of Building code.");
