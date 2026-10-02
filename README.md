@@ -96,10 +96,13 @@ profiles, reports, credentials, and private build data must remain untracked.
 
 ## Current boundaries
 
-Production is a static browser application. Build-code paste and file import are
-supported; account OAuth and network-backed character import remain disabled
-until their policy and privacy requirements are approved. Local development
-defaults to `127.0.0.1`, and optional telemetry and API endpoints are disabled
+Production is a static browser application. Build-code paste, build-file import,
+and public-account character import are supported. Character requests go only
+to the existing guarded PoB Codes routes, which apply request bounds, rate
+limits, cooldowns, and upstream error handling. Path of Building's OAuth UI
+remains unavailable because its existing desktop client uses a loopback callback
+that a scriptless browser deployment cannot receive. Local development defaults
+to `127.0.0.1`; optional telemetry and build-sharing API endpoints are disabled
 unless explicitly configured.
 
 ## License and attribution

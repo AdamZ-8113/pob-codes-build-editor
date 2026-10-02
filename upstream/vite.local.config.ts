@@ -33,6 +33,7 @@ export default defineConfig({
     __DESKTOP_DEV_LAN_HOSTS__: "[]",
     __PUBLIC_PRODUCT_NAME__: JSON.stringify(publicRuntime.productName),
     __PUBLIC_REPOSITORY_URL__: JSON.stringify(publicRuntime.repositoryUrl),
+    __PUBLIC_SITE_ORIGIN__: JSON.stringify(publicRuntime.siteOrigin),
     __PUBLIC_API_BASE_URL__: JSON.stringify(""),
     __PUBLIC_TELEMETRY_ENDPOINT__: JSON.stringify(""),
   },

@@ -6,7 +6,53 @@ const utf8 = new TextEncoder();
 export const CHARACTER_HOST_V1 = Object.freeze({ version: 1, maxUrlBytes: 2048, maxBodyBytes: 4096, maxResponseBytes: 16 * 1024 * 1024, timeoutMs: 12_000, maxConcurrency: 2 });
 
 export function createDisabledCharacterTransport() {
-  return { enabled: false, async request() { throw new Error(`${MANUAL_FALLBACK} Production account transport is disabled pending an approved GGG policy contract.`); } };
+  return { enabled: false, async request() { throw new Error(MANUAL_FALLBACK); } };
+}
+
+export function createPobCodesCharacterTransport({ origin, fetchImpl = fetch } = {}) {
+  const target = new URL(origin);
+  if (target.origin !== "https://pob.codes" || target.pathname !== "/" || target.search || target.hash) {
+    throw new Error("Character import requires the https://pob.codes origin.");
+  }
+  return {
+    enabled: true,
+    async request(request, { signal }) {
+      if (!["/api/poe/characters", "/api/poe/import-character"].includes(request.path)) {
+        throw new Error("Blocked unsupported PoB Codes character operation.");
+      }
+      const accountName = request.body.account;
+      const body = request.path === "/api/poe/characters"
+        ? { accountName, realm: request.body.realm }
+        : { accountName, characterName: request.body.character, realm: request.body.realm };
+      const response = await fetchImpl(new URL(request.path, target), {
+        method: "POST",
+        headers: { accept: "application/json", "content-type": "application/json" },
+        body: JSON.stringify(body),
+        credentials: "omit",
+        redirect: "error",
+        signal,
+      });
+      const text = await response.text();
+      let payload;
+      try { payload = JSON.parse(text); }
+      catch { throw new Error("PoB Codes returned an invalid character-import response."); }
+      if (!response.ok) {
+        return { ok: false, error: { code: String(payload?.code ?? `HTTP_${response.status}`), message: String(payload?.error ?? "Character import failed.") } };
+      }
+      if (request.path === "/api/poe/characters") {
+        if (!Array.isArray(payload?.characters)) throw new Error("PoB Codes returned an invalid character list.");
+        return { ok: true, data: { characters: payload.characters } };
+      }
+      try {
+        const items = JSON.parse(payload?.itemsJson);
+        const passiveSkills = JSON.parse(payload?.passiveSkillsJson);
+        if (!items || typeof items !== "object" || !passiveSkills || typeof passiveSkills !== "object") throw new Error();
+        return { ok: true, data: { items, passiveSkills } };
+      } catch {
+        throw new Error("PoB Codes returned invalid character data.");
+      }
+    },
+  };
 }
 
 export function createCharacterHostV1({ transport = createDisabledCharacterTransport(), limits = {}, now = () => Date.now() } = {}) {
@@ -49,7 +95,8 @@ export function createCharacterHostV1({ transport = createDisabledCharacterTrans
         reset();
         const captured = epoch;
         const envelope = await boundedRequest({ method: "POST", path: "/api/poe/characters", body: { contractVersion: 1, realm, account } }, captured);
-        if (envelope?.ok !== true || !Array.isArray(envelope.data?.characters)) throw new Error("Invalid character-list envelope.");
+        if (envelope?.ok !== true) throw new Error(envelope?.error?.message ?? "Character import failed.");
+        if (!Array.isArray(envelope.data?.characters)) throw new Error("Invalid character-list envelope.");
         return ok(envelope.data.characters);
       }
       const key = `${epoch}\u0000${realm}\u0000${account}\u0000${character}`;
@@ -60,7 +107,8 @@ export function createCharacterHostV1({ transport = createDisabledCharacterTrans
         pairs.set(key, pair);
       }
       const envelope = await pair.promise;
-      if (envelope?.ok !== true || typeof envelope.data?.items !== "object" || typeof envelope.data?.passiveSkills !== "object") throw new Error("Invalid paired-character envelope.");
+      if (envelope?.ok !== true) throw new Error(envelope?.error?.message ?? "Character import failed.");
+      if (typeof envelope.data?.items !== "object" || typeof envelope.data?.passiveSkills !== "object") throw new Error("Invalid paired-character envelope.");
       pair.used.add(operation);
       if (pair.used.size === 2 || now() - pair.created > policy.timeoutMs) pairs.delete(key);
       return ok(operation === "get-items" ? envelope.data.items : envelope.data.passiveSkills);

@@ -171,7 +171,7 @@ export async function materializeImport2({ retainDirectory } = {}) {
   const landingHtml = shellHtml
     .replace(/<meta name="robots" content="noindex,\s*nofollow"\s*\/?>(?:\s*)/i, "")
     .replace("</head>", `<link rel="canonical" href="${publicRuntime.siteOrigin}/import/"><meta name="description" content="Edit Path of Building builds in your browser."></head>`)
-    .replace("<body>", `<body><main id="import-landing"><h1>Path of Building Build Editor</h1><p>Edit a build in your browser. Public-account character import is policy-gated; build-code paste and file import remain available.</p><p><a href="/guided-import">Use guided import instead</a></p></main><noscript>This editor requires JavaScript. <a href="/guided-import">Use guided import</a>.</noscript>`);
+    .replace("<body>", `<body><main id="import-landing"><h1>Path of Building Build Editor</h1><p>Edit a build in your browser. Public-account character import, build-code paste, and file import are available.</p><p><a href="/guided-import">Use guided import instead</a></p></main><noscript>This editor requires JavaScript. <a href="/guided-import">Use guided import</a>.</noscript>`);
   await mkdir(join(staging, "import"), { recursive: true });
   await writeFile(join(staging, "import", "index.html"), landingHtml);
 

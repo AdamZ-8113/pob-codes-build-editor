@@ -28,8 +28,8 @@ test("Import2 runtime is browser-only and fail-closed on legacy payloads", async
   const productionProfile = await readFile(join(appDir, "tools/profiles/profile-import2-production.mjs"), "utf8");
   assert.match(main, /allowLegacyPayloadFallback: !import2Preview/);
   assert.match(main, /PoB Codes Import2 Preview v1/);
-  assert.match(main, /createDisabledCharacterTransport/);
-  assert.match(main, /OAuth is disabled in the public build editor/);
+  assert.match(main, /createPobCodesCharacterTransport/);
+  assert.match(main, /import2Preview[\s\S]*createPobCodesCharacterTransport/);
   assert.match(main, /payloadPrefetch"\) === "1"/);
   assert.match(payload, /allowLegacyFallback !== false/);
   assert.match(productionProfile, /\/cdn-cgi\//);

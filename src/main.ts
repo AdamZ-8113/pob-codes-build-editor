@@ -2,7 +2,7 @@ import { Driver } from "../upstream/packages/driver/src/js/driver.ts";
 import { assertDriverCapabilities } from "../upstream/packages/driver/src/js/capability.ts";
 import type { PayloadProgress } from "../upstream/packages/driver/src/js/payload.ts";
 import "./style.css";
-import { createCharacterHostV1, createDisabledCharacterTransport } from "./character-host-v1.js";
+import { createCharacterHostV1, createDisabledCharacterTransport, createPobCodesCharacterTransport } from "./character-host-v1.js";
 import type { CharacterTransportV1 } from "./character-host-v1.js";
 import { createTelemetryV1 } from "./telemetry-v1.js";
 import { createConfigurationBridgeV1 } from "./configuration-v1.js";
@@ -13,13 +13,14 @@ declare const __IMPORT2_PAYLOAD_PREFIX__: string;
 declare const __DESKTOP_DEV_LAN_HOSTS__: string[];
 declare const __PUBLIC_PRODUCT_NAME__: string;
 declare const __PUBLIC_REPOSITORY_URL__: string;
+declare const __PUBLIC_SITE_ORIGIN__: string;
 declare const __PUBLIC_API_BASE_URL__: string;
 declare const __PUBLIC_TELEMETRY_ENDPOINT__: string;
 
 const import2Preview = __IMPORT2_PREVIEW__;
 const publicRuntime = Object.freeze({
   productName: __PUBLIC_PRODUCT_NAME__, repositoryUrl: __PUBLIC_REPOSITORY_URL__,
-  apiBaseUrl: __PUBLIC_API_BASE_URL__, telemetryEndpoint: __PUBLIC_TELEMETRY_ENDPOINT__,
+  siteOrigin: __PUBLIC_SITE_ORIGIN__, apiBaseUrl: __PUBLIC_API_BASE_URL__, telemetryEndpoint: __PUBLIC_TELEMETRY_ENDPOINT__,
 });
 const performancePrefix = "pob-import2";
 const startupAt = performance.now();
@@ -96,7 +97,9 @@ async function main() {
         ? { ok: true as const, data: { characters: [{ name: "FixtureRanger", class: "Ranger", level: 91, league: "Fixture League" }] } }
         : { ok: true as const, data: { items: { items: [], character: { name: "FixtureRanger" } }, passiveSkills: { hashes: [1, 2, 3], hashes_ex: [], mastery_effects: {} } } };
     },
-  } : createDisabledCharacterTransport();
+  } : import2Preview
+    ? createPobCodesCharacterTransport({ origin: publicRuntime.siteOrigin })
+    : createDisabledCharacterTransport();
   const characterHost = createCharacterHostV1({ transport: characterTransport });
   if (import2Preview && options.get("legacyPayload") === "1") {
     throw new Error("The legacy payload is unavailable in this browser-only preview.");
