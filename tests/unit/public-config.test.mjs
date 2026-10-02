@@ -4,6 +4,8 @@ import assert from "node:assert/strict";
 import { publicConfig } from "../../scripts/lib/public-config.mjs";
 
 test("public API and telemetry configuration accepts only the owned production endpoints", () => {
+  assert.equal(publicConfig({}).apiBaseUrl, "https://api.pob.codes");
+  assert.equal(publicConfig({}).telemetryEndpoint, "");
   assert.deepEqual(
     {
       apiBaseUrl: publicConfig({ PUBLIC_API_BASE_URL: "" }).apiBaseUrl,

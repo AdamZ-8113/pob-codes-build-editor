@@ -97,13 +97,15 @@ profiles, reports, credentials, and private build data must remain untracked.
 ## Current boundaries
 
 Production is a static browser application. Build-code paste, build-file import,
-and public-account character import are supported. Character requests go only
-to the existing guarded PoB Codes routes, which apply request bounds, rate
-limits, cooldowns, and upstream error handling. Path of Building's OAuth UI
-remains unavailable because its existing desktop client uses a loopback callback
-that a scriptless browser deployment cannot receive. Local development defaults
-to `127.0.0.1`; optional telemetry and build-sharing API endpoints are disabled
-unless explicitly configured.
+public-account character import, and the build-link sources accepted by the
+PoB Codes `/b/` importer are supported. Link imports and the one-click
+`Launch in PoB.Codes` action use the existing guarded PoB Codes API; local
+development keeps those network calls disabled. Character requests also go only
+to existing guarded PoB Codes routes, which apply request bounds, rate limits,
+cooldowns, and upstream error handling. The full `pob-web` application has an
+Auth0-backed bridge for Path of Exile OAuth, but that application and its login
+session are not part of this isolated static editor. Optional telemetry remains
+disabled unless explicitly configured.
 
 ## License and attribution
 

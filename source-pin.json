@@ -97,6 +97,14 @@
       "patchSha256": "9339bee6b660def4f87b335f6b571e57e3e856f76c5efab147f7de01bc3ded90",
       "sourceBlobHashes": { "src/Classes/ImportTab.lua": "ba2af22a92f5c533e1011ec3d7dfffb87ea0f608" },
       "resultBlobHashes": { "src/Classes/ImportTab.lua": "0e32713d7b6fb87e6ebb3e83d0ebb29c3c8bb991" }
+    },
+    "preferredExportSite": {
+      "version": 1,
+      "patchFile": "patches/preferred-export-site.patch",
+      "patchSha256": "6f8d36a06ef798776fec8b37bc12c2ff50f57fda6639fdc268c50f8f5c6e9797",
+      "preparedSourceBlobHashes": { "src/Classes/ImportTab.lua": "ba2af22a92f5c533e1011ec3d7dfffb87ea0f608" },
+      "sourceBlobHashes": { "src/Classes/ImportTab.lua": "0e32713d7b6fb87e6ebb3e83d0ebb29c3c8bb991" },
+      "resultBlobHashes": { "src/Classes/ImportTab.lua": "849057f900ff88125c03a3e18cff489377af5fdd" }
     }
   },
   "overlays": [
@@ -219,6 +227,17 @@
       "applicationStage": "pack-time",
       "upstreamPr": null,
       "lastObserved": "2026-10-01"
+    },
+    {
+      "kind": "local-patch",
+      "id": "preferred-export-site",
+      "sourceBase": "a431f3a28823270acbdd6864c644f93678581f1e",
+      "patchFile": "patches/preferred-export-site.patch",
+      "patchSha256": "6f8d36a06ef798776fec8b37bc12c2ff50f57fda6639fdc268c50f8f5c6e9797",
+      "files": ["src/Classes/ImportTab.lua"],
+      "applicationStage": "pack-time",
+      "upstreamPr": null,
+      "lastObserved": "2026-10-02"
     },
     {
       "kind": "local-patch",

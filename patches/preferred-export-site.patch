@@ -1,0 +1,15 @@
+diff --git a/src/Classes/ImportTab.lua b/src/Classes/ImportTab.lua
+index 0e32713..0000000 100644
+--- a/src/Classes/ImportTab.lua
++++ b/src/Classes/ImportTab.lua
+@@ -605,7 +605,9 @@ function ImportTabClass:ImportTab(build)
+ 		main.lastExportWebsite = selectedWebsite.id
+ 		self.exportWebsiteSelected = selectedWebsite.id
+ 	end)
+-	self.controls.exportFrom:SelByValue(self.exportWebsiteSelected or main.lastExportWebsite or "Pastebin", "id")
++	-- This host launches builds in PoB.Codes, so prefer the matching native
++	-- sharing site on every new browser session without changing upstream order.
++	self.controls.exportFrom:SelByValue(self.exportWebsiteSelected or "PoBCodes", "id")
+ 	self.controls.generateCodeByLink = new("ButtonControl"):ButtonControl({ "LEFT", self.controls.exportFrom, "RIGHT" }, { 8, 0, 80, 20 }, "Share", function()
+ 		local exportWebsite = exportWebsitesList[self.controls.exportFrom.selIndex]
+ 		local subScriptId = buildSites.UploadBuild(self.controls.generateCodeOut.buf, exportWebsite)

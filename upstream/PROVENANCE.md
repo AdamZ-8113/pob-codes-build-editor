@@ -81,6 +81,13 @@ layout gap, and leaves public-account plus build-code/file controls intact.
 `../scripts/patches/importtab-host-patch.mjs` verifies the exact prepared input, patch SHA-256,
 and result blob. The browser host independently refuses OAuth callbacks.
 
+The October 2 `../patches/preferred-export-site.patch` is a second checked
+`ImportTab.lua` adaptation applied after the host-capability patch. It selects
+PoB's existing `PoBCodes` sharing entry when a browser editor session opens,
+without changing the upstream sharing-site list or its alphabetical order.
+`../scripts/patches/preferred-export-site-patch.mjs` verifies the patch, chained
+input, and exact result blob.
+
 The public configuration bridge adds one narrow native export through
 `boot.lua`, `driver.c`, the existing UI worker, and `Driver`. It mutates only
 the active `ConfigTab` on the displayed BUILD instance, accepts bounded options

@@ -12,8 +12,7 @@ body { display: flex; flex-direction: column; }
 .site-discord-icon { display: block; width: 20px; height: auto; opacity: .68; }
 .site-discord-link:hover .site-discord-icon { opacity: .9; }
 .site-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
-#share-build { padding: 2px 10px; white-space: nowrap; }
-#shared-build { white-space: nowrap; }
+#launch-build { padding: 2px 10px; white-space: nowrap; }
 /* Keep the core site's 29px header row; larger hit targets must not move its text. */
 #editor-accessibility { min-width: 176px; height: var(--control-h-compact); }
 .embedded-toolbar > div { display: flex; align-items: center; flex-direction: row; gap: 2px; padding: 0; height: var(--control-h-compact); min-height: 0; background: transparent; box-shadow: none; }

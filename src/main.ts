@@ -80,8 +80,6 @@ async function authorize(url: string, timeoutMs: number) {
 
 async function main() {
   document.title = `${publicRuntime.productName} · ${import2Preview ? "browser" : "localhost"}`;
-  const repository = document.querySelector<HTMLAnchorElement>("#public-repository");
-  if (repository) repository.href = publicRuntime.repositoryUrl;
   const lanDevelopment = import.meta.env.DEV && location.protocol === "https:" && __DESKTOP_DEV_LAN_HOSTS__.includes(location.hostname);
   if (!import2Preview && !["localhost", "127.0.0.1", "[::1]"].includes(location.hostname) && !lanDevelopment) throw new Error("Use localhost or the HTTPS LAN address printed by dev:restart.");
   assertDriverCapabilities();
@@ -101,6 +99,7 @@ async function main() {
     ? createPobCodesCharacterTransport({ origin: publicRuntime.siteOrigin })
     : createDisabledCharacterTransport();
   const characterHost = createCharacterHostV1({ transport: characterTransport });
+  buildTransfer = createBuildTransferV1({ apiBaseUrl: publicRuntime.apiBaseUrl, getBuildCode: exportBuildCode });
   if (import2Preview && options.get("legacyPayload") === "1") {
     throw new Error("The legacy payload is unavailable in this browser-only preview.");
   }
@@ -115,7 +114,7 @@ async function main() {
         if (import2Preview) performance.mark(`${performancePrefix}-first-pob-frame`);
       }
     },
-    onFetch: (url, headers, body) => characterHost.onFetch(url, headers, body),
+    onFetch: async (url, headers, body) => await buildTransfer!.onFetch(url, headers, body) ?? characterHost.onFetch(url, headers, body),
     onOAuthAuthorize: authorize,
     onOAuthLogout: () => { status.textContent = "Path of Exile disconnected"; },
     onTitleChange: (title) => { document.title = `${title} · ${publicRuntime.productName}`; },
@@ -130,20 +129,26 @@ async function main() {
     getBuildCode: () => driver!.getBuildCode(), loadBuildFromCode: code => driver!.loadBuildFromCode(code),
     applyConfiguration: request => driver!.applyConfiguration(request),
   });
-  buildTransfer = createBuildTransferV1({ apiBaseUrl: publicRuntime.apiBaseUrl, getBuildCode: exportBuildCode });
-  const shareButton = element<HTMLButtonElement>("share-build");
-  const sharedBuild = element<HTMLAnchorElement>("shared-build");
-  shareButton.disabled = true;
-  shareButton.title = publicRuntime.apiBaseUrl ? "Upload this build and create a pob.codes viewer link" : "Sharing is not configured for this release";
-  shareButton.onclick = async () => {
-    shareButton.disabled = true; sharedBuild.hidden = true; status.classList.remove("status-error"); status.textContent = "Sharing build...";
+  const launchButton = element<HTMLButtonElement>("launch-build");
+  launchButton.disabled = true;
+  launchButton.title = publicRuntime.apiBaseUrl ? "Generate, share, and open this build on PoB.Codes" : "PoB.Codes launch is not configured for this release";
+  launchButton.onclick = async () => {
+    const launched = window.open("about:blank", "_blank");
+    if (launched) {
+      launched.opener = null;
+      launched.document.title = "Opening PoB.Codes…";
+      launched.document.body.textContent = "Opening build in PoB.Codes…";
+    }
+    launchButton.disabled = true; status.classList.remove("status-error"); status.textContent = "Launching build in PoB.Codes...";
     try {
       const url = buildTransfer!.hasPendingShare ? await buildTransfer!.retry() : await buildTransfer!.share();
-      sharedBuild.href = url; sharedBuild.hidden = false; shareButton.textContent = "Share again"; status.textContent = "Shared build ready";
+      if (launched && !launched.closed) launched.location.replace(url);
+      else location.assign(url);
+      status.textContent = "Build opened in PoB.Codes";
     } catch (error) {
-      shareButton.textContent = buildTransfer!.hasPendingShare ? "Retry share" : "Share";
-      status.textContent = error instanceof Error ? error.message : "Build sharing failed"; status.classList.add("status-error");
-    } finally { shareButton.disabled = !ready || !publicRuntime.apiBaseUrl; }
+      launched?.close();
+      status.textContent = error instanceof Error ? error.message : "PoB.Codes launch failed"; status.classList.add("status-error");
+    } finally { launchButton.disabled = !ready || !publicRuntime.apiBaseUrl; }
   };
   await driver.start({
     legacyPayload: options.get("legacyPayload") === "1",
@@ -163,7 +168,7 @@ async function main() {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   ready = true;
-  shareButton.disabled = !publicRuntime.apiBaseUrl;
+  launchButton.disabled = !publicRuntime.apiBaseUrl;
   telemetry.emit("build_editor_ready_v1", { result: "ready", actionTarget: "cold", durationMs: Math.round(performance.now() - startupAt) });
   await driver.markPayloadReady();
   if (import2Preview) performance.mark(`${performancePrefix}-payload-ready`);

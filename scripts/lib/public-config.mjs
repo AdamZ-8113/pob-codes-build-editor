@@ -3,7 +3,7 @@ const DEFAULTS = Object.freeze({
   siteOrigin: "https://pob.codes",
   productName: "PoB Codes Build Editor",
   repositoryUrl: "https://github.com/AdamZ-8113/pob-codes-build-editor",
-  apiBaseUrl: "",
+  apiBaseUrl: "https://api.pob.codes",
   telemetryEndpoint: "",
 });
 

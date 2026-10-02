@@ -16,6 +16,7 @@ import { applyItemComparisonPatch } from "../../../../scripts/patches/item-compa
 import { applyJewelSpecPatch } from "../../../../scripts/patches/jewel-spec-patch.mjs";
 import { applyUniqueSortPatch } from "../../../../scripts/patches/unique-sort-patch.mjs";
 import { applyImportTabHostPatch } from "../../../../scripts/patches/importtab-host-patch.mjs";
+import { applyPreferredExportSitePatch } from "../../../../scripts/patches/preferred-export-site-patch.mjs";
 import { sha256, stalePackageHashes, validatePayloadManifest } from "../../../payload-manifest.ts";
 
 const [source, destination] = Deno.args;
@@ -30,6 +31,7 @@ const itemComparisonPatch = await Deno.readFile(new URL(`../../../../${pin.adapt
 const jewelSpecPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.calculationOnlyJewelSpecs.patchFile}`, import.meta.url));
 const uniqueSortPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.uniqueSortDelegation.patchFile}`, import.meta.url));
 const importTabHostPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.importTabHostCapabilities.patchFile}`, import.meta.url));
+const preferredExportSitePatch = await Deno.readFile(new URL(`../../../../${pin.adapters.preferredExportSite.patchFile}`, import.meta.url));
 await ensureDir(payloadDir);
 await zstd.init();
 
@@ -87,7 +89,11 @@ for (const entry of entries) {
       : relPath === "Classes/PassiveSpec.lua"
       ? new TextEncoder().encode(applyJewelSpecPatch(new TextDecoder().decode(newContent), Buffer.from(jewelSpecPatch), pin.adapters.calculationOnlyJewelSpecs, `src/${relPath}`))
       : relPath === "Classes/ImportTab.lua"
-      ? new TextEncoder().encode(applyImportTabHostPatch(new TextDecoder().decode(newContent), Buffer.from(importTabHostPatch), pin.adapters.importTabHostCapabilities))
+      ? new TextEncoder().encode(applyPreferredExportSitePatch(
+        applyImportTabHostPatch(new TextDecoder().decode(newContent), Buffer.from(importTabHostPatch), pin.adapters.importTabHostCapabilities),
+        Buffer.from(preferredExportSitePatch),
+        pin.adapters.preferredExportSite,
+      ))
       : relPath === "Modules/DataLegionLookUpTableHelper.lua"
       ? new TextEncoder().encode(sparseTimelessSeeds(new TextDecoder().decode(newContent), timelessSeedHelper))
       : relPath === "Modules/DataJewelFileLoader.lua"
