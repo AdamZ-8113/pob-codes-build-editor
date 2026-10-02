@@ -6,6 +6,9 @@ import { selectDevicePolicy } from "./device-profile.ts";
 import { createCharacterHostV1, createDisabledCharacterTransport } from "./character-host-v1.js";
 import type { CharacterTransportV1 } from "./character-host-v1.js";
 import { createTelemetryV1 } from "./telemetry-v1.js";
+import { createConfigurationBridgeV1 } from "./configuration-v1.js";
+import type { ConfigurationRequestV1 } from "./configuration-v1.js";
+import { createBuildTransferV1 } from "./build-transfer-v1.js";
 const devicePolicy = selectDevicePolicy(navigator, import.meta.env.DEV ? new URLSearchParams(location.search).get("deviceProfile") : undefined,
   import.meta.env.DEV && new URLSearchParams(location.search).get("mobileDpr") === "1" ? 1 : 1.5);
 document.documentElement.dataset.deviceProfile = devicePolicy.kind;
@@ -24,8 +27,11 @@ const publicRuntime = Object.freeze({
   apiBaseUrl: __PUBLIC_API_BASE_URL__, telemetryEndpoint: __PUBLIC_TELEMETRY_ENDPOINT__,
 });
 const performancePrefix = "pob-import2";
-const telemetry = createTelemetryV1({ endpoint: publicRuntime.telemetryEndpoint, release: __IMPORT2_PAYLOAD_PREFIX__ });
-telemetry.emit("editor_open_v1");
+const startupAt = performance.now();
+const appVersion = __IMPORT2_PAYLOAD_PREFIX__.match(/[a-f0-9]{12,64}/)?.[0] ?? "";
+const telemetryEndpoint = publicRuntime.telemetryEndpoint || (publicRuntime.apiBaseUrl ? `${publicRuntime.apiBaseUrl.replace(/\/$/, "")}/analytics/events` : "");
+const telemetry = createTelemetryV1({ endpoint: telemetryEndpoint, appVersion, deviceClass: devicePolicy.kind });
+telemetry.emit("build_editor_open_v1", { result: "opened", actionTarget: location.hash.includes("build=") ? "saved-build" : location.hash.includes("code=") ? "fragment" : "direct" });
 if (import2Preview) performance.mark(`${performancePrefix}-shell-start`);
 
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -33,6 +39,8 @@ const status = element<HTMLOutputElement>("status");
 const calculationStatus = element<HTMLOutputElement>("calculation-status");
 const payloadProgress = createPayloadProgressOverlay();
 let driver: Driver | undefined;
+let configuration: ReturnType<typeof createConfigurationBridgeV1> | undefined;
+let buildTransfer: ReturnType<typeof createBuildTransferV1> | undefined;
 let ready = false;
 let frames = 0;
 let lastStats: unknown;
@@ -40,7 +48,7 @@ const frameSamples: { at: number; duration: number; render: number; reused: bool
 const errors: string[] = [];
 
 function report(error: unknown) {
-  telemetry.emit("editor_error_v1", "error");
+  telemetry.emit("build_editor_error_v1", { result: "error", actionTarget: "runtime", errorCode: "runtime" });
   calculationStatus.hidden = true;
   const message = error instanceof Error ? error.message : String(error);
   errors.push(message);
@@ -51,10 +59,23 @@ function report(error: unknown) {
   console.error(error);
 }
 
-async function loadBuildFromCode(value: string) {
-  await driver!.loadBuildFromCode(value);
-  telemetry.emit("editor_import_v1");
-  if (import2Preview) performance.mark(`${performancePrefix}-imported-build-ready`);
+async function loadBuildFromCode(value: string, actionTarget: "code" | "saved-build" = "code") {
+  const started = performance.now();
+  telemetry.emit("build_editor_import_v1", { result: "started", actionTarget });
+  try {
+    await driver!.loadBuildFromCode(value);
+    telemetry.emit("build_editor_import_v1", { result: "success", actionTarget, durationMs: Math.round(performance.now() - started) });
+    if (import2Preview) performance.mark(`${performancePrefix}-imported-build-ready`);
+  } catch (error) {
+    telemetry.emit("build_editor_import_v1", { result: "error", actionTarget, errorCode: "import", durationMs: Math.round(performance.now() - started) });
+    throw error;
+  }
+}
+
+async function exportBuildCode() {
+  const started = performance.now(); telemetry.emit("build_editor_export_v1", { result: "started", actionTarget: "code" });
+  try { const code = await driver!.getBuildCode(); telemetry.emit("build_editor_export_v1", { result: "success", actionTarget: "code", durationMs: Math.round(performance.now() - started) }); return code; }
+  catch (error) { telemetry.emit("build_editor_export_v1", { result: "error", actionTarget: "code", errorCode: "export", durationMs: Math.round(performance.now() - started) }); throw error; }
 }
 
 async function authorize(url: string, timeoutMs: number) {
@@ -114,6 +135,11 @@ async function main() {
     },
     onPayloadProgress: (progress) => payloadProgress.update(progress),
   }, devicePolicy);
+  configuration = createConfigurationBridgeV1({
+    getBuildCode: () => driver!.getBuildCode(), loadBuildFromCode: code => driver!.loadBuildFromCode(code),
+    applyConfiguration: request => driver!.applyConfiguration(request),
+  });
+  buildTransfer = createBuildTransferV1({ apiBaseUrl: publicRuntime.apiBaseUrl, getBuildCode: exportBuildCode });
   await driver.start({
     legacyPayload: options.get("legacyPayload") === "1",
     allowLegacyPayloadFallback: !import2Preview,
@@ -148,7 +174,7 @@ async function main() {
     await new Promise((resolve) => setTimeout(resolve, 100));
   }
   ready = true;
-  telemetry.emit("editor_ready_v1");
+  telemetry.emit("build_editor_ready_v1", { result: "ready", actionTarget: "cold", durationMs: Math.round(performance.now() - startupAt) });
   await driver.markPayloadReady();
   if (import2Preview) performance.mark(`${performancePrefix}-payload-ready`);
   payloadProgress.completeStartup();
@@ -160,10 +186,12 @@ async function main() {
   if ("requestIdleCallback" in window) window.requestIdleCallback(beginBackgroundWork);
   else setTimeout(beginBackgroundWork, 0);
   status.textContent = "";
-  const initialCode = new URLSearchParams(location.hash.slice(1)).get("code");
-  if (initialCode) {
+  const initial = new URLSearchParams(location.hash.slice(1));
+  const initialCode = initial.get("code");
+  const initialBuild = initial.get("build");
+  if (initialCode || initialBuild) {
     history.replaceState(null, "", location.pathname);
-    await loadBuildFromCode(initialCode);
+    await loadBuildFromCode(initialCode ?? await buildTransfer.resolve(initialBuild!), initialBuild ? "saved-build" : "code");
   }
 }
 
@@ -182,7 +210,11 @@ Object.defineProperty(window, "__DESKTOP_POB__", { value: {
   get frameSamples() { return [...frameSamples]; },
   clearFrameSamples: () => { frameSamples.length = 0; },
   loadBuildFromCode,
-  getBuildCode: async () => { const code = await driver!.getBuildCode(); telemetry.emit("editor_export_v1"); return code; }, flushInput: () => driver!.flushInput(),
+  applyConfiguration: (request: ConfigurationRequestV1) => configuration!.apply(request),
+  undoConfiguration: () => configuration!.undo(),
+  resolveBuildInput: (input: string) => buildTransfer!.resolve(input),
+  shareBuild: () => buildTransfer!.share(), retryShare: () => buildTransfer!.retry(),
+  getBuildCode: exportBuildCode, flushInput: () => driver!.flushInput(),
 } });
 window.addEventListener("pagehide", () => { driver?.detachFromDOM(); driver?.destory(); });
 void main().catch(report);

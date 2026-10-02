@@ -575,6 +575,13 @@ export class Driver {
     return code;
   }
 
+  async applyConfiguration(request: unknown): Promise<{ ok: boolean; error?: string }> {
+    await this.flushInput();
+    const result = await this.driverWorker?.applyConfiguration(request);
+    if (!result) throw new Error("applyConfiguration failed");
+    return result;
+  }
+
   async flushInput(): Promise<void> {
     await this.pendingClipboardAction;
     this.mouseMoves.flushPending();

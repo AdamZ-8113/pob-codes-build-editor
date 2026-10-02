@@ -77,6 +77,13 @@ character path with `?characterMock=1` in development; build-code paste and file
 import are the supported fallback. No account or character values enter the
 optional five-event telemetry contract.
 
+The checked `configuration-v1` bridge performs bounded, rollback-safe writes on
+the displayed native Lua instance and preserves manual ownership over automatic
+writes. The `build-transfer-v1` bridge accepts raw codes or owned
+`pob.codes/b/<token>` links and provides user-triggered, retry-safe sharing.
+Both API-backed operations remain unavailable while `PUBLIC_API_BASE_URL` is
+empty. See `contracts/` for their exact boundaries and outstanding scope.
+
 ## Source updates
 
 `source-pin.json` pins the Path of Building revision, upstream PR evidence,

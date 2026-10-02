@@ -61,6 +61,7 @@ type Imports = {
   start: () => number;
   loadBuildFromCode: (code: string) => number;
   getBuildCode: () => string;
+  applyBuildConfiguration: (request: string) => string;
   flushCalculations: () => number;
   configureCalculationScheduling: (enabled: number) => number;
   onFrame: () => number;
@@ -386,6 +387,14 @@ export class DriverWorker {
     return code;
   }
 
+  async applyConfiguration(request: unknown): Promise<{ ok: boolean; error?: string }> {
+    this.flushInput();
+    const result = this.imports?.applyBuildConfiguration(JSON.stringify(request));
+    if (!result) throw new Error("applyBuildConfiguration failed");
+    this.invalidate();
+    return JSON.parse(result);
+  }
+
   setLayerVisible(layer: number, sublayer: number, visible: boolean) {
     this.renderer?.setLayerVisible(layer, sublayer, visible);
     this.invalidate();
@@ -465,6 +474,7 @@ export class DriverWorker {
       start: module.cwrap("start", "number", []),
       loadBuildFromCode: module.cwrap("load_build_from_code", "number", ["string"]),
       getBuildCode: module.cwrap("get_build_code", "string", []),
+      applyBuildConfiguration: module.cwrap("apply_build_configuration", "string", ["string"]),
       flushCalculations: module.cwrap("flush_calculations", "number", []),
       configureCalculationScheduling: module.cwrap("configure_calculation_scheduling", "number", ["number"]),
       onFrame: module.cwrap("on_frame", "number", []),

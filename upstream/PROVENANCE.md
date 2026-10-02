@@ -103,6 +103,15 @@ layout gap, and leaves public-account plus build-code/file controls intact.
 `../importtab-host-patch.mjs` verifies the exact prepared input, patch SHA-256,
 and result blob. The browser host independently refuses OAuth callbacks.
 
+The public configuration bridge adds one narrow native export through
+`boot.lua`, `driver.c`, the existing UI worker, and `Driver`. It mutates only
+the active `ConfigTab` on the displayed BUILD instance, accepts bounded options
+already represented by native controls, snapshots and rolls back atomically,
+and invokes PoB's ordinary undo/control/mod-list/build/calculation hooks. The
+browser-side transaction owner preserves manual-over-automatic precedence and
+restores exact build-code snapshots for undo. It does not embed a second build
+engine or infer configuration policy.
+
 Local adaptations: the Deno workspace excludes the production web package and
 unneeded dependencies, standalone demo shell, and deployment/release tests; the
 local shell supplies assets, host networking/OAuth callbacks, and capability

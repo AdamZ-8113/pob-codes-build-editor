@@ -615,6 +615,7 @@ int load_build_from_code(const char *code) {
 
 static char *s_build_code = NULL;
 static char *s_runtime_profile = NULL;
+static char *s_configuration_result = NULL;
 
 EMSCRIPTEN_KEEPALIVE
 int flush_calculations(void) {
@@ -660,6 +661,7 @@ void destroy_runtime(void) {
     if (GL) { lua_close(GL); GL = NULL; }
     free(s_build_code); s_build_code = NULL;
     free(s_runtime_profile); s_runtime_profile = NULL;
+    free(s_configuration_result); s_configuration_result = NULL;
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -682,6 +684,24 @@ const char* get_build_code() {
     memcpy(s_build_code, code, len + 1);
     lua_pop(L, 1);
     return s_build_code;
+}
+
+EMSCRIPTEN_KEEPALIVE
+const char* apply_build_configuration(const char *request) {
+    lua_State *L = GL;
+    free(s_configuration_result); s_configuration_result = NULL;
+    if (!L) return NULL;
+    lua_getglobal(L, "applyBuildConfiguration");
+    lua_pushstring(L, request);
+    if (lua_pcall(L, 1, 1, 0) != LUA_OK) {
+        fprintf(stderr, "Error: %s\n", lua_tostring(L, -1));
+        lua_pop(L, 1);
+        return NULL;
+    }
+    const char *result = lua_tostring(L, -1);
+    if (result) s_configuration_result = strdup(result);
+    lua_pop(L, 1);
+    return s_configuration_result;
 }
 
 EMSCRIPTEN_KEEPALIVE

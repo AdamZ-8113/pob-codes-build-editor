@@ -268,3 +268,62 @@ function getBuildCode()
 
     return common.base64.encode(Deflate(xmlText)):gsub("+","-"):gsub("/","_")
 end
+
+-- Apply a bounded configuration transaction to the same BUILD instance that
+-- is drawn and exported. The browser owns automatic/manual precedence; this
+-- native boundary owns option validation, an exact snapshot, rollback and the
+-- normal ConfigTab undo/rebuild hooks.
+function applyBuildConfiguration(requestJson)
+    local json = require "dkjson"
+    local request, _, decodeError = json.decode(requestJson)
+    if decodeError or type(request) ~= "table" or request.version ~= 1 or type(request.writes) ~= "table" or #request.writes < 1 or #request.writes > 64 then
+        return json.encode({ ok = false, error = "invalid configuration transaction" })
+    end
+    local build = mainObject.main and mainObject.main.modes["BUILD"]
+    local configTab = build and build.configTab
+    local configSet = configTab and configTab.configSets and configTab.configSets[configTab.activeConfigSetId]
+    if not configSet or type(configSet.input) ~= "table" then
+        return json.encode({ ok = false, error = "native configuration is unavailable" })
+    end
+    local before = copyTable(configSet.input)
+    local function rollback(message)
+        wipeTable(configSet.input)
+        for key, value in pairs(before) do configSet.input[key] = value end
+        pcall(function() configTab:UpdateControls(); configTab:BuildModList(); build.buildFlag = true end)
+        return json.encode({ ok = false, error = tostring(message) })
+    end
+    local ok, failure = pcall(function()
+        for _, write in ipairs(request.writes) do
+            local key = write.key
+            local control = type(key) == "string" and configTab.varControls[key]
+            if type(key) ~= "string" or not key:match("^[A-Za-z][A-Za-z0-9_]*$") or #key > 64 or not control then error("unsupported configuration key") end
+            if write.operation == "clear" then
+                configSet.input[key] = nil
+            elseif write.operation == "set" then
+                local valueType = type(write.value)
+                if valueType ~= "boolean" and valueType ~= "number" and valueType ~= "string" then error("unsupported configuration value") end
+                if valueType == "number" and (write.value ~= write.value or write.value == math.huge or write.value == -math.huge) then error("invalid configuration number") end
+                if valueType == "string" and #write.value > 4096 then error("configuration string is too large") end
+                if control._className == "CheckBoxControl" and valueType ~= "boolean" then error("configuration type mismatch") end
+                if control._className == "DropDownControl" and type(control.list) == "table" then
+                    local found = false
+                    for _, entry in ipairs(control.list) do if entry.val == write.value then found = true; break end end
+                    if not found then error("configuration list value is unsupported") end
+                end
+                local expected = configSet.input[key]
+                if expected == nil then expected = configTab:GetDefaultState(key) end
+                if expected ~= nil and type(expected) ~= valueType then error("configuration type mismatch") end
+                configSet.input[key] = write.value
+            else
+                error("unsupported configuration operation")
+            end
+        end
+        configTab:AddUndoState()
+        configTab:UpdateControls()
+        configTab:BuildModList()
+        build.buildFlag = true
+        calculationScheduler.flush()
+    end)
+    if not ok then return rollback(failure) end
+    return json.encode({ ok = true })
+end

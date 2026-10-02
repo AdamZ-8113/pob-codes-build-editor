@@ -1,0 +1,1 @@
+export declare function createBuildTransferV1(options?: { apiBaseUrl?: string; fetchImpl?: typeof fetch; getBuildCode: () => Promise<string>; timeoutMs?: number }): { resolve(input: string): Promise<string>; share(): Promise<string>; retry(): Promise<string>; readonly hasPendingShare: boolean; readonly sharing: boolean };
