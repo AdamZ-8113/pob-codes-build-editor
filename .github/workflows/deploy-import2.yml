@@ -1,51 +1,26 @@
-name: Build Editor Release
-run-name: ${{ inputs.deploy && 'Deploy' || 'Dry run' }} ${{ inputs.mode }} ${{ inputs.commit_sha }}
+name: Build Editor Release Artifact
+run-name: Build editor artifact ${{ inputs.commit_sha }}
 
 on:
   workflow_dispatch:
     inputs:
       commit_sha:
-        description: Full public main commit SHA
+        description: Full reviewed public main commit SHA
         required: true
-        type: string
-      deploy:
-        description: Deploy the verified same-run artifact
-        required: true
-        default: false
-        type: boolean
-      mode:
-        description: Full release or scriptless emergency page
-        required: true
-        default: full
-        type: choice
-        options: [full, disabled]
-      predecessor_tag:
-        description: Durable GitHub Release tag for the live predecessor (full mode)
-        required: false
-        type: string
-      predecessor_generation:
-        description: Expected live/predecessor generation
-        required: false
-        type: string
-      predecessor_asset_id:
-        description: Numeric durable predecessor archive asset ID
-        required: false
-        type: string
-      predecessor_inventory_asset_id:
-        description: Numeric durable predecessor inventory asset ID
-        required: false
         type: string
 
+# This repository never receives Cloudflare credentials or deploys production.
 permissions:
   contents: read
   actions: read
 
 concurrency:
-  group: build-editor-production
+  group: build-editor-artifacts
   cancel-in-progress: false
 
 jobs:
   build:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
@@ -57,7 +32,9 @@ jobs:
       - name: Validate exact public-main SHA
         env:
           TARGET: ${{ inputs.commit_sha }}
+          WORKFLOW_SHA: ${{ github.sha }}
         run: |
+          test "$TARGET" = "$WORKFLOW_SHA"
           test "$TARGET" = "$(git rev-parse HEAD)"
           test "$(git rev-parse "$TARGET")" = "$TARGET"
           git fetch origin main --depth=1
@@ -65,108 +42,31 @@ jobs:
       - name: Require successful push CI for exact SHA
         env:
           GH_TOKEN: ${{ github.token }}
-        run: node scripts/release/verify-ci-eligibility.mjs --sha="${{ inputs.commit_sha }}"
+          TARGET: ${{ inputs.commit_sha }}
+        run: node scripts/release/verify-ci-eligibility.mjs --sha="$TARGET"
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 22
-          cache: npm
       - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed
-        if: inputs.mode == 'full'
         with:
           deno-version: v2.7.12
       - run: npm ci --ignore-scripts
-      - if: inputs.mode == 'full'
-        run: npm run prepare
-      - if: inputs.mode == 'full'
-        run: npm run check && npm run test:unit && npm run test:native && npm run pack
-      - name: Recover and verify durable predecessor
-        if: inputs.mode == 'full'
+      - run: npm run prepare
+      - run: npm run check && npm run test:unit && npm run test:native && npm run pack
+      - name: Materialize one standalone candidate generation
         env:
-          GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.predecessor_tag }}
-          GENERATION: ${{ inputs.predecessor_generation }}
-          ASSET_ID: ${{ inputs.predecessor_asset_id }}
-          INVENTORY_ASSET_ID: ${{ inputs.predecessor_inventory_asset_id }}
-        run: |
-          test -n "$TAG" && test -n "$GENERATION" && test -n "$ASSET_ID" && test -n "$INVENTORY_ASSET_ID"
-          mkdir -p .runtime/predecessor-assets
-          gh api "repos/${{ github.repository }}/releases/tags/$TAG" > .runtime/predecessor-assets/release-metadata.json
-          record_id=$(node scripts/release/verify-release-assets.mjs --metadata=.runtime/predecessor-assets/release-metadata.json --tag="$TAG" --archive-asset-id="$ASSET_ID" --inventory-asset-id="$INVENTORY_ASSET_ID")
-          gh api -H 'Accept: application/octet-stream' "repos/${{ github.repository }}/releases/assets/$ASSET_ID" > .runtime/predecessor-assets/predecessor.tar.gz
-          gh api -H 'Accept: application/octet-stream' "repos/${{ github.repository }}/releases/assets/$INVENTORY_ASSET_ID" > .runtime/predecessor-assets/release-inventory.json
-          gh api -H 'Accept: application/octet-stream' "repos/${{ github.repository }}/releases/assets/$record_id" > .runtime/predecessor-assets/release-record.json
-          node scripts/release/verify-predecessor.mjs --archive=.runtime/predecessor-assets/predecessor.tar.gz --record=.runtime/predecessor-assets/release-record.json --inventory=.runtime/predecessor-assets/release-inventory.json --generation="$GENERATION" --asset-id="$ASSET_ID" --inventory-asset-id="$INVENTORY_ASSET_ID"
-      - name: Materialize candidate with predecessor retained
-        if: inputs.mode == 'full'
-        run: node scripts/release/materialize-import2.mjs --retain .runtime/predecessor/import2-release
-      - name: Materialize scriptless emergency page
-        if: inputs.mode == 'disabled'
-        run: node scripts/release/materialize-import2-disabled.mjs
-      - run: node scripts/release/verify-import2-release.mjs
-      - if: inputs.mode == 'full'
-        run: node scripts/release/create-release-record.mjs && node scripts/release/archive-release.mjs && node scripts/release/verify-release-record.mjs
-      - run: npx wrangler deploy --dry-run --config wrangler.import2.jsonc --outdir .runtime/wrangler-dry-run
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+          GITHUB_SHA: ${{ inputs.commit_sha }}
+        run: node scripts/release/materialize-import2.mjs && node scripts/release/create-release-record.mjs && node scripts/release/archive-release.mjs
+      - run: npm run verify:release
+      - name: Verify the materialized editor in a headless browser
+        run: npx playwright install --with-deps chromium && npm run test:e2e
+      - name: Publish candidate bytes for independent deployment verification
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: build-editor-${{ inputs.commit_sha }}
           path: |
-            .runtime/import2-release
-            .runtime/release-assets
+            .runtime/release-assets/*.tar.gz
             .runtime/release-inventory.json
             .runtime/release-record.json
           if-no-files-found: error
-          retention-days: 3
-
-  publish-and-deploy:
-    if: inputs.deploy
-    needs: build
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-    environment: production
-    permissions:
-      contents: write
-    steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
-        with:
-          persist-credentials: false
-          ref: ${{ inputs.commit_sha }}
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci --ignore-scripts
-      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093
-        with:
-          name: build-editor-${{ inputs.commit_sha }}
-          path: .runtime
-      - name: Reverify same-run artifact
-        run: node scripts/release/verify-import2-release.mjs && if [ "${{ inputs.mode }}" = full ]; then node scripts/release/verify-release-record.mjs; fi
-      - name: Publish durable recovery assets before pointer switch
-        if: inputs.mode == 'full'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          generation=$(node -p "require('./.runtime/release-record.json').generation")
-          tag="build-editor-$generation"
-          archive=$(find .runtime/release-assets -name '*.tar.gz' -type f -print -quit)
-          gh release create "$tag" --target "${{ inputs.commit_sha }}" --title "Build Editor $generation" "$archive" .runtime/release-inventory.json
-          archive_id=$(gh api "repos/${{ github.repository }}/releases/tags/$tag" --jq '.assets[] | select(.name | endswith(".tar.gz")) | .id')
-          inventory_id=$(gh api "repos/${{ github.repository }}/releases/tags/$tag" --jq '.assets[] | select(.name == "release-inventory.json") | .id')
-          node scripts/release/finalize-release-record.mjs --archive="$archive" --archive-asset-id="$archive_id" --inventory-asset-id="$inventory_id"
-          gh release upload "$tag" .runtime/release-record.json
-      - name: Recheck live predecessor under deploy lock
-        if: inputs.mode == 'full'
-        env:
-          EXPECTED: ${{ inputs.predecessor_generation }}
-        run: |
-          live=$(curl --fail --silent --show-error https://pob.codes/import2/release.json | node -e "let x='';process.stdin.on('data',d=>x+=d).on('end',()=>process.stdout.write(JSON.parse(x).current))")
-          test "$live" = "$EXPECTED"
-      - name: Deploy verified static assets only
-        env:
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-        run: npx wrangler deploy --config wrangler.import2.jsonc
-      - name: Verify live contract
-        env:
-          IMPORT2_ORIGIN: https://pob.codes/import2/
-        run: node tools/profiles/profile-import2-production.mjs ${{ inputs.mode == 'disabled' && '--disabled' || '' }}
+          retention-days: 7

@@ -53,7 +53,7 @@ opt-in and is appropriate only for release verification.
 
 ## Release boundary
 
-Follow `docs/RELEASING.md` for the exact-SHA CI gate, durable predecessor
-archive, inventory and record verification, deployment lock, smoke test, and
-rollback. Missing or mismatched predecessor bytes are a stop condition, not a
-reason to rebuild history.
+Follow `docs/RELEASING.md` for the exact-SHA CI gate and candidate artifact
+contract. Deployment credentials, predecessor recovery, the deployment lock
+and rollback belong to the separate private operator. This public repository
+must remain free of production credentials.

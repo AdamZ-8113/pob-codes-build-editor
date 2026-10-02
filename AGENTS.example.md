@@ -55,6 +55,8 @@ These instructions apply to the whole repository.
 - When changing imported Path of Building behavior, preserve upstream test
   expectations and use focused LuaJIT/Busted evidence when the affected logic
   is covered upstream.
-- Deployments are maintainer-dispatched exact-SHA releases. Deploy only a
-  verified same-run artifact after full predecessor archive, inventory, config,
-  and live-identity verification. Never rebuild a predecessor.
+- This public repository produces exact-SHA release artifacts and must not
+  receive production credentials. A separate private operator owns deployment,
+  predecessor recovery, fixed-target configuration and live verification. Never
+  execute public-repo code in a credentialed deployment runner or rebuild a
+  predecessor. Follow `docs/RELEASING.md` for the artifact handoff.

@@ -29,11 +29,14 @@ test("predecessor archive and inventory IDs must name assets of the selected rel
   assert.throws(() => bindPredecessorAssets(release, { tag: "other", archiveAssetId: "11", inventoryAssetId: "12" }), /tag metadata/);
 });
 
-test("deployment workflow uses exact-SHA CI and numeric predecessor asset downloads", async () => {
+test("public release workflow exports verified bytes without production authority", async () => {
   const workflow = await readFile(".github/workflows/deploy-import2.yml", "utf8");
   assert.match(workflow, /verify-ci-eligibility\.mjs --sha=/);
-  assert.match(workflow, /predecessor_inventory_asset_id:/);
-  assert.match(workflow, /releases\/assets\/\$ASSET_ID/);
-  assert.match(workflow, /releases\/assets\/\$INVENTORY_ASSET_ID/);
-  assert.match(workflow, /--inventory-asset-id="\$INVENTORY_ASSET_ID"/);
+  assert.match(workflow, /persist-credentials: false/);
+  assert.match(workflow, /archive-release\.mjs/);
+  assert.match(workflow, /npm run verify:release/);
+  assert.match(workflow, /npm run test:e2e/);
+  assert.match(workflow, /actions\/upload-artifact@/);
+  assert.doesNotMatch(workflow, /secrets\.|CLOUDFLARE_|wrangler deploy|environment:|contents: write|publish-and-deploy|--retain/);
+  assert.doesNotMatch(workflow, /inputs\.deploy|predecessor_tag:/);
 });

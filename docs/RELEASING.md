@@ -1,75 +1,68 @@
-# Release, deployment, and predecessor recovery
+# Release artifacts and private deployment
 
-Deployments are manual and exact-SHA. Builds and tests use no secrets. The
-credentialed `production` environment receives only the verified artifact from
-that workflow run. The concurrency queue never cancels an in-progress editor
-deployment.
+This public repository builds and tests release candidates. It does not deploy
+production and must not receive Cloudflare API tokens, account credentials, or
+other production secrets. Source ownership and deployment authority are separate.
 
-## First public handoff
+## Build a candidate
 
-The first predecessor is the exact currently deployed private-built static
-tree. Recover its complete bytes and trusted inventory without rebuilding it.
-Run the public verifier against the recovered directory, create a bootstrap
-archive/inventory/record with the scripts in this repository, scan the contents,
-and publish those three files as durable assets of a bootstrap GitHub Release.
-The finalized record must contain the numeric archive and inventory asset IDs,
-archive SHA-256, generation, complete per-file inventory, and deployment config.
+1. Select a full reviewed commit on public `main`. Its exact-SHA `ci.yml` push
+   run must pass both `fast-gates` and `native-and-browser`.
+2. Dispatch the **Build Editor Release Artifact** workflow
+   (`.github/workflows/deploy-import2.yml`, retained filename for continuity)
+   from `main`, supplying `commit_sha`.
+3. The workflow prepares, checks, tests, builds and packages one generation.
+   It verifies the release and runs the materialized editor's headless tests.
+4. Download `build-editor-<full-sha>` or supply the successful run ID and SHA to
+   the private deployment operator. The seven-day Actions artifact contains
+   one tarball, the complete file inventory, and the release record. The record
+   binds the tarball and inventory with SHA-256 hashes.
 
-If the currently deployed bytes cannot be recovered and verified, stop. Keep
-the old deployment owner and live pointer. A new build is not proof of identical
-predecessor bytes.
+The workflow has read-only GitHub permissions apart from its own artifact
+upload capability. It has no production environment, deployment step, or
+Cloudflare secrets. Forks can build their own copies without production access.
 
-## Normal release
+## Deployment boundary
 
-1. Wait for the selected exact public `main` SHA's `ci.yml` push run to finish
-   successfully, including both `fast-gates` and `native-and-browser`. Dispatch
-   `.github/workflows/deploy-import2.yml` with that SHA, mode, and the pinned
-   predecessor release tag, generation, archive asset ID, and inventory asset
-   ID. The release workflow fails closed when that exact CI evidence is absent.
-2. The build job resolves the requested GitHub Release, downloads the archive
-   and inventory through those exact numeric asset IDs, downloads the unique
-   record asset from the same release, and verifies their recorded IDs, archive
-   SHA, generation, deployment configuration, and every file. Only then does it
-   pass the recovered directory to
-   `node scripts/release/materialize-import2.mjs --retain`.
-3. Native, unit, browser, release, and exact-inventory checks run without
-   deploy credentials. Candidate archive/inventory assets are published before
-   any pointer switch and a finalized release record pins their GitHub asset
-   IDs.
-4. Under the protected production environment, recheck the live generation
-   while the deploy lock is held. It must equal the recorded predecessor.
-5. Upload only the verified same-run directory. Run the production smoke and
-   confirm headers, generation, edited export, immutable assets, and static
-   misses.
+Production deployment belongs to a separate private operator workflow. It must:
 
-Actions artifacts are short-lived transfer only. GitHub Release assets are the
-recovery source.
+- Fetch the candidate by exact public repository, successful workflow run and
+  commit, verify GitHub's artifact digest and the complete archive inventory,
+  and independently confirm the required CI jobs.
+- Treat public archives as data. Reject traversal, duplicate paths, links,
+  special files, unexpected roots and oversized entries before extraction.
+- Use private verification code, deployment tools, static headers, redirects
+  and fixed-target configuration. Never execute public release scripts or use
+  public deployment configuration in a runner that can access production secrets.
+- Recover the complete exact live predecessor without rebuilding it. Retain
+  its immutable generation alongside the candidate, and archive the exact
+  deployable bytes privately before changing the live pointer.
+- Recheck the live predecessor under a non-cancelling deployment lock and upload
+  only the verified static directory to the dedicated scriptless deployment.
+- Verify the live generation and isolation headers, then run committed headless
+  production smoke on a separate runner without deployment credentials.
 
-Every new generation includes the exact Path of Building `LICENSE.md` blob at
-the revision in `source-pin.json`, plus its source-path/revision/hash provenance.
-The generation identity and release-record verifier cover those legal bytes,
-all shell inputs, all payload bytes, the materializer contract, and the resolved
-`PUBLIC_*` configuration.
+The private operator owns `/import2*`. The public artifact may include an
+`/import/` landing asset for future integration; its presence does not authorize
+publishing that route or changing the main application.
 
-## Rollback
+## Recovery and rollback
 
-Download and verify the predecessor archive again; never recompile it. Publish
-its shell pointer while retaining both its generation and the failed candidate
-generation so sessions opened during either release keep immutable assets.
-Verify the rollback with the production smoke before ending the lock.
+Actions artifacts are short-lived candidate transfer, not production recovery.
+The private operator retains complete recovery archives and their exact hashes
+as durable private GitHub Release assets. Each includes every deployed static
+file and a complete inventory. Restore exact bytes rather than rebuilding an
+old source revision. Retain the interrupted live generation during rollback so
+its already-open sessions keep their immutable assets.
 
-Keep release archives until no live pointer, rollback path, or supported open
-session references them. Capacity evidence, not Actions expiration, controls
-cleanup. A missing or tampered archive, stale live identity, changed deployment
-config, or unverified asset ID fails before upload.
+For the first handoff, recover and verify the exact current deployed static
+tree. A locally rebuilt tree, matching generation name alone, or retained
+immutable folder without its original root controls is insufficient evidence.
+If recovery is incomplete, keep the live pointer and finish recovery first.
 
-For a scriptless emergency disable, the workflow runs the same exact-SHA CI
-eligibility gate, materializes the standalone recovery page, and executes the
-ordinary release verifier against the disabled output before any upload.
+Existing local materialization, release-record, predecessor and emergency-page
+helpers remain available for artifact development. They confer no production
+authority. Production credentials stay exclusively with the private operator.
 
-## Protected settings
-
-The repository owner configures the `production` environment, required reviews,
-least-available Cloudflare token, main-branch protection, and release retention.
-Do not store Cloudflare values in source, artifacts, Pages, logs, or public
-configuration variables.
+Every generation carries the pinned Path of Building license and provenance.
+Keep those bytes and their identities in the complete release inventory.
