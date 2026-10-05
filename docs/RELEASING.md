@@ -7,7 +7,7 @@ other production secrets. Source ownership and deployment authority are separate
 ## Build a candidate
 
 1. Select a full reviewed commit on public `main`. Its exact-SHA `ci.yml` push
-   run must pass both `fast-gates` and `native-and-browser`.
+   run must pass `fast-gates`, `native-and-browser` and `browser-harnesses`.
 2. Dispatch the **Build Editor Release Artifact** workflow
    (`.github/workflows/deploy-import2.yml`, retained filename for continuity)
    from `main`, supplying `commit_sha`.

@@ -76,6 +76,7 @@ test("CI discovers the registered browser command in an independently prepared j
     assert.ok(harnessJob.indexOf(command) >= 0 && harnessJob.indexOf(command) < harnessJob.indexOf("npm run test:browser"), command);
   }
   assert.match(harnessJob, /BUILD_EDITOR_BROWSER_CHANNEL:\s*""/);
+  assert.doesNotMatch(harnessJob, /continue-on-error:/, "The promoted harness job must block CI on failure");
   // Continue-on-error masks the API conclusion during rollout; outcome retains
   // the actual runner result and must be visible in the job log and summary.
   assert.match(harnessJob, /if: always\(\)[\s\S]*steps\.browser-harnesses\.outcome/);

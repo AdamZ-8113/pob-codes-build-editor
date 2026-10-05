@@ -11,7 +11,7 @@ export function selectEligibleCiRun(runs, targetSha) {
 }
 
 export function verifyRequiredCiJobs(jobs) {
-  for (const name of ["fast-gates", "native-and-browser"]) {
+  for (const name of ["fast-gates", "native-and-browser", "browser-harnesses"]) {
     const matches = jobs.filter((job) => job.name === name);
     if (matches.length !== 1 || matches[0].status !== "completed" || matches[0].conclusion !== "success") {
       throw new Error(`Required ci.yml job did not complete successfully: ${name}`);

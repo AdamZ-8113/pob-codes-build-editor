@@ -6,16 +6,26 @@ import { bindPredecessorAssets } from "../../scripts/release/verify-release-asse
 
 const sha = "a".repeat(40);
 
-test("release CI eligibility requires an exact successful push/main run and both required jobs", () => {
+test("release CI eligibility requires an exact successful push/main run and all three required jobs", () => {
   assert.throws(() => selectEligibleCiRun([], sha), /No completed successful/);
   assert.throws(() => selectEligibleCiRun([{ head_sha: sha, head_branch: "main", event: "workflow_dispatch", status: "completed", conclusion: "success" }], sha), /No completed successful/);
   const run = selectEligibleCiRun([{ id: 41, head_sha: sha, head_branch: "main", event: "push", status: "completed", conclusion: "success", updated_at: "2026-10-01" }], sha);
   assert.equal(run.id, 41);
   assert.throws(() => verifyRequiredCiJobs([{ name: "fast-gates", status: "completed", conclusion: "success" }]), /native-and-browser/);
-  verifyRequiredCiJobs([
+  const existingJobs = [
     { name: "fast-gates", status: "completed", conclusion: "success" },
     { name: "native-and-browser", status: "completed", conclusion: "success" },
-  ]);
+  ];
+  assert.throws(() => verifyRequiredCiJobs(existingJobs), /browser-harnesses/);
+  const browserJob = { name: "browser-harnesses", status: "completed", conclusion: "success" };
+  verifyRequiredCiJobs([...existingJobs, browserJob]);
+  for (const invalid of [
+    { ...browserJob, conclusion: "failure" },
+    { ...browserJob, conclusion: "skipped" },
+    { ...browserJob, conclusion: "cancelled" },
+    { ...browserJob, status: "in_progress", conclusion: null },
+  ]) assert.throws(() => verifyRequiredCiJobs([...existingJobs, invalid]), /browser-harnesses/);
+  assert.throws(() => verifyRequiredCiJobs([...existingJobs, browserJob, browserJob]), /browser-harnesses/);
 });
 
 test("predecessor archive and inventory IDs must name assets of the selected release", () => {

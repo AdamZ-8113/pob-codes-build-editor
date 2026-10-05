@@ -82,9 +82,8 @@ jobs:
       - run: npm run test:native
       - run: npm run pack
       - run: npx playwright install --with-deps chromium
-      - name: Run development browser harnesses (shadow)
+      - name: Run development browser harnesses
         id: browser-harnesses
-        continue-on-error: true
         env:
           BUILD_EDITOR_BROWSER_CHANNEL: ""
         run: npm run test:browser
