@@ -36,6 +36,8 @@ native compiler output, or generated Path of Building Data/TreeData files.
 Change the authoritative source, exporter, or checked adapter and regenerate.
 Keep third-party licenses and notices with every published generation.
 
+Use `npm run clean:runtime` to preview verified stale archives and shell outputs; stop build producers before `-- --apply`, and use repeated `--include <name>` only for reviewed direct children (protected inputs and the archive container cannot be included).
+
 ## Validation routing
 
 - Documentation or narrow host changes: `npm run check` and affected unit tests.
