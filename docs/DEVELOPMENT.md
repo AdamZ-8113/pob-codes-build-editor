@@ -67,8 +67,10 @@ Chromium (POSIX: `BUILD_EDITOR_BROWSER_CHANNEL='' npm run test:browser`).
 Shells that remove empty environment values need a Node launcher to set this
 variable. CI uses bundled Chromium in the dedicated `browser-harnesses` job,
 which prepares, builds and packs its own runtime. Candidate acceptance remains
-in `native-and-browser`. The curated subset checks native editing/save, input
-latency, payload integrity, render reuse, startup paths and unique databases.
+in `native-and-browser`. The curated subset checks input latency, payload
+integrity, startup paths and unique databases. Native editing/save/reload and
+render reuse remain manual while Linux reload and pixel-parity failures are
+investigated; their assertions remain intact.
 
 Use `npm run test:browser -- --only test-mouse-release` to select one registered
 harness, including a manual entry, or `npm run test:browser -- --all` to include

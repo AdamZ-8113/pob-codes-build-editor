@@ -168,6 +168,8 @@ acceptance prerequisites. Platform-sensitive framebuffer, tooltip and frame-timi
 checks remain manual where Linux shadow runs exposed unstable results. Their
 recorded local results are retained; inclusion in the registry does not imply
 that every acceptance harness runs in CI.
+Native editing/save/reload and render-reuse acceptance also remain manual after
+Linux shadow runs exposed reload timeouts and resize/DPR pixel-parity failures.
 
 The renderer rejects wholly offscreen static quads before texture resolution and
 GPU submission, preserving boundary geometry and dynamic texture updates. The
