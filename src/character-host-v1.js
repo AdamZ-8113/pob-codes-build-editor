@@ -59,9 +59,10 @@ export function createCharacterHostV1({ transport = createDisabledCharacterTrans
   const policy = { ...CHARACTER_HOST_V1, ...limits };
   let epoch = 0;
   let active = 0;
+  let listedAccount;
   const pairs = new Map();
   const controllers = new Set();
-  const reset = () => { epoch++; pairs.clear(); for (const controller of controllers) controller.abort(new Error("Stale character import was cancelled.")); };
+  const reset = () => { epoch++; listedAccount = undefined; pairs.clear(); for (const controller of controllers) controller.abort(new Error("Stale character import was cancelled.")); };
 
   async function boundedRequest(request, capturedEpoch) {
     if (active >= policy.maxConcurrency) throw new Error("Character import is busy; try again.");
@@ -83,6 +84,16 @@ export function createCharacterHostV1({ transport = createDisabledCharacterTrans
       if (utf8.encode(url).byteLength > policy.maxUrlBytes || utf8.encode(body ?? "").byteLength > policy.maxBodyBytes) throw new Error("Character import request exceeded the size limit.");
       const parsed = new URL(url);
       if (parsed.protocol !== "https:" || !["www.pathofexile.com", "pathofexile.com"].includes(parsed.hostname)) throw new Error("Blocked non-Path of Exile request.");
+      // PoB asks for a profile link after listing characters. The guarded API
+      // already owns account handling; satisfy that callback locally, without
+      // exposing a general profile proxy or requesting OAuth credentials.
+      const profile = /^\/account\/view-profile\/([^/]+)$/.exec(parsed.pathname);
+      if (profile) {
+        if (!transport.enabled || !listedAccount || parsed.search || parsed.hash || decodeURIComponent(profile[1]) !== listedAccount) {
+          throw new Error("Blocked account profile outside the active character import.");
+        }
+        return { body: `/view-profile/${encodeURIComponent(listedAccount)}/characters`, status: 200, headers: { "content-type": "text/plain" }, error: undefined };
+      }
       const match = /^\/character-window\/(get-characters|get-items|get-passive-skills)$/.exec(parsed.pathname);
       if (!match || !OPERATIONS.has(match[1])) throw new Error("Blocked unsupported Path of Exile operation.");
       const operation = match[1];
@@ -97,6 +108,7 @@ export function createCharacterHostV1({ transport = createDisabledCharacterTrans
         const envelope = await boundedRequest({ method: "POST", path: "/api/poe/characters", body: { contractVersion: 1, realm, account } }, captured);
         if (envelope?.ok !== true) throw new Error(envelope?.error?.message ?? "Character import failed.");
         if (!Array.isArray(envelope.data?.characters)) throw new Error("Invalid character-list envelope.");
+        listedAccount = account;
         return ok(envelope.data.characters);
       }
       const key = `${epoch}\u0000${realm}\u0000${account}\u0000${character}`;

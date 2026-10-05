@@ -2,7 +2,11 @@
 
 The browser host recognizes only HTTPS requests to `pathofexile.com` for
 `character-window/get-characters`, `get-items`, and `get-passive-skills`.
-Everything else is refused; this is not a general proxy.
+After a successful list, PoB's `account/view-profile/<account>` follow-up is
+answered locally with the active account's encoded profile link. It does not
+fetch profile HTML or discover canonical account-name casing; account handling
+remains with the guarded API. Other accounts, profile subpaths, and requests
+after reset are refused. Everything else is refused; this is not a general proxy.
 
 Realms are normalized to `pc`, `xbox`, or `sony`. Account and character inputs
 are required, bounded to 64 characters, and reject controls and angle brackets.

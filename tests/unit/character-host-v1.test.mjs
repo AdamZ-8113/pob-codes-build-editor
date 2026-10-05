@@ -61,3 +61,38 @@ test("enforces concurrency, timeout cancellation, and stale generations", async 
   assert.match(timeout.error, /timed out|abort/i);
   void release;
 });
+
+// Matches ImportTab.lua's list -> profile -> items/passives callback sequence.
+test("completes the PoB profile follow-up only for the active listed account", async () => {
+  const calls = [];
+  const host = createCharacterHostV1({ transport: createPobCodesCharacterTransport({
+    origin: "https://pob.codes",
+    fetchImpl: async (url) => {
+      calls.push(String(url));
+      return String(url).endsWith("/characters")
+        ? Response.json({ characters: [{ name: "FixtureRanger" }] })
+        : Response.json({ itemsJson: '{"items":[]}', passiveSkillsJson: '{"hashes":[1]}' });
+    },
+  }) });
+  const account = "Fixture??#1234";
+  const encoded = encodeURIComponent(account);
+  const base = "https://www.pathofexile.com/";
+  const profile = `${base}account/view-profile/${encoded}`;
+  assert.match((await host.onFetch(profile)).error, /Blocked/);
+  assert.equal((await host.onFetch(`${base}character-window/get-characters?accountName=${encoded}&realm=pc`)).status, 200);
+  const response = await host.onFetch(profile);
+  assert.equal(response.status, 200);
+  assert.equal(decodeURIComponent(response.body.match(/\/view-profile\/([^/]+)\/characters/)[1]), account);
+  assert.equal(calls.length, 1, "profile callback must not make another network request");
+  for (const url of [`${profile}/characters`, `${profile}?extra=1`, `${base}account/view-profile/Other`, `${base}oauth/authorize`]) {
+    assert.match((await host.onFetch(url)).error, /Blocked/);
+  }
+  const query = `?accountName=${encoded}&character=FixtureRanger&realm=pc`;
+  const results = await Promise.all(["get-items", "get-passive-skills"].map(operation => host.onFetch(`${base}character-window/${operation}${query}`)));
+  assert.ok(results.every(result => result.status === 200));
+  assert.equal(calls.length, 2);
+  await host.onFetch(`${base}character-window/get-characters?accountName=Other&realm=pc`);
+  assert.match((await host.onFetch(profile)).error, /Blocked/);
+  host.reset();
+  assert.match((await host.onFetch(`${base}account/view-profile/Other`)).error, /Blocked/);
+});
