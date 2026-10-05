@@ -1,4 +1,5 @@
 import { chromium } from '@playwright/test';
+import { browserChannel } from '../../scripts/lib/browser-channel.mjs';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -107,7 +108,7 @@ const phases = [], sorts = [], exports = [], exportLeaves = [], frames = [], fau
 let heatmapMs;
 const runtimeRequests = {};
 try {
-  context = await chromium.launchPersistentContext(profileDirectory, { channel: 'chrome', headless: true,
+  context = await chromium.launchPersistentContext(profileDirectory, { channel: browserChannel(), headless: true,
     viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
   // Keep the acceptance session independent of development-file reloads.
   // Runtime RPC uses MessagePorts and does not need a WebSocket connection.

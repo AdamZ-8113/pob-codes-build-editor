@@ -1,4 +1,5 @@
 import {chromium} from "@playwright/test";
+import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
 import {readFile} from "node:fs/promises";
@@ -11,7 +12,7 @@ const host=process.argv[2] ?? lanAddresses()[0];
 assert.ok(lanAddresses().includes(host),"Supply an active private LAN interface");
 const origin=`https://${host}:3010`;
 const code=(await readFile(new URL('../../fixtures/guided import parity desktop 329.txt',import.meta.url),'utf8')).trim();
-const browser=await chromium.launch({headless:true,channel:"chrome"});
+const browser=await chromium.launch({headless:true,channel: browserChannel()});
 try {
   const hashes=[], results=[];
   for(const [name,url,options] of [

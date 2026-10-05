@@ -1,4 +1,5 @@
 import { chromium } from "@playwright/test";
+import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
 import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { inflateSync } from "node:zlib";
@@ -8,7 +9,7 @@ import { inflateSync } from "node:zlib";
 const [buildFile, outputFile] = process.argv.slice(2);
 const fixture = buildFile ?? new URL("../../fixtures/guided import parity desktop 329.txt", import.meta.url);
 const code = (await readFile(fixture, "utf8")).trim();
-const browser = await chromium.launch({ headless: true, channel: "chrome" });
+const browser = await chromium.launch({ headless: true, channel: browserChannel() });
 const faults = [];
 let diagnosticPage;
 const families = [

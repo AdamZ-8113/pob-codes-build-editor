@@ -1,4 +1,5 @@
 import { chromium } from "@playwright/test";
+import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { inflateSync } from "node:zlib";
@@ -6,7 +7,7 @@ import { inflateSync } from "node:zlib";
 // Run against the standalone loopback app; never use production or port 3000.
 const origin = process.env.DESKTOP_POB_ORIGIN ?? "http://127.0.0.1:3010";
 const fixture = (await readFile(new URL("../../fixtures/guided import parity desktop 329.txt", import.meta.url), "utf8")).trim();
-const browser = await chromium.launch({ headless: true, channel: "chrome" });
+const browser = await chromium.launch({ headless: true, channel: browserChannel() });
 try {
   const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin });

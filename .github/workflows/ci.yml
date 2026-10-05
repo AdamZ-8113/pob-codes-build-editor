@@ -49,8 +49,14 @@ jobs:
       - run: npm run test:native
       - run: npm run pack
       - run: node scripts/release/materialize-import2.mjs
-      - run: npx playwright install --with-deps chromium
+      - run: npx playwright install --with-deps chromium chrome
       - run: npm run test:e2e:release
+      - name: Run development browser harnesses (shadow)
+        id: browser-harnesses
+        continue-on-error: true
+        env:
+          BUILD_EDITOR_BROWSER_CHANNEL: ""
+        run: npm run test:browser
       - name: Retain public-fixture browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

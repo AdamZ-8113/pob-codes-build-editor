@@ -1,4 +1,5 @@
 import { chromium } from '@playwright/test';
+import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { inflateSync, deflateSync } from 'node:zlib';
@@ -13,7 +14,7 @@ const fixtures = [
   ['ruthless', deflateSync(inflateSync(Buffer.from(fixture,'base64url')).toString().replaceAll('treeVersion="3_29"','treeVersion="3_29_ruthless"')).toString('base64url')],
 ];
 if(process.argv[2]) fixtures.push(['private-timeless',(await readFile(process.argv[2],'utf8')).trim()]);
-const browser = await chromium.launch({ headless: true, channel: 'chrome' });
+const browser = await chromium.launch({ headless: true, channel: browserChannel() });
 try {
   const expectedStats = new Map();
   for (const mode of ['packages', 'eager', 'legacy', 'manifest-absent', 'missing', 'corrupt', 'offline']) {

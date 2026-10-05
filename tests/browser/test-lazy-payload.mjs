@@ -1,4 +1,5 @@
 import { chromium } from '@playwright/test';
+import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
@@ -19,7 +20,7 @@ const timelessHashes = new Set(manifest.packages.filter(pkg => pkg.id.startsWith
 const outputDirectory = process.argv[2] ? resolve(process.argv[2]) : undefined;
 if (outputDirectory) await mkdir(outputDirectory, { recursive: true });
 
-const browser = await chromium.launch({ headless: true, channel: 'chrome' });
+const browser = await chromium.launch({ headless: true, channel: browserChannel() });
 try {
   await verifyDemandAndOverlay();
   await verifyBackgroundPrefetch();

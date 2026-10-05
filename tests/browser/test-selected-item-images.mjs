@@ -1,4 +1,5 @@
 import { chromium } from "@playwright/test";
+import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
 import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { inflateSync, deflateSync } from "node:zlib";
@@ -15,7 +16,7 @@ if(!buildFile) {
   assert.notEqual(candidate,xml);
   code=deflateSync(candidate).toString("base64url");
 }
-const browser = await chromium.launch({ headless: true, channel: "chrome" });
+const browser = await chromium.launch({ headless: true, channel: browserChannel() });
 try {
   const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
   let instrumented = false;

@@ -1,4 +1,5 @@
 import { chromium } from '@playwright/test';
+import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { inflateSync } from 'node:zlib';
@@ -11,7 +12,7 @@ const modes = [
   ['legacy', '?legacyPayload=1'],
   ['manifest-absent', ''],
 ];
-const browser = await chromium.launch({ headless: true, channel: 'chrome' });
+const browser = await chromium.launch({ headless: true, channel: browserChannel() });
 try {
   for (const [mode, query] of modes) {
     for (const fallback of [false, true]) {

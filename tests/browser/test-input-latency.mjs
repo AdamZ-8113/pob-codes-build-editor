@@ -1,10 +1,11 @@
 import { chromium } from "@playwright/test";
+import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
 import { readFile, writeFile } from "node:fs/promises";
 import assert from "node:assert/strict";
 
 const [buildFile, reportFile] = process.argv.slice(2);
 const code = (await readFile(buildFile || new URL("../../fixtures/guided import parity desktop 329.txt", import.meta.url), "utf8")).trim();
-const browser = await chromium.launch({ headless:true, channel:"chrome" });
+const browser = await chromium.launch({ headless:true, channel: browserChannel() });
 try {
   const context = await browser.newContext({ viewport:{width:1600,height:1000} });
   // Observe the position used by the real completed Lua frame, without changing

@@ -1,4 +1,5 @@
 import { chromium } from '@playwright/test';
+import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
@@ -109,7 +110,7 @@ core.uncompressedBytes += content.length - file.bytes;
 file.bytes = content.length; core.bytes = bytes.length; core.sha256 = sha256(bytes);
 if (reviewDirectory) await mkdir(reviewDirectory, { recursive: true });
 
-const browser = await chromium.launch({ headless: true, channel: 'chrome' });
+const browser = await chromium.launch({ headless: true, channel: browserChannel() });
 const results = [];
 let frozenNativeSource, nativeWasm;
 try {

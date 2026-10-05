@@ -1,4 +1,5 @@
 import { chromium } from '@playwright/test';
+import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
 import assert from 'node:assert/strict';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { resolve } from 'node:path';
@@ -7,7 +8,7 @@ import { resolve } from 'node:path';
 // used to contain the same diagonal seams. Optional directory retains review PNGs.
 const evidence = process.argv[2] && resolve(process.argv[2]);
 if (evidence) await mkdir(evidence, { recursive: true });
-const browser = await chromium.launch({ headless: true, channel: 'chrome' });
+const browser = await chromium.launch({ headless: true, channel: browserChannel() });
 try {
   for (const dpr of [1, 2]) {
     const context = await browser.newContext({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: dpr });

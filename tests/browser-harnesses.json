@@ -1,0 +1,30 @@
+{
+  "ci": [
+    "test-browser.mjs",
+    "test-calculation-scheduling.mjs",
+    "test-input-latency.mjs",
+    "test-jewel-spec-comparisons.mjs",
+    "test-lazy-payload.mjs",
+    "test-mouse-release.mjs",
+    "test-payload-browser.mjs",
+    "test-render-culling.mjs",
+    "test-render-reuse.mjs",
+    "test-selected-item-images.mjs",
+    "test-startup-paths.mjs",
+    "test-text-width-cache.mjs",
+    "test-unique-comparison-delay.mjs",
+    "test-unique-database.mjs"
+  ],
+  "chromeOnly": {
+    "test-render-reuse.mjs": "The viewport/DPR synchronization probe times out in bundled Chromium 147; installed Chrome passes with unchanged assertions.",
+    "test-text-width-cache.mjs": "Exact DPR-2 tooltip pixel parity fails in bundled Chromium 147; installed Chrome passes repeated runs with unchanged assertions.",
+    "test-unique-comparison-delay.mjs": "Deferred comparison timing fails in bundled Chromium 147; installed Chrome passes repeated runs with unchanged assertions."
+  },
+  "localOnly": {
+    "test-header.mjs": "Existing 320px layout overflow (fullscreen button extends beyond the viewport); manual until the responsive layout is repaired. Also asserts platform font coordinates.",
+    "test-helper-workers.mjs": "Manual Windows private-commit memory and machine-specific performance admission checks.",
+    "test-lan-dev.mjs": "Manual private IPv4 interface and LAN HTTPS certificate checks; run against npm run dev -- --lan.",
+    "test-render-seams.mjs": "Existing fixed-coordinate import-panel framebuffer probe fails on the current UI; manual until its sampling region is investigated.",
+    "test-runtime-memory.mjs": "Manual Windows private-commit memory budgets and saved baseline binaries."
+  }
+}

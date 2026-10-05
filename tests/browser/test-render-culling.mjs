@@ -1,4 +1,5 @@
 import { chromium } from "@playwright/test";
+import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
 import assert from "node:assert/strict";
 import { readFile, mkdir } from "node:fs/promises";
 import sharp from "sharp";
@@ -6,7 +7,7 @@ import sharp from "sharp";
 // Compare the real renderer against its unculled submission path in isolated
 // browser contexts; disable only the new rejection condition in the baseline.
 const code = (await readFile(new URL("../../fixtures/guided import parity desktop 329.txt", import.meta.url), "utf8")).trim();
-const browser = await chromium.launch({ headless: true, channel: "chrome" });
+const browser = await chromium.launch({ headless: true, channel: browserChannel() });
 const reviewDirectory = process.argv[2];
 if (reviewDirectory) await mkdir(reviewDirectory, { recursive:true });
 try {

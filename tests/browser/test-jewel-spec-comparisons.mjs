@@ -1,4 +1,5 @@
 import { chromium } from '@playwright/test';
+import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
@@ -203,7 +204,7 @@ const packages = [false, true].map(candidate => {
   const bytes = zip.toBuffer(); entry.bytes = bytes.length; entry.sha256 = sha256(bytes);
   return { manifest: updatedManifest, bytes, hash: entry.sha256 };
 });
-const browser = await chromium.launch({ headless: true, channel: 'chrome' });
+const browser = await chromium.launch({ headless: true, channel: browserChannel() });
 const results = [];
 const normalize = value => Array.isArray(value) ? value.map(normalize) : value && typeof value === 'object' ? Object.fromEntries(Object.keys(value).sort().map(key => [key, normalize(value[key])])) : value;
 let nativeSource, nativeWasm;

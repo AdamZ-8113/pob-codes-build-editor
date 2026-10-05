@@ -4,6 +4,7 @@ import { readFile, writeFile, mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, resolve, basename } from 'node:path';
 import { chromium } from '@playwright/test';
+import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
 import { createHash } from 'node:crypto';
 
 const args = process.argv.slice(2).filter(arg => arg !== '--resume');
@@ -112,7 +113,7 @@ try {
 }
 
 async function browserBoundaries() {
-  const browser = await chromium.launch({channel:'chrome',headless:true});
+  const browser = await chromium.launch({channel: browserChannel(),headless:true});
   try {
     const mobile = await browser.newContext({userAgent:'Mozilla/5.0 (Android; Mobile)',viewport:{width:640,height:1000}});
     try {
