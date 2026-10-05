@@ -11,6 +11,7 @@ const discovered = (await readdir(new URL("../browser/", import.meta.url))).filt
 test("every browser harness is classified exactly once with local-only reasons", () => {
   validateRegistry(registry, discovered);
   for (const invalid of [
+    { ci: [], localOnly: Object.fromEntries(discovered.map(name => [name, "manual"])) },
     { ...registry, ci: [...registry.ci, "test-new.mjs"] },
     { ...registry, ci: registry.ci.slice(1) },
     { ...registry, ci: [...registry.ci, registry.ci[0]] },

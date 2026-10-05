@@ -11,7 +11,7 @@ const harnessTimeout = 10 * 60_000;
 export function validateRegistry(registry, discovered) {
   const ci = registry.ci;
   const localOnly = registry.localOnly;
-  if (!Array.isArray(ci) || !localOnly || typeof localOnly !== "object" || Array.isArray(localOnly)) {
+  if (!Array.isArray(ci) || ci.length === 0 || !localOnly || typeof localOnly !== "object" || Array.isArray(localOnly)) {
     throw new Error("Browser harness registry is stale: expected ci and localOnly classifications");
   }
   const registered = [...ci, ...Object.keys(localOnly)];
