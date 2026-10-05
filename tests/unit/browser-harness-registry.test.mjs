@@ -1,8 +1,9 @@
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
+import { createServer } from "node:net";
 import test from "node:test";
 import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
-import { harnessEnvironment, selectHarnesses, validateRegistry } from "../../scripts/test-browser.mjs";
+import { harnessEnvironment, main, selectHarnesses, validateRegistry } from "../../scripts/test-browser.mjs";
 
 const registry = JSON.parse(await readFile(new URL("../browser-harnesses.json", import.meta.url), "utf8"));
 const discovered = (await readdir(new URL("../browser/", import.meta.url))).filter(name => name.endsWith(".mjs"));
@@ -41,5 +42,27 @@ test("runner selects only registered harnesses", () => {
   assert.deepEqual(selectHarnesses(registry, ["--only", "test-lan-dev.mjs"]), ["test-lan-dev.mjs"]);
   for (const args of [["--only"], ["--only", "../test-unknown"], ["--all", "--only", "test-header"]]) {
     assert.throws(() => selectHarnesses(registry, args), /Usage:/);
+  }
+});
+
+test("runner rejects every origin override before starting a server", async () => {
+  for (const name of ["DESKTOP_POB_ORIGIN", "desktop_pob_origin"]) {
+    for (const value of ["", "http://127.0.0.1:3999", "https://example.invalid"]) {
+      await assert.rejects(main([], { [name]: value }), /refuses DESKTOP_POB_ORIGIN/);
+    }
+  }
+});
+
+test("runner refuses an occupied loopback port without replacing its listener", async () => {
+  const listener = createServer(socket => socket.end());
+  const owned = await new Promise((resolve, reject) => {
+    listener.once("error", error => error.code === "EADDRINUSE" ? resolve(false) : reject(error));
+    listener.listen(3010, "127.0.0.1", () => resolve(true));
+  });
+  try {
+    await assert.rejects(main(["--only", "test-browser"], harnessEnvironment()), /refuses an existing listener/);
+    if (owned) assert.equal(listener.listening, true);
+  } finally {
+    if (owned) await new Promise((resolve, reject) => listener.close(error => error ? reject(error) : resolve()));
   }
 });
