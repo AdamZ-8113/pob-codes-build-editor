@@ -49,14 +49,8 @@ jobs:
       - run: npm run test:native
       - run: npm run pack
       - run: node scripts/release/materialize-import2.mjs
-      - run: npx playwright install --with-deps chromium chrome
+      - run: npx playwright install --with-deps chromium
       - run: npm run test:e2e:release
-      - name: Run development browser harnesses (shadow)
-        id: browser-harnesses
-        continue-on-error: true
-        env:
-          BUILD_EDITOR_BROWSER_CHANNEL: ""
-        run: npm run test:browser
       - name: Retain public-fixture browser failure diagnostics
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -67,3 +61,30 @@ jobs:
             test-results/**/error-context.md
           if-no-files-found: ignore
           retention-days: 7
+
+  browser-harnesses:
+    if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'runtime')
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+          cache: npm
+      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed
+        with:
+          deno-version: v2.7.12
+      - run: npm ci --ignore-scripts
+      - run: npm run prepare
+      - run: npm run test:native
+      - run: npm run pack
+      - run: npx playwright install --with-deps chromium
+      - name: Run development browser harnesses (shadow)
+        id: browser-harnesses
+        continue-on-error: true
+        env:
+          BUILD_EDITOR_BROWSER_CHANNEL: ""
+        run: npm run test:browser

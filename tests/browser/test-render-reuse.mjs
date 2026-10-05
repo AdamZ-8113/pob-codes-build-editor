@@ -63,6 +63,10 @@ try {
   for(const [width,height,deviceScaleFactor] of [[1800,1100,1],[1700,1050,2]]) {
     await page.setViewportSize({width,height});
     await client.send('Emulation.setDeviceMetricsOverride',{width,height,deviceScaleFactor,mobile:false});
+    // CDP metrics can settle after the viewport's resize event. Notify the
+    // normal resize handlers after emulation so the transferred canvas presents
+    // its new dimensions before the unchanged DPR and pixel assertions below.
+    await page.evaluate(()=>window.dispatchEvent(new Event('resize')));
     await page.waitForFunction(()=>{
       const c=document.querySelector('canvas'),r=c.getBoundingClientRect();
       return Math.abs(c.width-r.width*devicePixelRatio)<=1 && Math.abs(c.height-r.height*devicePixelRatio)<=1;

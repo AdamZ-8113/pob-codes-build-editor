@@ -11,17 +11,14 @@ const harnessTimeout = 10 * 60_000;
 export function validateRegistry(registry, discovered) {
   const ci = registry.ci;
   const localOnly = registry.localOnly;
-  const chromeOnly = registry.chromeOnly ?? {};
-  if (!Array.isArray(ci) || !localOnly || typeof localOnly !== "object" || Array.isArray(localOnly) ||
-      !chromeOnly || typeof chromeOnly !== "object" || Array.isArray(chromeOnly)) {
+  if (!Array.isArray(ci) || !localOnly || typeof localOnly !== "object" || Array.isArray(localOnly)) {
     throw new Error("Browser harness registry is stale: expected ci and localOnly classifications");
   }
   const registered = [...ci, ...Object.keys(localOnly)];
   if (registered.some(name => typeof name !== "string" || !/^test-[a-z0-9-]+\.mjs$/.test(name)) ||
       new Set(registered).size !== registered.length ||
       JSON.stringify([...registered].sort()) !== JSON.stringify([...discovered].sort()) ||
-      Object.values(localOnly).some(reason => typeof reason !== "string" || !reason.trim()) ||
-      Object.entries(chromeOnly).some(([name, reason]) => !ci.includes(name) || typeof reason !== "string" || !reason.trim())) {
+      Object.values(localOnly).some(reason => typeof reason !== "string" || !reason.trim())) {
     throw new Error("Browser harness registry is stale: classify every harness exactly once and explain local-only entries");
   }
   return registry;
@@ -143,11 +140,8 @@ export async function main(args = process.argv.slice(2), environment = process.e
       if (interrupted) throw new Error("Browser harness run interrupted");
       if (server.child.exitCode !== null || server.child.signalCode !== null) throw new Error("Browser harness development server exited");
       console.log(`\nBrowser harness: ${name}`);
-      const browserEnv = registry.chromeOnly?.[name] && env.BUILD_EDITOR_BROWSER_CHANNEL === ""
-        ? { ...env, BUILD_EDITOR_BROWSER_CHANNEL: "chrome" } : env;
-      if (browserEnv !== env) console.log(`Installed Chrome: ${registry.chromeOnly[name]}`);
       const start = performance.now();
-      active = managedProcess(`tests/browser/${name}`, browserEnv);
+      active = managedProcess(`tests/browser/${name}`, env);
       let timer;
       let timedOut = false;
       timer = setTimeout(() => { timedOut = true; void stopProcess(active); }, harnessTimeout);

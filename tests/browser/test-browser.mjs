@@ -100,7 +100,9 @@ try {
     return await (await (await directory.getFileHandle("Desktop browser acceptance.xml")).getFile()).text();
   });
   assert.match(buildTag(await readSavedBuild()), /level="73"/);
-  await page.reload();
+  // Lua readiness below is the acceptance barrier; background assets need not
+  // finish loading before checking the persisted native OPFS save.
+  await page.reload({ waitUntil: "domcontentloaded" });
   await page.waitForFunction(() => window.__DESKTOP_POB__?.ready || window.__DESKTOP_POB__?.errors.length, null, { timeout: 120_000 });
   assert.match(buildTag(await readSavedBuild()), /level="73"/);
   assert.deepEqual(await page.evaluate(() => window.__DESKTOP_POB__.errors), []);

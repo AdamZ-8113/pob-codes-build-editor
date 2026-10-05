@@ -16,9 +16,6 @@ test("every browser harness is classified exactly once with local-only reasons",
     { ...registry, ci: [...registry.ci, registry.ci[0]] },
     { ...registry, localOnly: { ...registry.localOnly, [registry.ci[0]]: "overlap" } },
     { ...registry, localOnly: { ...registry.localOnly, "test-lan-dev.mjs": " " } },
-    { ...registry, chromeOnly: { "test-not-registered.mjs": "needs Chrome" } },
-    { ...registry, chromeOnly: { "test-lan-dev.mjs": "must be a CI entry" } },
-    { ...registry, chromeOnly: { "test-render-reuse.mjs": " " } },
   ]) assert.throws(() => validateRegistry(invalid, discovered), /Browser harness registry is stale/);
   assert.throws(() => validateRegistry(registry, [...discovered, "test-new.mjs"]), /Browser harness registry is stale/);
 });
