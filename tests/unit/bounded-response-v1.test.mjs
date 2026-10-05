@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { setImmediate } from "node:timers/promises";
-import { fetchBoundedText } from "../../src/bounded-response-v1.js";
+import { fetchBoundedText } from "../../src/bounded-response-v1.ts";
 
 test("response reading counts bytes and decodes UTF-8 across chunks", async () => {
   const bytes = new TextEncoder().encode("a😀b");

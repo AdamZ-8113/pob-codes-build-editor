@@ -1,21 +1,21 @@
 // Keep the deadline active until the body has been consumed, and count actual
 // streamed bytes rather than trusting Content-Length or buffering first.
-export async function fetchBoundedText(url, init, { fetchImpl = fetch, timeoutMs = 12_000, maxBytes }) {
+export async function fetchBoundedText(url: string | URL, init: RequestInit, { fetchImpl = fetch, timeoutMs = 12_000, maxBytes }: { fetchImpl?: typeof fetch; timeoutMs?: number; maxBytes: number }): Promise<{ response: Response; text: string }> {
   if (!Number.isSafeInteger(maxBytes) || maxBytes < 0 || !Number.isFinite(timeoutMs) || timeoutMs <= 0) {
     throw new Error("Invalid response limits.");
   }
   const controller = new AbortController();
   const externalSignal = init?.signal;
-  let reader;
-  let rejectAbort;
-  const aborted = new Promise((_, reject) => { rejectAbort = reject; });
+  let reader: ReadableStreamDefaultReader<Uint8Array> | undefined;
+  let rejectAbort!: (reason: unknown) => void;
+  const aborted = new Promise<never>((_, reject) => { rejectAbort = reject; });
   const onAbort = () => {
     const reason = controller.signal.reason;
     // Cancellation need not finish before rejecting (a transport may stall).
     if (reader) void reader.cancel(reason).catch(() => {});
     rejectAbort(reason);
   };
-  const relayAbort = () => controller.abort(externalSignal.reason);
+  const relayAbort = () => controller.abort(externalSignal!.reason);
   controller.signal.addEventListener("abort", onAbort, { once: true });
   externalSignal?.addEventListener("abort", relayAbort, { once: true });
   const timer = setTimeout(() => controller.abort(new Error("Response request timed out.")), timeoutMs);

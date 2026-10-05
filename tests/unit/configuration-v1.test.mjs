@@ -1,5 +1,5 @@
 import test from "node:test"; import assert from "node:assert/strict";
-import { createConfigurationBridgeV1 } from "../../src/configuration-v1.js";
+import { createConfigurationBridgeV1 } from "../../src/configuration-v1.ts";
 import { readFile } from "node:fs/promises";
 test("same-instance transactions preserve manual ownership and undo snapshots", async () => {
   let code="before"; const applied=[]; const native={async getBuildCode(){return code},async loadBuildFromCode(value){code=value},async applyConfiguration(request){applied.push(request);code="after";return {ok:true}}};

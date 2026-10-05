@@ -1,5 +1,5 @@
 import test from "node:test"; import assert from "node:assert/strict";
-import { createTelemetryV1, TELEMETRY_EVENTS_V1, validateTelemetryEventV1 } from "../../src/telemetry-v1.js";
+import { createTelemetryV1, TELEMETRY_EVENTS_V1, validateTelemetryEventV1 } from "../../src/telemetry-v1.ts";
 const version="0123456789abcdef01234567", sessionId="pobcs_0123456789abcdef";
 test("legacy-single events match the ingestion validator shape", () => {
   const sent=[]; const telemetry=createTelemetryV1({endpoint:"https://api.pob.codes/analytics/events",hostname:"pob.codes",pathname:"/import/",appVersion:version,sessionId,deviceClass:"desktop",send:(...args)=>sent.push(args)});

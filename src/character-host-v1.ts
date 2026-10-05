@@ -1,18 +1,38 @@
-import { fetchBoundedText } from "./bounded-response-v1.js";
+type CreateCharacterHostV1Options = { transport?: CharacterTransportV1; limits?: Partial<typeof CHARACTER_HOST_V1>; now?: () => number };
+
+type CreatePobCodesCharacterTransportOptions = { origin: string; fetchImpl?: typeof fetch };
+
+export type RealmV1 = "pc" | "xbox" | "sony";
+export type CharacterOperationV1 = "get-characters" | "get-items" | "get-passive-skills";
+export type CoreRequestV1 = { method: "POST"; path: "/api/poe/characters" | "/api/poe/import-character"; body: { contractVersion: 1; realm: RealmV1; account: string; character?: string } };
+export type CoreEnvelopeV1<T> = { ok: true; data: T } | { ok: false; error: { code: string; message: string } };
+export type CharacterTransportV1 = { enabled: boolean; request(request: CoreRequestV1, options: { signal: AbortSignal; maxResponseBytes?: number; timeoutMs?: number }): Promise<CoreEnvelopeV1<unknown>> };
+
+import { fetchBoundedText } from "./bounded-response-v1.ts";
+
+// Transport data remains untrusted; the host checks these fields before use.
+type CharacterData = { characters?: unknown; items?: unknown; passiveSkills?: unknown };
+type CharacterPair = {
+  used: Set<string>;
+  created: number;
+  promise?: Promise<{ ok: true; data: CharacterData }>;
+};
+type CharacterFetchResult = { body: string; status: number | undefined; headers: Record<string, string>; error: string | undefined };
 
 const OPERATIONS = new Set(["get-characters", "get-items", "get-passive-skills"]);
-const REALMS = new Map([["pc", "pc"], ["xbox", "xbox"], ["sony", "sony"], ["PC", "pc"], ["XBOX", "xbox"], ["SONY", "sony"]]);
+const REALMS = new Map<string, RealmV1>([["pc", "pc"], ["xbox", "xbox"], ["sony", "sony"], ["PC", "pc"], ["XBOX", "xbox"], ["SONY", "sony"]]);
 const MANUAL_FALLBACK = "Character import is unavailable. Paste a build code or open a build file instead.";
 const utf8 = new TextEncoder();
 
-export const CHARACTER_HOST_V1 = Object.freeze({ version: 1, maxUrlBytes: 2048, maxBodyBytes: 4096, maxResponseBytes: 16 * 1024 * 1024, timeoutMs: 12_000, maxConcurrency: 2 });
+export const CHARACTER_HOST_V1: Readonly<{ version: 1; maxUrlBytes: number; maxBodyBytes: number; maxResponseBytes: number; timeoutMs: number; maxConcurrency: number }> = Object.freeze({ version: 1, maxUrlBytes: 2048, maxBodyBytes: 4096, maxResponseBytes: 16 * 1024 * 1024, timeoutMs: 12_000, maxConcurrency: 2 });
 
-export function createDisabledCharacterTransport() {
+export function createDisabledCharacterTransport(): CharacterTransportV1 {
   return { enabled: false, async request() { throw new Error(MANUAL_FALLBACK); } };
 }
 
-export function createPobCodesCharacterTransport({ origin, fetchImpl = fetch } = {}) {
-  const target = new URL(origin);
+export function createPobCodesCharacterTransport(options: CreatePobCodesCharacterTransportOptions): CharacterTransportV1;
+export function createPobCodesCharacterTransport({ origin, fetchImpl = fetch }: Partial<CreatePobCodesCharacterTransportOptions> = {}): CharacterTransportV1 {
+  const target = new URL(origin!);
   if (target.origin !== "https://pob.codes" || target.pathname !== "/" || target.search || target.hash) {
     throw new Error("Character import requires the https://pob.codes origin.");
   }
@@ -56,16 +76,16 @@ export function createPobCodesCharacterTransport({ origin, fetchImpl = fetch } =
   };
 }
 
-export function createCharacterHostV1({ transport = createDisabledCharacterTransport(), limits = {}, now = () => Date.now() } = {}) {
+export function createCharacterHostV1({ transport = createDisabledCharacterTransport(), limits = {}, now = () => Date.now() }: CreateCharacterHostV1Options = {}): { onFetch(url: string, headers?: Record<string,string>, body?: string): Promise<{ body: string; status: number | undefined; headers: Record<string,string>; error: string | undefined }>; reset(): void; contract: typeof CHARACTER_HOST_V1 } {
   const policy = { ...CHARACTER_HOST_V1, ...limits };
   let epoch = 0;
   let active = 0;
-  let listedAccount;
-  const pairs = new Map();
-  const controllers = new Set();
+  let listedAccount: string | undefined;
+  const pairs = new Map<string, CharacterPair>();
+  const controllers = new Set<AbortController>();
   const reset = () => { epoch++; listedAccount = undefined; pairs.clear(); for (const controller of controllers) controller.abort(new Error("Stale character import was cancelled.")); };
 
-  async function boundedRequest(request, capturedEpoch) {
+  async function boundedRequest(request: CoreRequestV1, capturedEpoch: number) {
     if (active >= policy.maxConcurrency) throw new Error("Character import is busy; try again.");
     active++;
     const controller = new AbortController();
@@ -77,11 +97,11 @@ export function createCharacterHostV1({ transport = createDisabledCharacterTrans
       if (capturedEpoch !== epoch) throw new Error("Stale character import result was discarded.");
       const text = JSON.stringify(result);
       if (utf8.encode(text).byteLength > policy.maxResponseBytes) throw new Error("Character import response exceeded the size limit.");
-      return result;
+      return result as CoreEnvelopeV1<CharacterData>;
     } finally { clearTimeout(timer); controllers.delete(controller); active--; }
   }
 
-  async function onFetch(url, _headers = {}, body) {
+  async function onFetch(url: string, _headers: Record<string, string> = {}, body?: string): Promise<CharacterFetchResult> {
     try {
       if (utf8.encode(url).byteLength > policy.maxUrlBytes || utf8.encode(body ?? "").byteLength > policy.maxBodyBytes) throw new Error("Character import request exceeded the size limit.");
       const parsed = new URL(url);
@@ -135,7 +155,7 @@ export function createCharacterHostV1({ transport = createDisabledCharacterTrans
             throw error;
           });
       }
-      const envelope = await pair.promise;
+      const envelope = await pair.promise!;
       pair.used.add(operation);
       if (pairs.get(key) === pair && (pair.used.size === 2 || now() - pair.created >= policy.timeoutMs)) pairs.delete(key);
       return ok(operation === "get-items" ? envelope.data.items : envelope.data.passiveSkills);
@@ -146,4 +166,4 @@ export function createCharacterHostV1({ transport = createDisabledCharacterTrans
   return { onFetch, reset, contract: policy };
 }
 
-function ok(value) { return { body: JSON.stringify(value), status: 200, headers: { "content-type": "application/json" }, error: undefined }; }
+function ok(value: unknown): CharacterFetchResult { return { body: JSON.stringify(value), status: 200, headers: { "content-type": "application/json" }, error: undefined }; }

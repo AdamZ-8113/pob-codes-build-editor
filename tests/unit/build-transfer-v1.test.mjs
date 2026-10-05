@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { createBuildTransferV1 } from "../../src/build-transfer-v1.js";
+import { createBuildTransferV1 } from "../../src/build-transfer-v1.ts";
 
 const code = "abcDEF_0123456789-xyz";
 const response = (body, { status = 200, cache = "no-store" } = {}) => new Response(

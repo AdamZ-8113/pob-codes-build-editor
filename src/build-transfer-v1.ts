@@ -1,4 +1,10 @@
-import { fetchBoundedText } from "./bounded-response-v1.js";
+type BuildTransferV1 = { resolve(input: string): Promise<string>; share(): Promise<string>; retry(): Promise<string>; onFetch(url: string, headers?: Record<string, string>, body?: string): Promise<BuildTransferFetchResultV1 | undefined>; readonly hasPendingShare: boolean; readonly sharing: boolean };
+
+type CreateBuildTransferV1Options = { apiBaseUrl?: string; fetchImpl?: typeof fetch; getBuildCode: () => Promise<string>; timeoutMs?: number };
+
+export type BuildTransferFetchResultV1 = { body: string; status: number | undefined; headers: Record<string, string>; error: string | undefined };
+
+import { fetchBoundedText } from "./bounded-response-v1.ts";
 
 const MAX_CODE_BYTES = 8 * 1024 * 1024;
 const MAX_RESOLVER_BYTES = 64 * 1024;
@@ -9,12 +15,14 @@ const BUILD_ID = /^[A-Za-z0-9_-]{5,90}$/;
 const IMPORT_HOSTS = new Set(["maxroll.gg", "planners.maxroll.gg", "pobb.in", "pob.codes", "poe.ninja", "pastebin.com", "poedb.tw"]);
 const APP_HEADERS = Object.freeze({ "content-type": "text/plain; charset=utf-8", "x-pobcodes-client": "web" });
 
-export function createBuildTransferV1({ apiBaseUrl, fetchImpl = fetch, getBuildCode, timeoutMs = 12_000 } = {}) {
+// Preserve the optional factory argument while requiring the callback when supplied.
+export function createBuildTransferV1(options?: CreateBuildTransferV1Options): BuildTransferV1;
+export function createBuildTransferV1({ apiBaseUrl, fetchImpl = fetch, getBuildCode, timeoutMs = 12_000 }: Partial<CreateBuildTransferV1Options> = {}): BuildTransferV1 {
   const api = apiOrigin(apiBaseUrl);
-  let pendingShare;
+  let pendingShare: string | undefined;
   let sharing = false;
 
-  async function resolve(input) {
+  async function resolve(input: string) {
     if (typeof input !== "string" || !input) throw new Error("Invalid build input.");
     const trimmed = input.trim();
     if (!looksLikeBuildLink(trimmed)) return validateCode(trimmed);
@@ -37,7 +45,7 @@ export function createBuildTransferV1({ apiBaseUrl, fetchImpl = fetch, getBuildC
     return fetchRawBuild(envelope.id);
   }
 
-  async function fetchRawBuild(id) {
+  async function fetchRawBuild(id: string) {
     const { response, text } = await boundedFetch(`${api}/${encodeURIComponent(id)}/raw`, { method: "GET", headers: { accept: "text/plain" } }, MAX_CODE_BYTES);
     if (response.status === 404) throw new Error("Saved build was not found.");
     if (!response.ok) throw new Error("Saved build could not be resolved.");
@@ -47,7 +55,7 @@ export function createBuildTransferV1({ apiBaseUrl, fetchImpl = fetch, getBuildC
   async function share() {
     if (sharing) throw new Error("A share request is already running.");
     if (!api) throw new Error("Sharing is not configured.");
-    pendingShare = validateCode(await getBuildCode());
+    pendingShare = validateCode(await getBuildCode!());
     return sendPending();
   }
 
@@ -66,7 +74,7 @@ export function createBuildTransferV1({ apiBaseUrl, fetchImpl = fetch, getBuildC
     } finally { sharing = false; }
   }
 
-  async function uploadPlain(code) {
+  async function uploadPlain(code: unknown) {
     const { response, text } = await boundedFetch(`${api}/pob/plain`, {
       method: "POST",
       headers: { ...APP_HEADERS, accept: "text/plain" },
@@ -79,7 +87,7 @@ export function createBuildTransferV1({ apiBaseUrl, fetchImpl = fetch, getBuildC
     return id;
   }
 
-  async function onFetch(url, _headers = {}, body) {
+  async function onFetch(url: string, _headers: Record<string, string> = {}, body?: string): Promise<BuildTransferFetchResultV1 | undefined> {
     let parsed;
     try { parsed = new URL(url); }
     catch { return undefined; }
@@ -101,30 +109,30 @@ export function createBuildTransferV1({ apiBaseUrl, fetchImpl = fetch, getBuildC
     }
   }
 
-  function boundedFetch(url, init, maxBytes) {
+  function boundedFetch(url: string, init: RequestInit, maxBytes: number) {
     return fetchBoundedText(url, { ...init, credentials: "omit", redirect: "error" }, { fetchImpl, timeoutMs, maxBytes });
   }
   return { resolve, share, retry, onFetch, get hasPendingShare() { return Boolean(pendingShare); }, get sharing() { return sharing; } };
 }
 
-function apiOrigin(value) {
+function apiOrigin(value: string | undefined) {
   if (!value) return "";
   const url = new URL(value);
   const worker = url.hostname === "api.pob.codes" && url.pathname === "/";
   if (url.protocol !== "https:" || !worker || url.search || url.hash) throw new Error("PUBLIC_API_BASE_URL must be https://api.pob.codes.");
   return url.origin;
 }
-function validateCode(code) {
+function validateCode(code: unknown) {
   // Valid codes are ASCII, so character length also bounds their byte length.
   if (typeof code !== "string" || code.length > MAX_CODE_BYTES || !/^[A-Za-z0-9_-]{16,}={0,2}$/.test(code) || (code.endsWith("=") && code.length % 4 !== 0)) throw new Error("Invalid Path of Building code.");
   return code;
 }
 
-function looksLikeBuildLink(value) {
+function looksLikeBuildLink(value: string) {
   return /^(?:https?:\/\/|pob:\/\/|www\.)/i.test(value) || [...IMPORT_HOSTS].some(host => value.toLowerCase().startsWith(host));
 }
 
-function ownedBuildId(value) {
+function ownedBuildId(value: string) {
   let url;
   try { url = new URL(value); }
   catch { return undefined; }
@@ -133,10 +141,10 @@ function ownedBuildId(value) {
   return match && BUILD_ID.test(match[1]) ? match[1] : undefined;
 }
 
-function isSupportedImportUrl(url) {
+function isSupportedImportUrl(url: URL) {
   return IMPORT_HOSTS.has(url.hostname.replace(/^www\./i, ""));
 }
 
-function fetchResult(body) {
+function fetchResult(body: string): BuildTransferFetchResultV1 {
   return { body, status: 200, headers: { "content-type": "text/plain; charset=utf-8" }, error: undefined };
 }

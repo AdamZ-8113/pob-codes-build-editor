@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { createCharacterHostV1, createPobCodesCharacterTransport } from "../../src/character-host-v1.js";
+import { createCharacterHostV1, createPobCodesCharacterTransport } from "../../src/character-host-v1.ts";
 
 const fixture = async name => JSON.parse(await readFile(new URL(`../../contracts/fixtures/${name}`, import.meta.url), "utf8"));
 const characterUrl = operation => `https://www.pathofexile.com/character-window/${operation}?accountName=Fixture&character=FixtureRanger&realm=pc`;

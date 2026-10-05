@@ -1,6 +1,0 @@
-export type ConfigurationOwnerV1 = "automatic" | "manual";
-export type ConfigurationWriteV1 = { key: string; owner: ConfigurationOwnerV1; operation: "clear" } | { key: string; owner: ConfigurationOwnerV1; operation: "set"; value: boolean | number | string };
-export type ConfigurationRequestV1 = { version: 1; writes: ConfigurationWriteV1[] };
-export type NativeConfigurationBridgeV1 = { getBuildCode(): Promise<string>; loadBuildFromCode(code: string): Promise<unknown>; applyConfiguration(request: { version: 1; expectedGeneration: number; writes: Array<{ key: string; operation: "clear" | "set"; value?: boolean | number | string }> }): Promise<{ ok: boolean; error?: string }> };
-export declare const CONFIGURATION_V1: Readonly<{ version: 1; maxWrites: number; maxKeyLength: number; maxStringLength: number; maxSnapshotBytes: number; maxUndo: number }>;
-export declare function createConfigurationBridgeV1(native: NativeConfigurationBridgeV1, limits?: Partial<typeof CONFIGURATION_V1>): { apply(request: ConfigurationRequestV1): Promise<{ ok: true; generation: number; applied: string[]; skipped: string[] }>; undo(): Promise<boolean>; readonly generation: number; ownership(key: string): ConfigurationOwnerV1 | undefined; readonly busy: boolean };
