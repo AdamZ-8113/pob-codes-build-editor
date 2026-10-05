@@ -44,10 +44,41 @@ Keep third-party licenses and notices with every published generation.
 - Payload, adapter, or pinned-source changes: add `npm run pack` and relevant
   `tests/browser/` harnesses.
 - Browser UI or integration changes: add `npm run test:e2e`.
+- Driver, renderer or payload integration changes: add `npm run test:browser`
+  for the registered development-server harnesses, after preparing and packing
+  the runtime.
 - Release-path changes: run `npm run build:release` followed by
   `npm run verify:release`, `npm run test:e2e:release`, and the release safety tests.
 
 Install the browser for candidate checks with `npx playwright install chromium`.
+The standalone harness registry in `tests/browser-harnesses.json` classifies
+every `tests/browser/*.mjs` file as CI or manual and fails if a file is missing,
+duplicated or has no manual exclusion reason. `npm run test:browser` runs the CI
+subset sequentially, prints outcomes and durations, and owns its development
+server on `127.0.0.1:3010`. Stop an existing server first and unset
+`DESKTOP_POB_ORIGIN`; the runner refuses both an occupied port and an origin
+override. Each harness has a ten-minute deadline, including payload probes that
+deliberately wait for transport timeouts. The server is stopped on completion,
+failure, timeout or interruption.
+
+Local runs keep installed Chrome by default. Set
+`BUILD_EDITOR_BROWSER_CHANNEL` to an empty string to use Playwright's installed
+Chromium (POSIX: `BUILD_EDITOR_BROWSER_CHANNEL='' npm run test:browser`).
+Shells that remove empty environment values need a Node launcher to set this
+variable. CI installs bundled Chromium and Chrome. It uses bundled
+Chromium except for the registry's `chromeOnly` entries, which record concrete
+compatibility failures and retain installed Chrome with unchanged assertions.
+The harnesses run in `native-and-browser` after candidate acceptance.
+
+Use `npm run test:browser -- --only test-mouse-release` to select one registered
+harness, including a manual entry, or `npm run test:browser -- --all` to include
+every entry. Selecting the LAN harness starts the owned server with `--lan`.
+Manual checks include Windows memory/performance admission, LAN HTTPS, and
+currently failing header and import-panel framebuffer probes. Their registry
+reasons explain the prerequisites or failures; `--all` can therefore fail on a
+machine that passes the CI subset. Run a harness directly when supplying its
+own fixture/report options or using an explicitly started manual LAN server.
+
 `test:e2e:release` starts a dedicated static server for `.runtime/import2-release`
 on `127.0.0.1:3011` and opens `/import2/`; it never starts the development server.
 The discovered release suite checks native fixture import, editing, recalculation,

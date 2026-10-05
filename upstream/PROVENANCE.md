@@ -160,6 +160,8 @@ seams while preserving texture filtering and glyph alpha blending. The standalon
 `tests/browser/test-render-seams.mjs` checks reduced opaque/translucent quads and native
 Import/Export panels at DPR 1/2; shader precision, Lua, native draw commands,
 canvas placement and frame reuse are unchanged.
+The harness remains manual while its fixed import-panel sampling region is
+investigated against the current UI; the CI registry records that exclusion.
 
 The renderer rejects wholly offscreen static quads before texture resolution and
 GPU submission, preserving boundary geometry and dynamic texture updates. The
@@ -352,6 +354,8 @@ ordering and complete canonical exports, exercises all Timeless families and
 reimports, and checks cancellation, failures, containment and mobile serial
 mode. Reports identify the exact Wasm, runtime sources, fixtures, harnesses,
 browser and machine; headless/sub-interval memory limits are explicit.
+This is manual Windows-only acceptance evidence; it is excluded from the
+development browser CI subset in `../tests/browser-harnesses.json`.
 
 Helper startup remains eager by default. The October 1 opt-in `helperStart=lazy`
 policy advertises eligible capacity without creating interpreters until a sort
@@ -399,3 +403,5 @@ evidence but cannot inflate the speed comparison; the candidate must never
 retire. Local acceptance and final-build candidate remeasurement recorded 15.3%
 lower median private-commit peak, 10.2% faster warm sorts and 2.1% faster heatmaps. Detailed figures,
 reproduction and update requirements are in `../README.md`.
+This comparison is manual Windows-only acceptance evidence and is excluded
+from the development browser CI subset. The recorded results above are retained.
