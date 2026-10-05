@@ -65,17 +65,18 @@ Local runs keep installed Chrome by default. Set
 `BUILD_EDITOR_BROWSER_CHANNEL` to an empty string to use Playwright's installed
 Chromium (POSIX: `BUILD_EDITOR_BROWSER_CHANNEL='' npm run test:browser`).
 Shells that remove empty environment values need a Node launcher to set this
-variable. CI installs bundled Chromium and Chrome. It uses bundled
-Chromium except for the registry's `chromeOnly` entries, which record concrete
-compatibility failures and retain installed Chrome with unchanged assertions.
-The harnesses run in `native-and-browser` after candidate acceptance.
+variable. CI uses bundled Chromium in the dedicated `browser-harnesses` job,
+which prepares, builds and packs its own runtime. Candidate acceptance remains
+in `native-and-browser`. The curated subset checks native editing/save, input
+latency, payload integrity, render reuse, startup paths and unique databases.
 
 Use `npm run test:browser -- --only test-mouse-release` to select one registered
 harness, including a manual entry, or `npm run test:browser -- --all` to include
 every entry. Selecting the LAN harness starts the owned server with `--lan`.
-Manual checks include Windows memory/performance admission, LAN HTTPS, and
-currently failing header and import-panel framebuffer probes. Their registry
-reasons explain the prerequisites or failures; `--all` can therefore fail on a
+Manual checks include Windows memory/performance admission, LAN HTTPS,
+expensive calculation profiling, and platform-sensitive pixel, tooltip, overlay
+and frame-timing checks. Their registry reasons explain the prerequisites or
+observed failures; `--all` can therefore fail on a
 machine that passes the CI subset. Run a harness directly when supplying its
 own fixture/report options or using an explicitly started manual LAN server.
 

@@ -163,6 +163,12 @@ canvas placement and frame reuse are unchanged.
 The harness remains manual while its fixed import-panel sampling region is
 investigated against the current UI; the CI registry records that exclusion.
 
+`../tests/browser-harnesses.json` records development CI coverage and manual
+acceptance prerequisites. Platform-sensitive framebuffer, tooltip and frame-timing
+checks remain manual where Linux shadow runs exposed unstable results. Their
+recorded local results are retained; inclusion in the registry does not imply
+that every acceptance harness runs in CI.
+
 The renderer rejects wholly offscreen static quads before texture resolution and
 GPU submission, preserving boundary geometry and dynamic texture updates. The
 embedded `item-tooltip-cache.lua` adapter memoizes up to 64 item-tooltip
