@@ -15,29 +15,38 @@ export function createConfigurationBridgeV1(native, limits = {}) {
     const skipped = writes.filter(write => !accepted.includes(write)).map(write => write.key);
     if (!accepted.length) return { ok: true, generation, applied: [], skipped };
     busy = true;
-    const previousOwnership = new Map(ownership);
-    const snapshot = await native.getBuildCode();
-    if (new TextEncoder().encode(snapshot).byteLength > policy.maxSnapshotBytes) { busy = false; throw new Error("Build snapshot exceeds the transaction limit."); }
     try {
-      const result = await native.applyConfiguration({ version: 1, expectedGeneration: generation, writes: accepted.map(({ key, operation, value }) => ({ key, operation, ...(operation === "set" ? { value } : {}) })) });
-      if (!result?.ok) throw new Error(result?.error ?? "Native configuration transaction failed.");
+      const previousOwnership = new Map(ownership);
+      const snapshot = await native.getBuildCode();
+      if (new TextEncoder().encode(snapshot).byteLength > policy.maxSnapshotBytes) throw new Error("Build snapshot exceeds the transaction limit.");
+      try {
+        const result = await native.applyConfiguration({ version: 1, expectedGeneration: generation, writes: accepted.map(({ key, operation, value }) => ({ key, operation, ...(operation === "set" ? { value } : {}) })) });
+        if (!result?.ok) throw new Error(result?.error ?? "Native configuration transaction failed.");
+      } catch (error) {
+        await native.loadBuildFromCode(snapshot);
+        throw error;
+      }
       for (const write of accepted) ownership.set(write.key, write.owner);
       undo.push({ snapshot, ownership: previousOwnership });
       if (undo.length > policy.maxUndo) undo.shift();
       generation++;
       return { ok: true, generation, applied: accepted.map(write => write.key), skipped };
-    } catch (error) {
-      await native.loadBuildFromCode(snapshot);
-      throw error;
     } finally { busy = false; }
   }
 
   async function undoLast() {
     if (busy) throw new Error("A configuration transaction is already running.");
-    const state = undo.pop();
+    const state = undo.at(-1);
     if (!state) return false;
     busy = true;
-    try { await native.loadBuildFromCode(state.snapshot); ownership.clear(); for (const [key, owner] of state.ownership) ownership.set(key, owner); generation++; return true; }
+    try {
+      await native.loadBuildFromCode(state.snapshot);
+      undo.pop();
+      ownership.clear();
+      for (const [key, owner] of state.ownership) ownership.set(key, owner);
+      generation++;
+      return true;
+    }
     finally { busy = false; }
   }
 

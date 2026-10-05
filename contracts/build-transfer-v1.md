@@ -14,7 +14,10 @@ to the same `POST https://api.pob.codes/pob/plain` endpoint used by PoB's native
 `https://pob.codes/b/<token>` viewer. Browser writes carry the API's required
 `x-pobcodes-client: web` header. A failed request retains that exact exported
 snapshot; retry does not re-export potentially changed editor state. Requests
-time out and codes and responses are size-bounded.
+time out after 12 seconds, including response-body consumption. Raw codes are
+limited to 8 MiB, resolver envelopes to 64 KiB, and sharing responses to 4 KiB;
+limits count streamed bytes and cancel oversized responses. Codes accept native
+Base64url exports with optional trailing padding, preserving the exact snapshot.
 
 Native PoB build-site downloads are routed through that same resolver, and its
 native `pob.codes` upload is allowed only to `/pob/plain`. Other native network

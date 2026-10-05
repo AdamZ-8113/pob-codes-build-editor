@@ -48,4 +48,6 @@ jobs:
       - run: npm run prepare
       - run: npm run test:native
       - run: npm run pack
-      - run: npm run test:e2e
+      - run: node scripts/release/materialize-import2.mjs
+      - run: npx playwright install --with-deps chromium
+      - run: npm run test:e2e:release

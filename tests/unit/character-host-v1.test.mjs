@@ -4,6 +4,123 @@ import { readFile } from "node:fs/promises";
 import { createCharacterHostV1, createPobCodesCharacterTransport } from "../../src/character-host-v1.js";
 
 const fixture = async name => JSON.parse(await readFile(new URL(`../../contracts/fixtures/${name}`, import.meta.url), "utf8"));
+const characterUrl = operation => `https://www.pathofexile.com/character-window/${operation}?accountName=Fixture&character=FixtureRanger&realm=pc`;
+const pairedData = marker => ({ ok: true, data: { items: { marker }, passiveSkills: { marker } } });
+
+test("failed paired requests are evicted and concurrent retries share fresh data", async t => {
+  for (const failure of ["transport", "envelope", "invalid"]) {
+    await t.test(failure, async () => {
+      let calls = 0;
+      const host = createCharacterHostV1({ transport: { enabled: true, async request() {
+        if (++calls > 1) return pairedData("retry");
+        if (failure === "transport") throw new Error("Temporary network failure.");
+        if (failure === "envelope") return { ok: false, error: { message: "Temporary API failure." } };
+        return { ok: true, data: { items: null, passiveSkills: {} } };
+      } } });
+      const failed = await Promise.all(["get-items", "get-passive-skills"].map(operation => host.onFetch(characterUrl(operation))));
+      assert.ok(failed.every(result => result.error));
+      assert.equal(calls, 1);
+      const retried = await Promise.all(["get-items", "get-passive-skills"].map(operation => host.onFetch(characterUrl(operation))));
+      assert.ok(retried.every(result => result.status === 200 && JSON.parse(result.body).marker === "retry"));
+      assert.equal(calls, 2);
+    });
+  }
+});
+
+test("expired cached character data is replaced before reuse", async () => {
+  let time = 0;
+  let calls = 0;
+  const host = createCharacterHostV1({ now: () => time, limits: { timeoutMs: 100 }, transport: { enabled: true, async request() { return pairedData(++calls); } } });
+  assert.equal(JSON.parse((await host.onFetch(characterUrl("get-items"))).body).marker, 1);
+  time = 99;
+  assert.equal(JSON.parse((await host.onFetch(characterUrl("get-items"))).body).marker, 1);
+  time = 100;
+  assert.equal(JSON.parse((await host.onFetch(characterUrl("get-passive-skills"))).body).marker, 2);
+  assert.equal(JSON.parse((await host.onFetch(characterUrl("get-items"))).body).marker, 2);
+  assert.equal(calls, 2);
+});
+
+test("a failed expired request cannot evict its replacement", async () => {
+  let time = 0;
+  let calls = 0;
+  let rejectExpired;
+  const host = createCharacterHostV1({ now: () => time, transport: { enabled: true, request() {
+    calls++;
+    return calls === 1 ? new Promise((_resolve, reject) => { rejectExpired = reject; }) : Promise.resolve(pairedData("fresh"));
+  } } });
+  const expired = host.onFetch(characterUrl("get-items"));
+  time = 12_000;
+  assert.equal((await host.onFetch(characterUrl("get-items"))).status, 200);
+  rejectExpired(new Error("Old request failed."));
+  assert.match((await expired).error, /Old request failed/);
+  assert.equal(JSON.parse((await host.onFetch(characterUrl("get-passive-skills"))).body).marker, "fresh");
+  assert.equal(calls, 2);
+});
+
+test("reset discards late results even if a transport ignores cancellation", async () => {
+  let resolveOld;
+  let calls = 0;
+  const host = createCharacterHostV1({ transport: { enabled: true, request() {
+    return ++calls === 1 ? new Promise(resolve => { resolveOld = resolve; }) : Promise.resolve(pairedData("fresh"));
+  } } });
+  const stale = host.onFetch(characterUrl("get-items"));
+  host.reset();
+  assert.equal((await host.onFetch(characterUrl("get-items"))).status, 200);
+  resolveOld(pairedData("stale"));
+  assert.match((await stale).error, /Stale|cancelled/);
+  assert.equal(JSON.parse((await host.onFetch(characterUrl("get-passive-skills"))).body).marker, "fresh");
+  assert.equal(calls, 2);
+});
+
+test("a pair refused at the concurrency limit can be retried once a slot is free", async () => {
+  let release;
+  let calls = 0;
+  const host = createCharacterHostV1({ limits: { maxConcurrency: 1 }, transport: { enabled: true, request() {
+    return ++calls === 1 ? new Promise(resolve => { release = resolve; }) : Promise.resolve(pairedData("retry"));
+  } } });
+  const first = host.onFetch(characterUrl("get-items"));
+  const secondUrl = characterUrl("get-items").replace("FixtureRanger", "OtherCharacter");
+  assert.match((await host.onFetch(secondUrl)).error, /busy/);
+  release(pairedData("first"));
+  assert.equal((await first).status, 200);
+  assert.equal(JSON.parse((await host.onFetch(secondUrl)).body).marker, "retry");
+  assert.equal(calls, 2);
+});
+
+test("production transport bounds response streams before buffering complete bodies", async () => {
+  let cancelled = false;
+  let signal;
+  const host = createCharacterHostV1({ limits: { maxResponseBytes: 32 }, transport: createPobCodesCharacterTransport({
+    origin: "https://pob.codes",
+    fetchImpl: async (_url, init) => {
+      signal = init.signal;
+      return new Response(new ReadableStream({
+        start(controller) { controller.enqueue(new TextEncoder().encode("x".repeat(33))); },
+        cancel() { cancelled = true; },
+      }));
+    },
+  }) });
+  assert.match((await host.onFetch(characterUrl("get-items"))).error, /size limit|too large|exceed/i);
+  assert.ok(cancelled);
+  assert.ok(signal.aborted);
+});
+
+test("character timeout covers a stalled response body and permits retry", async () => {
+  let calls = 0;
+  let cancelled = false;
+  const host = createCharacterHostV1({ limits: { timeoutMs: 20 }, transport: createPobCodesCharacterTransport({
+    origin: "https://pob.codes",
+    fetchImpl: async () => {
+      if (++calls > 1) return Response.json({ itemsJson: '{"items":[]}', passiveSkillsJson: '{"hashes":[]}' });
+      return new Response(new ReadableStream({ cancel() { cancelled = true; } }));
+    },
+  }) });
+  assert.match((await host.onFetch(characterUrl("get-items"))).error, /timed out|abort/i);
+  assert.ok(cancelled);
+  assert.equal((await host.onFetch(characterUrl("get-items"))).status, 200);
+  assert.equal(calls, 2);
+});
+
 test("strictly translates list and coalesces paired imports", async () => {
   const calls = [];
   const transport = { enabled: true, async request(request) { calls.push(request); return request.path.endsWith("characters") ? fixture("character-list-success.json") : fixture("character-data-success.json"); } };

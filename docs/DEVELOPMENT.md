@@ -45,7 +45,24 @@ Keep third-party licenses and notices with every published generation.
   `tests/browser/` harnesses.
 - Browser UI or integration changes: add `npm run test:e2e`.
 - Release-path changes: run `npm run build:release` followed by
-  `npm run verify:release` and the release safety tests.
+  `npm run verify:release`, `npm run test:e2e:release`, and the release safety tests.
+
+Install the browser for candidate checks with `npx playwright install chromium`.
+`test:e2e:release` starts a dedicated static server for `.runtime/import2-release`
+on `127.0.0.1:3011` and opens `/import2/`; it never starts the development server.
+The discovered release suite checks native fixture import, editing, recalculation,
+export, mocked sharing/link resolution and character import, and save/reload using
+the existing native OPFS path, plus immutable asset paths and the candidate's
+isolation/cache headers.
+External requests are mocked or blocked. The suite ignores development origin
+overrides and refuses to reuse an existing server. Run `build:release` again after
+source changes before using the candidate suite.
+
+The host keeps `PoB Codes Import2 Preview v1` as its configured `userDirectory`
+for settings/cloud lookup. Native PoB currently writes browser saves under the
+OPFS directory `Path of Building/Builds`; the candidate test preserves and checks
+that existing layout. Any future directory correction requires an explicit
+migration of users' saved files.
 
 All automated browser runs are headless. Ordinary local tests must not be aimed
 at production. `npm run test:e2e:production-smoke` is the explicit live-site

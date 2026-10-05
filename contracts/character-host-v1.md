@@ -15,6 +15,11 @@ concurrent core requests, and 12 seconds. A new character-list request starts a
 generation: older results are stale and discarded. Reset cancels the logical
 generation; timeouts use `AbortSignal`. Item and passive requests for the same
 generation/account/character share one `/api/poe/import-character` request.
+Failed requests and invalid envelopes are evicted so retry starts a fresh
+request. A cached pair expires after 12 seconds, checked before reuse, or once
+both item and passive operations have consumed it. Production response bodies
+are bounded while streaming, and the deadline remains active through body
+consumption.
 
 The core API uses POST JSON envelopes with `contractVersion: 1`. Successful
 responses are `{ "ok": true, "data": ... }`; errors are

@@ -14,6 +14,10 @@ failure. Browser undo restores the exact prior build into the same instance.
 Transactions are serialized, snapshots are limited to 8 MiB, and history is
 bounded to 20 entries.
 
+Snapshot failures release the transaction lock without applying changes or
+attempting a restore. Undo retains its snapshot and ownership state until the
+native restore succeeds, so a failed restore can be retried.
+
 This contract is a safe primitive, not an automatic-configuration inference
 engine. Eligibility reports, guide preset resolution, sparse multi-pass policy,
 inactive-set handling, and reviewed per-option assumptions remain future work.

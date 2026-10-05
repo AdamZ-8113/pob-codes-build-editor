@@ -1,4 +1,8 @@
+import { fetchBoundedText } from "./bounded-response-v1.js";
+
 const MAX_CODE_BYTES = 8 * 1024 * 1024;
+const MAX_RESOLVER_BYTES = 64 * 1024;
+const MAX_SHARE_BYTES = 4096;
 const MAX_LINK_BYTES = 4096;
 const utf8 = new TextEncoder();
 const BUILD_ID = /^[A-Za-z0-9_-]{5,90}$/;
@@ -20,12 +24,13 @@ export function createBuildTransferV1({ apiBaseUrl, fetchImpl = fetch, getBuildC
     const ownedId = ownedBuildId(trimmed);
     if (ownedId) return fetchRawBuild(ownedId);
 
-    const response = await boundedFetch(`${api}/pob`, {
+    const { response, text } = await boundedFetch(`${api}/pob`, {
       method: "POST",
       headers: { ...APP_HEADERS, accept: "application/json" },
       body: trimmed,
-    });
-    const envelope = await response.json().catch(() => undefined);
+    }, MAX_RESOLVER_BYTES);
+    let envelope;
+    try { envelope = JSON.parse(text); } catch { /* Invalid envelopes fail below. */ }
     if (response.status !== 201 || !response.ok || typeof envelope?.id !== "string" || !BUILD_ID.test(envelope.id)) {
       throw new Error(typeof envelope?.error === "string" ? envelope.error : "Build link could not be resolved.");
     }
@@ -33,10 +38,10 @@ export function createBuildTransferV1({ apiBaseUrl, fetchImpl = fetch, getBuildC
   }
 
   async function fetchRawBuild(id) {
-    const response = await boundedFetch(`${api}/${encodeURIComponent(id)}/raw`, { method: "GET", headers: { accept: "text/plain" } });
+    const { response, text } = await boundedFetch(`${api}/${encodeURIComponent(id)}/raw`, { method: "GET", headers: { accept: "text/plain" } }, MAX_CODE_BYTES);
     if (response.status === 404) throw new Error("Saved build was not found.");
     if (!response.ok) throw new Error("Saved build could not be resolved.");
-    return validateCode(await response.text());
+    return validateCode(text);
   }
 
   async function share() {
@@ -62,12 +67,12 @@ export function createBuildTransferV1({ apiBaseUrl, fetchImpl = fetch, getBuildC
   }
 
   async function uploadPlain(code) {
-    const response = await boundedFetch(`${api}/pob/plain`, {
+    const { response, text } = await boundedFetch(`${api}/pob/plain`, {
       method: "POST",
       headers: { ...APP_HEADERS, accept: "text/plain" },
       body: validateCode(code),
-    });
-    const id = (await response.text()).trim();
+    }, MAX_SHARE_BYTES);
+    const id = text.trim();
     if (!response.ok || response.status !== 200 || !BUILD_ID.test(id) || response.headers.get("cache-control")?.toLowerCase() !== "no-store") {
       throw new Error("Build sharing failed; retry keeps the exported snapshot.");
     }
@@ -96,10 +101,8 @@ export function createBuildTransferV1({ apiBaseUrl, fetchImpl = fetch, getBuildC
     }
   }
 
-  async function boundedFetch(url, init) {
-    const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), timeoutMs);
-    try { return await fetchImpl(url, { ...init, signal: controller.signal, credentials: "omit", redirect: "error" }); }
-    finally { clearTimeout(timer); }
+  function boundedFetch(url, init, maxBytes) {
+    return fetchBoundedText(url, { ...init, credentials: "omit", redirect: "error" }, { fetchImpl, timeoutMs, maxBytes });
   }
   return { resolve, share, retry, onFetch, get hasPendingShare() { return Boolean(pendingShare); }, get sharing() { return sharing; } };
 }
@@ -112,7 +115,8 @@ function apiOrigin(value) {
   return url.origin;
 }
 function validateCode(code) {
-  if (!/^[A-Za-z0-9_-]{16,}$/.test(code) || utf8.encode(code).byteLength > MAX_CODE_BYTES) throw new Error("Invalid Path of Building code.");
+  // Valid codes are ASCII, so character length also bounds their byte length.
+  if (typeof code !== "string" || code.length > MAX_CODE_BYTES || !/^[A-Za-z0-9_-]{16,}={0,2}$/.test(code) || (code.endsWith("=") && code.length % 4 !== 0)) throw new Error("Invalid Path of Building code.");
   return code;
 }
 

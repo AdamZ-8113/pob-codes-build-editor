@@ -4,13 +4,10 @@ import { readFile } from "node:fs/promises";
 import { createBuildTransferV1 } from "../../src/build-transfer-v1.js";
 
 const code = "abcDEF_0123456789-xyz";
-const response = (body, { ok = true, status = 200, cache = "no-store" } = {}) => ({
-  ok,
-  status,
-  headers: { get(name) { return name.toLowerCase() === "cache-control" ? cache : null; } },
-  async json() { return typeof body === "string" ? JSON.parse(body) : body; },
-  async text() { return typeof body === "string" ? body : JSON.stringify(body); },
-});
+const response = (body, { status = 200, cache = "no-store" } = {}) => new Response(
+  typeof body === "string" ? body : JSON.stringify(body),
+  { status, headers: cache ? { "cache-control": cache } : {} },
+);
 
 test("raw codes and owned pob.codes links resolve without an external-site upload", async () => {
   const calls = [];
@@ -63,12 +60,15 @@ test("shell exposes one Launch in PoB.Codes action and no Contribute link", asyn
 });
 
 test("sharing uses PoB's native pob.codes plain endpoint and retries the exact snapshot", async () => {
+  const fixture = (await readFile("fixtures/lightning strike daughter of oshabi 328 alternate.txt", "utf8")).trim();
+  const paddedCode = Buffer.from(fixture, "base64url").toString("base64").replaceAll("+", "-").replaceAll("/", "_");
+  assert.match(paddedCode, /=$/);
   let attempt = 0;
   let exports = 0;
   const bodies = [];
   const transfer = createBuildTransferV1({
     apiBaseUrl: "https://api.pob.codes/",
-    getBuildCode: async () => { exports++; return code; },
+    getBuildCode: async () => { exports++; return paddedCode; },
     fetchImpl: async (url, init) => {
       assert.equal(url, "https://api.pob.codes/pob/plain");
       assert.equal(init.headers["x-pobcodes-client"], "web");
@@ -82,7 +82,64 @@ test("sharing uses PoB's native pob.codes plain endpoint and retries the exact s
   assert.equal(await transfer.retry(), "https://pob.codes/b/share_123");
   assert.equal(exports, 1);
   assert.equal(bodies[0], bodies[1]);
+  assert.equal(bodies[0], paddedCode);
   assert.equal(transfer.hasPendingShare, false);
+});
+
+test("raw codes accept native padding and reject malformed padding", async () => {
+  const transfer = createBuildTransferV1();
+  for (const padded of ["abcdefghijklmnopqrs=", "abcdefghijklmnopqr=="]) {
+    assert.equal(await transfer.resolve(padded), padded);
+  }
+  for (const invalid of ["abcdefghijklmnop=", "abcdefghijklmnop===", "abcdefgh=ijklmnopqrs", "abcdefghijklmnop+/=="]) {
+    await assert.rejects(transfer.resolve(invalid), /Invalid Path of Building code/);
+  }
+});
+
+test("all build response endpoints enforce streamed limits and cancel overflow", async () => {
+  for (const [input, path, maxBytes] of [
+    ["https://pob.codes/b/abc_1234", "/abc_1234/raw", 8 * 1024 * 1024],
+    ["https://pobb.in/example123", "/pob", 64 * 1024],
+    [undefined, "/pob/plain", 4096],
+  ]) {
+    let cancelled = false;
+    let signal;
+    const transfer = createBuildTransferV1({
+      apiBaseUrl: "https://api.pob.codes",
+      getBuildCode: async () => code,
+      fetchImpl: async (url, init) => {
+        assert.equal(new URL(url).pathname, path);
+        signal = init.signal;
+        return new Response(new ReadableStream({
+          start(controller) { controller.enqueue(new Uint8Array(maxBytes + 1)); },
+          cancel() { cancelled = true; },
+        }));
+      },
+    });
+    await assert.rejects(input ? transfer.resolve(input) : transfer.share(), /size limit/);
+    assert.equal(signal.aborted, true);
+    assert.equal(cancelled, true);
+    if (!input) assert.equal(transfer.hasPendingShare, true);
+  }
+});
+
+test("sharing times out a stalled body and preserves the snapshot for retry", async () => {
+  let attempts = 0;
+  let exports = 0;
+  let cancelled = false;
+  const transfer = createBuildTransferV1({
+    apiBaseUrl: "https://api.pob.codes",
+    timeoutMs: 20,
+    getBuildCode: async () => { exports++; return code; },
+    fetchImpl: async () => ++attempts === 1
+      ? new Response(new ReadableStream({ cancel() { cancelled = true; } }))
+      : response("share_123"),
+  });
+  await assert.rejects(transfer.share(), /timed out/);
+  assert.equal(cancelled, true);
+  assert.equal(transfer.sharing, false);
+  assert.equal(await transfer.retry(), "https://pob.codes/b/share_123");
+  assert.equal(exports, 1);
 });
 
 test("native PoB build-site requests are restricted to the shared resolver and plain upload", async () => {

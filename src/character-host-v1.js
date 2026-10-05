@@ -1,3 +1,5 @@
+import { fetchBoundedText } from "./bounded-response-v1.js";
+
 const OPERATIONS = new Set(["get-characters", "get-items", "get-passive-skills"]);
 const REALMS = new Map([["pc", "pc"], ["xbox", "xbox"], ["sony", "sony"], ["PC", "pc"], ["XBOX", "xbox"], ["SONY", "sony"]]);
 const MANUAL_FALLBACK = "Character import is unavailable. Paste a build code or open a build file instead.";
@@ -16,7 +18,7 @@ export function createPobCodesCharacterTransport({ origin, fetchImpl = fetch } =
   }
   return {
     enabled: true,
-    async request(request, { signal }) {
+    async request(request, { signal, maxResponseBytes = CHARACTER_HOST_V1.maxResponseBytes, timeoutMs = CHARACTER_HOST_V1.timeoutMs }) {
       if (!["/api/poe/characters", "/api/poe/import-character"].includes(request.path)) {
         throw new Error("Blocked unsupported PoB Codes character operation.");
       }
@@ -24,15 +26,14 @@ export function createPobCodesCharacterTransport({ origin, fetchImpl = fetch } =
       const body = request.path === "/api/poe/characters"
         ? { accountName, realm: request.body.realm }
         : { accountName, characterName: request.body.character, realm: request.body.realm };
-      const response = await fetchImpl(new URL(request.path, target), {
+      const { response, text } = await fetchBoundedText(new URL(request.path, target), {
         method: "POST",
         headers: { accept: "application/json", "content-type": "application/json" },
         body: JSON.stringify(body),
         credentials: "omit",
         redirect: "error",
         signal,
-      });
-      const text = await response.text();
+      }, { fetchImpl, maxBytes: maxResponseBytes, timeoutMs });
       let payload;
       try { payload = JSON.parse(text); }
       catch { throw new Error("PoB Codes returned an invalid character-import response."); }
@@ -71,7 +72,8 @@ export function createCharacterHostV1({ transport = createDisabledCharacterTrans
     controllers.add(controller);
     const timer = setTimeout(() => controller.abort(new Error("Character import timed out.")), policy.timeoutMs);
     try {
-      const result = await transport.request(request, { signal: controller.signal });
+      const result = await transport.request(request, { signal: controller.signal, maxResponseBytes: policy.maxResponseBytes, timeoutMs: policy.timeoutMs });
+      controller.signal.throwIfAborted();
       if (capturedEpoch !== epoch) throw new Error("Stale character import result was discarded.");
       const text = JSON.stringify(result);
       if (utf8.encode(text).byteLength > policy.maxResponseBytes) throw new Error("Character import response exceeded the size limit.");
@@ -113,16 +115,29 @@ export function createCharacterHostV1({ transport = createDisabledCharacterTrans
       }
       const key = `${epoch}\u0000${realm}\u0000${account}\u0000${character}`;
       let pair = pairs.get(key);
+      if (pair && now() - pair.created >= policy.timeoutMs) {
+        pairs.delete(key);
+        pair = undefined;
+      }
       if (!pair) {
         const captured = epoch;
-        pair = { used: new Set(), created: now(), promise: boundedRequest({ method: "POST", path: "/api/poe/import-character", body: { contractVersion: 1, realm, account, character } }, captured) };
+        pair = { used: new Set(), created: now() };
         pairs.set(key, pair);
+        const pendingPair = pair;
+        pair.promise = boundedRequest({ method: "POST", path: "/api/poe/import-character", body: { contractVersion: 1, realm, account, character } }, captured)
+          .then(envelope => {
+            if (envelope?.ok !== true) throw new Error(envelope?.error?.message ?? "Character import failed.");
+            if (!envelope.data?.items || typeof envelope.data.items !== "object" || !envelope.data?.passiveSkills || typeof envelope.data.passiveSkills !== "object") throw new Error("Invalid paired-character envelope.");
+            return envelope;
+          })
+          .catch(error => {
+            if (pairs.get(key) === pendingPair) pairs.delete(key);
+            throw error;
+          });
       }
       const envelope = await pair.promise;
-      if (envelope?.ok !== true) throw new Error(envelope?.error?.message ?? "Character import failed.");
-      if (typeof envelope.data?.items !== "object" || typeof envelope.data?.passiveSkills !== "object") throw new Error("Invalid paired-character envelope.");
       pair.used.add(operation);
-      if (pair.used.size === 2 || now() - pair.created > policy.timeoutMs) pairs.delete(key);
+      if (pairs.get(key) === pair && (pair.used.size === 2 || now() - pair.created >= policy.timeoutMs)) pairs.delete(key);
       return ok(operation === "get-items" ? envelope.data.items : envelope.data.passiveSkills);
     } catch (error) {
       return { body: "", status: undefined, headers: {}, error: error instanceof Error ? error.message : MANUAL_FALLBACK };

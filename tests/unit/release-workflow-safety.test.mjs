@@ -35,8 +35,24 @@ test("public release workflow exports verified bytes without production authorit
   assert.match(workflow, /persist-credentials: false/);
   assert.match(workflow, /archive-release\.mjs/);
   assert.match(workflow, /npm run verify:release/);
-  assert.match(workflow, /npm run test:e2e/);
+  assert.match(workflow, /npm run test:e2e:release/);
   assert.match(workflow, /actions\/upload-artifact@/);
   assert.doesNotMatch(workflow, /secrets\.|CLOUDFLARE_|wrangler deploy|environment:|contents: write|publish-and-deploy|--retain/);
   assert.doesNotMatch(workflow, /inputs\.deploy|predecessor_tag:/);
+});
+
+test("CI and artifact browser gates test a materialized candidate using bundled Chromium", async () => {
+  for (const path of [".github/workflows/ci.yml", ".github/workflows/deploy-import2.yml"]) {
+    const workflow = await readFile(path, "utf8");
+    assert.ok(workflow.indexOf("materialize-import2.mjs") < workflow.indexOf("npm run test:e2e:release"));
+    assert.match(workflow, /playwright install --with-deps chromium/);
+    assert.match(workflow, /npm run test:e2e:release/);
+  }
+  const config = (await import("../../playwright.release.config.mjs")).default;
+  assert.equal(config.use.baseURL, "http://127.0.0.1:3011");
+  assert.equal(config.use.channel, undefined);
+  assert.equal(config.use.headless, true);
+  assert.equal(config.use.serviceWorkers, "block");
+  assert.equal(config.webServer.reuseExistingServer, false);
+  assert.equal(config.webServer.command, "node scripts/release/serve-test-release.mjs");
 });

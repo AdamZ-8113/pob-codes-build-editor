@@ -13,6 +13,10 @@ other production secrets. Source ownership and deployment authority are separate
    from `main`, supplying `commit_sha`.
 3. The workflow prepares, checks, tests, builds and packages one generation.
    It verifies the release and runs the materialized editor's headless tests.
+   `npm run test:e2e:release` serves those candidate bytes on loopback at
+   `/import2/`, including their static headers. The gate exercises native editing,
+   recalculation, export, save/reload using the existing native OPFS layout and
+   mocked network integrations. No test request reaches production.
 4. Download `build-editor-<full-sha>` or supply the successful run ID and SHA to
    the private deployment operator. The seven-day Actions artifact contains
    one tarball, the complete file inventory, and the release record. The record
