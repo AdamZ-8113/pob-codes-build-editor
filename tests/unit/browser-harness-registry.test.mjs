@@ -76,6 +76,10 @@ test("CI discovers the registered browser command in an independently prepared j
     assert.ok(harnessJob.indexOf(command) >= 0 && harnessJob.indexOf(command) < harnessJob.indexOf("npm run test:browser"), command);
   }
   assert.match(harnessJob, /BUILD_EDITOR_BROWSER_CHANNEL:\s*""/);
+  // Continue-on-error masks the API conclusion during rollout; outcome retains
+  // the actual runner result and must be visible in the job log and summary.
+  assert.match(harnessJob, /if: always\(\)[\s\S]*steps\.browser-harnesses\.outcome/);
+  assert.match(harnessJob, /GITHUB_STEP_SUMMARY/);
   const nativeJob = workflow.slice(workflow.indexOf("\n  native-and-browser:"), jobStart);
   assert.match(nativeJob, /npm run test:e2e:release/);
   assert.doesNotMatch(nativeJob, /npm run test:browser/);

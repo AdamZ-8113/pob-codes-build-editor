@@ -88,3 +88,10 @@ jobs:
         env:
           BUILD_EDITOR_BROWSER_CHANNEL: ""
         run: npm run test:browser
+      - name: Report development browser harness outcome
+        if: always()
+        env:
+          HARNESS_OUTCOME: ${{ steps.browser-harnesses.outcome }}
+        run: |
+          echo "Development browser harnesses: $HARNESS_OUTCOME"
+          echo "Development browser harnesses: $HARNESS_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
