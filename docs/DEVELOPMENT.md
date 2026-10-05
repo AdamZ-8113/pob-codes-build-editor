@@ -57,6 +57,8 @@ isolation/cache headers.
 External requests are mocked or blocked. The suite ignores development origin
 overrides and refuses to reuse an existing server. Run `build:release` again after
 source changes before using the candidate suite.
+CI retains failure screenshots and error contexts from these public fixtures as
+`candidate-browser-failure-<sha>` artifacts for seven days.
 
 The host keeps `PoB Codes Import2 Preview v1` as its configured `userDirectory`
 for settings/cloud lookup. Native PoB currently writes browser saves under the

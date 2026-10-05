@@ -60,6 +60,16 @@ jobs:
       - run: npm run verify:release
       - name: Verify the materialized editor in a headless browser
         run: npx playwright install --with-deps chromium && npm run test:e2e:release
+      - name: Retain public-fixture browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: candidate-browser-failure-${{ inputs.commit_sha }}
+          path: |
+            test-results/**/test-failed-*.png
+            test-results/**/error-context.md
+          if-no-files-found: ignore
+          retention-days: 7
       - name: Publish candidate bytes for independent deployment verification
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:

@@ -47,6 +47,9 @@ test("CI and artifact browser gates test a materialized candidate using bundled 
     assert.ok(workflow.indexOf("materialize-import2.mjs") < workflow.indexOf("npm run test:e2e:release"));
     assert.match(workflow, /playwright install --with-deps chromium/);
     assert.match(workflow, /npm run test:e2e:release/);
+    assert.match(workflow, /if: failure\(\)\s+uses: actions\/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02/);
+    assert.match(workflow, /test-results\/\*\*\/test-failed-\*\.png/);
+    assert.match(workflow, /test-results\/\*\*\/error-context\.md/);
   }
   const config = (await import("../../playwright.release.config.mjs")).default;
   assert.equal(config.use.baseURL, "http://127.0.0.1:3011");

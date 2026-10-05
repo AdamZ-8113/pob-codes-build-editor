@@ -152,13 +152,21 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
   // Use native UI so this also proves the release selects the production host adapter.
   await page.keyboard.press("Control+i");
   await page.evaluate(() => window.__DESKTOP_POB__.flushInput());
+  expect(buildTag(decode(await exportCode()))).toMatch(/viewMode="IMPORT"/);
   await canvas.click({ position: { x: 508, y: 124 } });
   await page.evaluate(() => window.__DESKTOP_POB__.flushInput());
   await page.keyboard.type("FixtureAccount#1234");
-  await canvas.click({ position: { x: 646, y: 124 } });
-  await expect.poll(() => characterRequests.length).toBe(1);
+  // DOM dispatch completes before the worker consumes the native input queue.
+  // Drain it before clicking a control whose enabled state depends on that text.
   await page.evaluate(() => window.__DESKTOP_POB__.flushInput());
+  await canvas.click({ position: { x: 646, y: 124 } });
+  await page.evaluate(() => window.__DESKTOP_POB__.flushInput());
+  await expect.poll(() => characterRequests.length).toBe(1);
+  // The intercepted HTTP request precedes the native response callback. Its
+  // saved account hash proves PoB processed the list and populated the selector.
+  await expect.poll(async () => decode(await exportCode())).toMatch(/<Import\b[^>]*\blastAccountHash="[a-f0-9]{40}"/);
   await canvas.click({ position: { x: 450, y: 188 } });
+  await page.evaluate(() => window.__DESKTOP_POB__.flushInput());
   await expect.poll(() => characterRequests.length).toBe(2);
   await expect.poll(async () => buildTag(decode(await exportCode()))).toMatch(/level="91"/);
   expect(characterRequests).toEqual([
