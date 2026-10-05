@@ -63,3 +63,21 @@ test("runner refuses an occupied loopback port without replacing its listener", 
     if (owned) await new Promise((resolve, reject) => listener.close(error => error ? reject(error) : resolve()));
   }
 });
+
+test("CI discovers the registered browser command in an independently prepared job", async () => {
+  const workflow = await readFile(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8");
+  const jobStart = workflow.indexOf("\n  browser-harnesses:");
+  assert.ok(jobStart > 0, "Dedicated browser harness job must exist");
+  const harnessJob = workflow.slice(jobStart);
+  assert.match(harnessJob, /persist-credentials: false/);
+  assert.match(harnessJob, /npm ci --ignore-scripts/);
+  for (const command of ["npm run prepare", "npm run test:native", "npm run pack", "playwright install --with-deps chromium"]) {
+    assert.ok(harnessJob.indexOf(command) >= 0 && harnessJob.indexOf(command) < harnessJob.indexOf("npm run test:browser"), command);
+  }
+  assert.match(harnessJob, /BUILD_EDITOR_BROWSER_CHANNEL:\s*""/);
+  const nativeJob = workflow.slice(workflow.indexOf("\n  native-and-browser:"), jobStart);
+  assert.match(nativeJob, /npm run test:e2e:release/);
+  assert.doesNotMatch(nativeJob, /npm run test:browser/);
+  const scripts = JSON.parse(await readFile(new URL("../../package.json", import.meta.url), "utf8")).scripts;
+  assert.equal(scripts["test:browser"], "node scripts/test-browser.mjs");
+});
