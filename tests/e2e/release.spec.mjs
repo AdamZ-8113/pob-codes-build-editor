@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { deflateSync, inflateSync } from "node:zlib";
 
 const origin = "http://127.0.0.1:3011";
@@ -7,6 +8,18 @@ const fixture = (await readFile(new URL("../../fixtures/guided import parity des
 const decode = code => inflateSync(Buffer.from(code, "base64url")).toString();
 const buildTag = xml => xml.match(/<Build\s[^>]*>/)?.[0] ?? "Missing Build element";
 const life = xml => xml.match(/<PlayerStat\b[^>]*\bstat="Life"[^>]*>/)?.[0].match(/\bvalue="([^"]+)"/)?.[1];
+// Public synthetic character data; these fixture hashes connect to Duelist's start.
+const characterPassives = [33795, 47389];
+const characterData = {
+  itemsJson: JSON.stringify({ items: [{
+    id: "synthetic-release-ring", inventoryId: "Ring", frameType: 2,
+    name: "Synthetic Acceptance", typeLine: "Iron Ring", ilvl: 1,
+    implicitMods: ["Adds 1 to 4 Physical Damage to Attacks"], explicitMods: ["+17 to maximum Life"],
+  }] }),
+  passiveSkillsJson: JSON.stringify({ hashes: characterPassives, hashes_ex: [], mastery_effects: {} }),
+};
+const importedItem = xml => xml.match(/<Item\b[^>]*>[\s\S]*?<\/Item>/g)?.find(item => item.includes("Synthetic Acceptance")) ?? "";
+const passiveNodes = xml => (xml.match(/<Spec\b[^>]*\bnodes="([^"]*)"/)?.[1] ?? "").split(",").filter(Boolean).map(Number).sort((a, b) => a - b);
 
 async function ready(page) {
   await page.waitForFunction(() => window.__DESKTOP_POB__?.ready || window.__DESKTOP_POB__?.errors?.length, null, { timeout: 120_000 });
@@ -16,6 +29,8 @@ async function ready(page) {
 
 test("candidate imports, edits, recalculates, shares and persists the displayed native build", async ({ page, context }) => {
   const faults = [], blocked = [], assetPaths = [], uploads = [], resolutions = [], characterRequests = [];
+  let importMode = "empty", releaseImport;
+  const requestsFor = path => characterRequests.filter(request => request.path === `/api/poe/${path}`);
   page.on("pageerror", error => faults.push(error.message));
   const cors = { "access-control-allow-origin": origin, "access-control-allow-headers": "content-type,x-pobcodes-client", "access-control-allow-methods": "GET,POST,OPTIONS", "cache-control": "no-store" };
   // Context routes cover workers and newly opened tabs as well as this page.
@@ -44,9 +59,20 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
       if (request.method() === "OPTIONS") { await route.fulfill({ status: 204, headers: cors }); return; }
       if (request.method() === "POST") {
         characterRequests.push({ path: url.pathname, body: request.postDataJSON() });
-        await route.fulfill({ headers: cors, json: url.pathname.endsWith("/characters")
-          ? { characters: [{ name: "FixtureDuelist", class: "Duelist", level: 91, league: "Standard", realm: "pc" }] }
-          : { itemsJson: JSON.stringify({ items: [] }), passiveSkillsJson: JSON.stringify({ hashes: [], hashes_ex: [], mastery_effects: {} }) } });
+        if (url.pathname.endsWith("/characters")) {
+          await route.fulfill({ headers: cors, json: { characters: [{ name: "FixtureDuelist", class: "Duelist", level: 91, league: "Standard", realm: "pc" }] } });
+          return;
+        }
+        const mode = importMode;
+        importMode = "fixture";
+        if (mode === "fail") {
+          await route.fulfill({ status: 429, headers: cors, json: { error: "Synthetic rate limit. Please retry.", code: "RATE_LIMITED" } });
+          return;
+        }
+        if (mode === "hold") await new Promise(resolve => { releaseImport = resolve; });
+        await route.fulfill({ headers: cors, json: mode === "empty"
+          ? { itemsJson: JSON.stringify({ items: [] }), passiveSkillsJson: JSON.stringify({ hashes: [], hashes_ex: [], mastery_effects: {} }) }
+          : characterData });
         return;
       }
     }
@@ -173,6 +199,70 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
     { path: "/api/poe/characters", body: { accountName: "FixtureAccount#1234", realm: "pc" } },
     { path: "/api/poe/import-character", body: { accountName: "FixtureAccount#1234", characterName: "FixtureDuelist", realm: "pc" } },
   ]);
+
+  const flushInput = () => page.evaluate(() => window.__DESKTOP_POB__.flushInput());
+  const clickNative = async (x, y) => { await canvas.click({ position: { x, y } }); await flushInput(); };
+  const relist = async expectedLists => {
+    const accountName = `FixtureAccount#${1233 + expectedLists}`;
+    // PoB's profile callback leaves the discriminator URL-encoded in the input.
+    // Restore the synthetic account through the native field before Start.
+    await clickNative(370, 258);
+    await clickNative(508, 124);
+    await page.keyboard.press("Control+a");
+    await flushInput();
+    await page.keyboard.type(accountName);
+    await flushInput();
+    await clickNative(646, 124);
+    await expect.poll(() => requestsFor("characters").length).toBe(expectedLists);
+    // A distinct synthetic discriminator changes the saved hash only when
+    // the native profile callback has populated SELECTCHAR for this listing.
+    const accountHash = createHash("sha1").update(encodeURIComponent(accountName)).digest("hex");
+    await expect.poll(async () => decode(await exportCode())).toContain(`lastAccountHash="${accountHash}"`);
+  };
+  const clickItemsUntilRequest = async expectedImports => {
+    // A failure request can precede its native callback. Repeated clicks
+    // are ignored while IMPORTING; the held retry proves SELECTCHAR returned.
+    await expect.poll(async () => {
+      if (requestsFor("import-character").length < expectedImports) await clickNative(450, 188);
+      return requestsFor("import-character").length;
+    }, { timeout: 5_000 }).toBe(expectedImports);
+  };
+
+  await relist(2);
+  const beforeFailure = decode(await exportCode());
+  expect(importedItem(beforeFailure)).toBe("");
+  importMode = "fail";
+  await clickNative(450, 188);
+  await expect.poll(() => requestsFor("import-character").length).toBe(2);
+  importMode = "hold";
+  try {
+    await clickItemsUntilRequest(3);
+    expect(typeof releaseImport).toBe("function");
+    expect(decode(await exportCode())).toBe(beforeFailure);
+  } finally {
+    // Also release on assertion failure so route cleanup cannot hang the suite.
+    releaseImport?.();
+  }
+  await expect.poll(async () => importedItem(decode(await exportCode()))).toContain("+17 to maximum Life");
+  expect(requestsFor("characters")).toHaveLength(2);
+  expect(requestsFor("import-character")).toHaveLength(3);
+
+  await relist(3);
+  // siteCharImportAll is 32 px below Items; Enter activates the native
+  // OpenConfirmPopup's confirm control. Click once after the list callback.
+  await clickNative(450, 220);
+  await page.keyboard.press("Enter");
+  await flushInput();
+  await expect.poll(() => requestsFor("import-character").length).toBe(4);
+  // PoB also serializes the automatically allocated Duelist class start (50986).
+  await expect.poll(async () => passiveNodes(decode(await exportCode()))).toEqual([...characterPassives, 50986]);
+  expect(importedItem(decode(await exportCode()))).toContain("+17 to maximum Life");
+  expect(requestsFor("characters")).toEqual([1234, 1235, 1236].map(discriminator => ({
+    path: "/api/poe/characters", body: { accountName: `FixtureAccount#${discriminator}`, realm: "pc" },
+  })));
+  expect(requestsFor("import-character")).toEqual([1234, 1235, 1235, 1236].map(discriminator => ({
+    path: "/api/poe/import-character", body: { accountName: `FixtureAccount#${discriminator}`, characterName: "FixtureDuelist", realm: "pc" },
+  })));
   expect(assetPaths.some(path => path.startsWith(`${prefix}payload/`))).toBe(true);
   expect(assetPaths.every(path => path === "/import2/" || path.startsWith(prefix))).toBe(true);
   expect(await page.evaluate(() => window.__DESKTOP_POB__.errors)).toEqual([]);
