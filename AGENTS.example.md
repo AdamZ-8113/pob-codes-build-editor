@@ -24,7 +24,8 @@ These instructions apply to the whole repository.
   hash-checked adapter rather than changing calculation behavior.
 - `source-pin.json` and `upstream/PROVENANCE.md` own the upstream revisions,
   overlays, result hashes, licenses, and local adaptations. Review every
-  overlay for drift or upstream absorption when a pin changes.
+  overlay for drift or upstream absorption when a pin changes; follow the
+  upstream pin bump procedure in `docs/DEVELOPMENT.md`.
 - Do not edit prepared source, generated payloads, compiler output, or generated
   Path of Building data. Change the source/generator or checked adapter and
   regenerate the derived output.

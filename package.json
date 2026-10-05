@@ -15,6 +15,7 @@
     "prepare:runtime": "node scripts/prepare.mjs",
     "dev": "node scripts/dev/dev.mjs",
     "pack": "node scripts/build/pack.mjs",
+    "drift:upstream": "node scripts/build/upstream-drift.mjs",
     "clean:runtime": "node scripts/clean-runtime.mjs",
     "check": "node scripts/check.mjs",
     "test:unit": "node --test \"tests/unit/*.test.mjs\" && node scripts/test-deno-unit.mjs",

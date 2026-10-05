@@ -6,6 +6,13 @@ export function applyItemComparisonPatch(source, patch, pin) {
   const path = 'src/Classes/ItemsTab.lua';
   if (sha256(patch) !== pin.patchSha256) throw new Error('Item comparison patch hash mismatch');
   if (blobHash(source) !== pin.sourceBlobHashes[path]) throw new Error('Item comparison source hash mismatch');
+  const result = transformItemComparisonPatch(source, patch);
+  if (blobHash(result) !== pin.resultBlobHashes[path]) throw new Error('Item comparison result hash mismatch');
+  return result;
+}
+
+export function transformItemComparisonPatch(source, patch) {
+  const path = 'src/Classes/ItemsTab.lua';
   const sections = patch.toString().replaceAll('\r\n', '\n').split('diff --git ').slice(1);
   if (sections.length !== 1 || !sections[0].startsWith(`a/${path} b/${path}\n`)) {
     throw new Error('Item comparison runtime patch inventory changed');
@@ -20,6 +27,5 @@ export function applyItemComparisonPatch(source, patch, pin) {
   const at = source.indexOf(before);
   if (at < 0 || source.indexOf(before, at + 1) >= 0) throw new Error('Item comparison patch context mismatch');
   const result = source.slice(0, at) + after + source.slice(at + before.length);
-  if (blobHash(result) !== pin.resultBlobHashes[path]) throw new Error('Item comparison result hash mismatch');
   return result;
 }

@@ -9,6 +9,13 @@ export function applyGemHoverPatch(source, patch, pin) {
   const path = 'src/Classes/GemSelectControl.lua';
   if (sha256(patch) !== pin.patchSha256) throw new Error('Gem hover patch hash mismatch');
   if (blobHash(source) !== pin.sourceBlobHashes[path]) throw new Error('Gem hover source hash mismatch');
+  const result = transformGemHoverPatch(source, patch);
+  if (blobHash(result) !== pin.resultBlobHashes[path]) throw new Error('Gem hover result hash mismatch');
+  return result;
+}
+
+export function transformGemHoverPatch(source, patch) {
+  const path = 'src/Classes/GemSelectControl.lua';
   const section = patch.toString().replaceAll('\r\n', '\n').split('diff --git ')
     .find(part => part.startsWith(`a/${path} b/${path}\n`));
   if (!section) throw new Error('Gem hover runtime patch missing');
@@ -25,6 +32,5 @@ export function applyGemHoverPatch(source, patch, pin) {
     if (at < 0 || result.indexOf(before, at + 1) >= 0) throw new Error('Gem hover patch context mismatch');
     result = result.slice(0, at) + after + result.slice(at + before.length);
   }
-  if (blobHash(result) !== pin.resultBlobHashes[path]) throw new Error('Gem hover result hash mismatch');
   return result;
 }

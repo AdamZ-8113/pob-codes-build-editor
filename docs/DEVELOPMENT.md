@@ -38,6 +38,65 @@ Keep third-party licenses and notices with every published generation.
 
 Use `npm run clean:runtime` to preview verified stale archives and shell outputs; stop build producers before `-- --apply`, and use repeated `--include <name>` only for reviewed direct children (protected inputs and the archive container cannot be included).
 
+## Upstream overlay drift and pin bumps
+
+`npm run drift:upstream` shallow-fetches the pin and PoB `dev` into a disposable
+OS temporary directory and compares their trees. It never edits the pin,
+patches, prepared source, or payload. Use `-- --ref <SHA>` for a historical
+probe, `--json` for the versioned envelope, and `--output <path>` to persist it.
+The weekly `upstream-drift.yml` workflow also supports manual dispatch and retains
+only `report.json` as `upstream-drift-report` for 30 days, including conflict and
+incomplete results. This advisory workflow is separate from release eligibility.
+
+Entries distinguish unchanged locked paths (`untouched`), changed paths whose
+patch still applies (`touched-applies`), failed exact context (`conflict`), all
+retained change blocks already in the target tree (`absorbed`), and mixed
+absorption (`partial`). PR state is informational; a merged flag never proves
+absorption. Individual PRs are diagnosed independently because their recorded
+composite includes an overlap resolution. That composite prepares the candidate
+source, followed by the six authoritative pack-time transforms in packer order.
+Failure blocks dependent stages. Result-only adapters report locked-path drift.
+The report's `touchedPaths` remain separate from patch applicability.
+
+Exit codes are 0 for a completed acceptable check, 1 for the selected drift
+policy, and 2 for incomplete collection or invalid invocation. The default
+`--fail-on=conflict` also fails on `partial`; `--fail-on=touched` additionally
+fails on changed/absorbed entries. `--fail-on=never` still fails incomplete
+collection. Report output is written before applying the classification exit.
+
+JSON schema version 1 includes the fixed public `repository`, `editorSha`,
+`workflowRunId`/`workflowRunAttempt` (null locally), UTC `capturedAt`,
+`targetRef`/`targetSha`, `pinSha`, `completion`, sanitized `errorCode`, bounded
+`entries` and `counts`, informational PR states, and fetch size/duration.
+Incomplete reports cannot be interpreted as clean. Historical dispatch probes
+are identifiable by `targetRef`; consumers should bind reports to trusted
+default-branch workflow metadata and treat their contents as data.
+
+GitHub can disable public scheduled workflows after 60 days without repository
+activity. Open Actions → Upstream overlay drift → Enable workflow to restore
+the schedule, then dispatch a check and inspect its report.
+
+For an upstream pin bump:
+
+1. Run the report against the intended exact SHA and review every touched,
+   conflicting, or partially absorbed overlay. Rebase retained patches where
+   necessary; retain the exact upstream diffs and recorded composite resolution.
+2. Run `npm run drift:upstream -- --ref <SHA> --identities --fail-on=never`.
+   Its print-only candidate identities distinguish prepared, source,
+   intermediate, and result blobs. After reviewing the patches and candidates,
+   update `source-pin.json` and `upstream/PROVENANCE.md` together. Never hash
+   prepared files by hand: chained results exist only in memory. Missing
+   candidate identities mean the applicable stage must be repaired first.
+3. Drop an overlay only with complete target-tree absorption evidence. Update
+   the fixed inventories in `scripts/build/source-ledger.mjs` and
+   `tests/unit/source-ledger.test.mjs` when inventory changes. Partial absorption
+   requires a rebase, never automatic removal.
+4. Preserve local edits and move the prior versioned `.runtime/source-<hash>`
+   directory aside when pack requests it; never overwrite generated source.
+5. Run `npm run pack` to verify every identity, then `npm run test:unit`,
+   `npm run test:native`, `npm run build:release`, and `npm run test:e2e:release`.
+   Follow the release handoff contract before publishing an artifact.
+
 ## Validation routing
 
 - Documentation or narrow host changes: `npm run check` and affected unit tests.

@@ -6,6 +6,25 @@ import { bindPredecessorAssets } from "../../scripts/release/verify-release-asse
 
 const sha = "a".repeat(40);
 
+test("drift workflow has only read authority and uploads only its data report even on conflict", async () => {
+  const workflow = await readFile(".github/workflows/upstream-drift.yml", "utf8");
+  assert.match(workflow, /contents: read/);
+  assert.match(workflow, /persist-credentials: false/);
+  assert.match(workflow, /if: always\(\)/);
+  assert.match(workflow, /path: \$\{\{ runner.temp \}\}\/report.json/);
+  assert.match(workflow, /if-no-files-found: error/);
+  assert.match(workflow, /retention-days: 30/);
+  assert.match(workflow, /--ref "\$TARGET_REF"/);
+  assert.doesNotMatch(workflow, /secrets\.|DISCORD|webhook|npm ci|deploy|contents: write|pull_request:/i);
+  const actions = [...workflow.matchAll(/uses: ([^\s]+)/g)].map(match => match[1]);
+  assert.equal(actions.length, 3);
+  const ci = await readFile(".github/workflows/ci.yml", "utf8");
+  for (const action of actions) {
+    assert.match(action, /@[a-f0-9]{40}$/);
+    assert.ok(ci.includes(action));
+  }
+});
+
 test("release CI eligibility requires an exact successful push/main run and all three required jobs", () => {
   assert.throws(() => selectEligibleCiRun([], sha), /No completed successful/);
   assert.throws(() => selectEligibleCiRun([{ head_sha: sha, head_branch: "main", event: "workflow_dispatch", status: "completed", conclusion: "success" }], sha), /No completed successful/);

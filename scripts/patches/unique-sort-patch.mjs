@@ -6,6 +6,13 @@ const blob = text => createHash('sha1').update(`blob ${Buffer.byteLength(text)}\
 export function applyUniqueSortPatch(source, patch, pin) {
   const path = 'src/Classes/ItemDBControl.lua';
   if (hash(patch) !== pin.patchSha256 || blob(source) !== pin.sourceBlobHashes[path]) throw new Error('Unique sort delegation patch/source identity changed');
+  const result = transformUniqueSortPatch(source, patch);
+  if (blob(result) !== pin.resultBlobHashes[path]) throw new Error('Delegation result identity changed');
+  return result;
+}
+
+export function transformUniqueSortPatch(source, patch) {
+  const path = 'src/Classes/ItemDBControl.lua';
   const section = patch.toString().replaceAll('\r\n', '\n').split('diff --git ')
     .find(part => part.startsWith(`a/${path} b/${path}\n`));
   if (!section) throw new Error('Unique sort delegation runtime patch is missing');
@@ -20,6 +27,5 @@ export function applyUniqueSortPatch(source, patch, pin) {
     if (at < 0 || source.indexOf(before, at + 1) >= 0) throw new Error('Delegation patch context changed');
     source = source.slice(0, at) + after + source.slice(at + before.length);
   }
-  if (blob(source) !== pin.resultBlobHashes[path]) throw new Error('Delegation result identity changed');
   return source;
 }

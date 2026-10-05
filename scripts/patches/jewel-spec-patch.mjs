@@ -13,6 +13,13 @@ export function applyJewelSpecPatch(source, patch, pin, path) {
   if (sha256(patch) !== pin.patchSha256) throw new Error('Jewel spec patch hash mismatch');
   if (!runtimeHunks.has(path)) throw new Error('Jewel spec runtime path is unsupported');
   if (blobHash(source) !== pin.sourceBlobHashes[path]) throw new Error('Jewel spec source hash mismatch');
+  const result = transformJewelSpecPatch(source, patch, path);
+  if (blobHash(result) !== pin.resultBlobHashes[path]) throw new Error('Jewel spec result hash mismatch');
+  return result;
+}
+
+export function transformJewelSpecPatch(source, patch, path) {
+  if (!runtimeHunks.has(path)) throw new Error('Jewel spec runtime path is unsupported');
 
   const sections = patch.toString().replaceAll('\r\n', '\n').split('diff --git ').slice(1);
   if (sections.length !== runtimeHunks.size || !patch.toString().startsWith('diff --git ')) {
@@ -54,6 +61,5 @@ export function applyJewelSpecPatch(source, patch, pin, path) {
     if (at < 0 || result.indexOf(before, at + 1) >= 0) throw new Error('Jewel spec patch context mismatch');
     result = result.slice(0, at) + after + result.slice(at + before.length);
   }
-  if (blobHash(result) !== pin.resultBlobHashes[path]) throw new Error('Jewel spec result hash mismatch');
   return result;
 }
