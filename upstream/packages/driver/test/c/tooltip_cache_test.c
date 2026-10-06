@@ -17,6 +17,8 @@ extern const char *unique_delay_lua;
 extern const char *unique_delay_test_lua;
 extern const char *unique_workers_lua;
 extern const char *unique_workers_test_lua;
+extern const char *node_power_lua;
+extern const char *node_power_test_lua;
 extern const char *gc_policy_lua;
 extern const char *gc_policy_test_lua;
 
@@ -46,6 +48,9 @@ int main(void) {
             if (lua_pcall(L, 1, 0, 0) != LUA_OK) goto failure;
             if (luaL_dostring(L, unique_workers_test_lua) != LUA_OK) goto failure;
             if (luaL_dostring(L, unique_workers_lua) != LUA_OK) goto failure;
+            if (lua_pcall(L, 1, 0, 0) != LUA_OK) goto failure;
+            if (luaL_dostring(L, node_power_test_lua) != LUA_OK) goto failure;
+            if (luaL_dostring(L, node_power_lua) != LUA_OK) goto failure;
             if (lua_pcall(L, 1, 0, 0) != LUA_OK) goto failure;
             lua_close(L);
             puts("Item tooltip cache regression tests passed");

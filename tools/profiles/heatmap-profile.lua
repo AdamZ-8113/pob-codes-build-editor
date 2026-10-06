@@ -116,7 +116,11 @@ do
                 local start = GetTime()
                 local result = table.pack(resume(thread, ...))
                 if thread == self.powerBuilder then
-                    if not result[1] then error('Heatmap profiling: builder coroutine failed') end
+                    if not result[1] then
+                        if run then run.failure = {location=tostring(result[2]):match('([%w_/%.%-]+%.lua:%d+)') or 'unknown',
+                            kind=tostring(result[2]):match('(attempt to [a-z ]+)') or 'builder assertion'} end
+                        error('Heatmap profiling: builder coroutine failed')
+                    end
                     if run then
                         run.resumes = run.resumes + 1
                         run.maxResumeMs = math.max(run.maxResumeMs, GetTime() - start)
@@ -183,6 +187,12 @@ do
                     state.reportRows = #(active.controls.powerReportList.originalList or {})
                     state.toastShown = active.powerBuilderToastId ~= nil and ToastNotification:Exists(active.powerBuilderToastId) or false
                     state.allocatedNodes = active.build.spec:CountAllocNodes()
+                    state.delegation = active.build.calcsTab.nodePowerDelegation
+                    state.delegationStatus = {available=NodePowerAvailable and NodePowerAvailable() or 0,
+                        installed=type(active.build.calcsTab.evaluateNodePowerBatch) == 'function', timelessItems=0}
+                    for _, item in pairs(active.build.itemsTab.items) do
+                        if item.jewelData and item.jewelData.conqueredBy then state.delegationStatus.timelessItems = state.delegationStatus.timelessItems + 1 end
+                    end
                     if reset and treeViewport then
                         local v, viewer = treeViewport, active.viewer
                         local scale = math.min(v.width, v.height) / active.build.spec.tree.size * viewer.zoom

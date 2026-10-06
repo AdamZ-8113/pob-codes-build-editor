@@ -20,7 +20,7 @@ import type { DriverWorker, HostCallbacks } from "./worker.ts";
 import type { PayloadProgress } from "./payload.ts";
 // @ts-types="./vite-worker.d.ts"
 import WorkerObject from "./worker.ts?worker";
-import { HelperPool, type UniqueJob } from './helper-pool.ts';
+import { HelperPool, type HelperJob } from './helper-pool.ts';
 import { runtimeGcPause } from './gc-policy.ts';
 // @ts-types="./vite-worker.d.ts"
 import HelperWorker from './calc-helper.ts?worker';
@@ -75,6 +75,7 @@ export class Driver {
   private helpers: HelperPool | undefined;
   private readonly requestedHelpers = Number(new URLSearchParams(location.search).get('helpers') ?? 3);
   private readonly eagerHelpers = new URLSearchParams(location.search).get('helperStart') !== 'lazy';
+  private readonly nodePowerHelpers = new URLSearchParams(location.search).get('nodePowerHelpers') === '1';
   private isStarted = false;
   private eventHandler: EventHandler | undefined;
   private mouseHandler: MouseHandler | undefined;
@@ -203,14 +204,17 @@ export class Driver {
             window.open(url, "_blank");
           }),
           Comlink.proxy(() => filesystemReady),
-          Comlink.proxy((job: UniqueJob | null) => {
+          Comlink.proxy((job: HelperJob | null) => {
             if (!job) { this.helpers?.cancel(); return Promise.resolve(null); }
+            if ('kind' in job && job.kind === 'nodePower' &&
+                (this.build !== 'release' || !this.nodePowerHelpers)) return Promise.resolve(null);
             return this.helpers?.run(job) ?? Promise.resolve(null);
           }),
           runtimeGcPause(location.search, 'ui'),
           new URLSearchParams(location.search).get('tooltipCache') === 'off' ? -1
             : new URLSearchParams(location.search).get('tooltipCache') === 'calculator' ? 0 : 1,
           new URLSearchParams(location.search).get('textWidthCache') !== 'off',
+          this.nodePowerHelpers,
         ),
       ]);
     } catch (error) {

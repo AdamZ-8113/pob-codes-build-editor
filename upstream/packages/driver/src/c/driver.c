@@ -38,6 +38,10 @@ static int UniqueSortAvailable(lua_State *L) {
     lua_pushinteger(L, EM_ASM_INT({ return Module.uniqueSortAvailable ? Module.uniqueSortAvailable() : 0; }));
     return 1;
 }
+static int NodePowerAvailable(lua_State *L) {
+    lua_pushinteger(L, EM_ASM_INT({ return Module.nodePowerAvailable ? Module.nodePowerAvailable() : 0; }));
+    return 1;
+}
 static int CancelUniqueSort(lua_State *L) {
     EM_ASM({ if (Module.cancelUniqueSort) Module.cancelUniqueSort(); });
     return 0;
@@ -283,6 +287,7 @@ int init() {
     lua_register(GL, "GetRuntimeGCPause", GetRuntimeGCPause);
     lua_register(GL, "GetRuntimeItemTooltipCacheMode", GetRuntimeItemTooltipCacheMode);
     lua_register(GL, "UniqueSortAvailable", UniqueSortAvailable);
+    lua_register(GL, "NodePowerAvailable", NodePowerAvailable);
     lua_register(GL, "CancelUniqueSort", CancelUniqueSort);
     lua_register(GL, "PollUniqueSort", PollUniqueSort);
     luaL_getsubtable(L, LUA_REGISTRYINDEX, "_PRELOAD");

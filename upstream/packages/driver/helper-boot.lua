@@ -18,7 +18,7 @@ end
 dofile('HeadlessWrapper.lua')
 assert(build and not __mainObject__.promptMsg, 'Helper PoB boot failed')
 local json = require('dkjson')
-local loadedIdentity, operation, calc
+local loadedIdentity, operation, calc, calcBase, loadedKind
 -- One parsed object per immutable database key; scores are always recalculated.
 -- PoB itself retains this database across builds. Raw equality also captures
 -- variants/quality and any other candidate edits from the displayed UI.
@@ -29,16 +29,54 @@ function helperCall(text)
         loadBuildFromXML(job.xml, 'Calculation helper')
         assert(not __mainObject__.promptMsg, 'Helper import failed')
         local started = GetTime()
-        while __mainObject__.main.uniqueDB.loading do
+        while job.kind ~= 'nodePower' and __mainObject__.main.uniqueDB.loading do
             runCallback('OnFrame')
             assert(GetTime() - started < 15000, 'Helper unique database timeout')
         end
         loadedIdentity = job.identity
+        loadedKind = job.kind
         operation, calc = nil, nil
         collectgarbage('collect')
         return json.encode({ready=true})
     end
     assert(loadedIdentity == job.identity, 'Stale helper build')
+    if job.kind == 'nodePower' then
+        assert(loadedKind == job.kind and build.calcsTab.EvaluateNodePowerItem, 'Missing node-power seam')
+        assert(job.metric == 'Hit DPS', 'Prototype supports Hit DPS only')
+        for _, stat in ipairs(data.powerStatList) do
+            if stat.label == job.metric then build.calcsTab.powerStat = stat; break end
+        end
+        if operation ~= job.operation then
+            calc, calcBase = build.calcsTab:GetMiscCalculator()
+            operation = job.operation
+        end
+        local function resolveNode(ref)
+            if ref.cluster then return assert(build.spec.tree.clusterNodeMap[ref.cluster]) end
+            local node = assert(build.spec.nodes[ref.id], 'Missing helper node')
+            if not ref.effect then return node end
+            local effect = assert(build.spec.tree.masteryEffects[ref.effect])
+            local value = {id=node.id, type=node.type, name=node.name, sd={}}
+            for i, sd in ipairs(effect.sd or {}) do value.sd[i] = sd end
+            build.spec.tree:ProcessStats(value)
+            return value
+        end
+        local result = {}
+        for index, item in ipairs(job.items) do
+            local args = {}
+            for _, key in ipairs({'addNodes', 'removeNodes'}) do
+                if item[key] then
+                    args[key] = {}
+                    for _, ref in ipairs(item[key]) do args[key][resolveNode(ref)] = true end
+                end
+            end
+            local value = build.calcsTab:EvaluateNodePowerItem(args, calc, calcBase)
+            result[index] = {}
+            for key, number in pairs(value) do result[index][key] = string.format('%.17g', number) end
+        end
+        local encoded = json.encode(result)
+        collectgarbage('collect')
+        return encoded
+    end
     local db = build.itemsTab.controls.uniqueDB
     db:SetSortMode(job.sortMode)
     assert(db.sortDetail and db.sortDetail.stat and db.EvaluateItemPower, 'Unsupported helper evaluator')

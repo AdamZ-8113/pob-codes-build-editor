@@ -14,7 +14,7 @@ import { registerSentryWasm } from "./sentry-wasm.ts";
 import { startRuntime } from "./startup.ts";
 import { InputFrameBoundary } from "./input-frame.ts";
 import { FrameDemand } from "./frame-demand.ts";
-import type { UniqueJob } from './helper-pool.ts';
+import type { HelperJob } from './helper-pool.ts';
 
 const setSentryWasmCodeFile = registerSentryWasm(self);
 const debugWasmUrl = new URL("../../dist/debug/driver.wasm", import.meta.url).href;
@@ -74,6 +74,7 @@ type Imports = {
 
 export class DriverWorker {
   private uniqueHelpersEnabled = 0;
+  private nodePowerHelpersEnabled = false;
   configureUniqueHelpers(count: number) { this.uniqueHelpersEnabled = count; }
   private imageRepo: ImageRepository | undefined;
   private textMetrics: TextMetrics | undefined;
@@ -116,6 +117,7 @@ export class DriverWorker {
     const samples = JSON.parse(profile);
     this.sampleMemory();
     const result = { samples, bridge: { ...this.bridgeCounts }, wasmBytes: this.module.HEAPU8.byteLength,
+      helperAvailability: {count: this.uniqueHelpersEnabled, nodePower: this.nodePowerHelpersEnabled},
       observedMemoryCapacities: [...this.memoryCapacities], images: this.imageRepo?.getProfile(),
       startupPhases: { ...this.startupPhases },
       draw: JSON.parse(this.module.cwrap("get_draw_profile", "string", [])()) };
@@ -146,12 +148,14 @@ export class DriverWorker {
     copy: MainCallbacks["copy"],
     openUrl: MainCallbacks["openUrl"],
     filesystemReady: () => Promise<void>,
-    sortRequest: (job: UniqueJob | null) => Promise<unknown[] | null>,
+    sortRequest: (job: HelperJob | null) => Promise<unknown[] | null>,
     gcPause = 400,
     itemTooltipCacheMode = 1,
     nativeTextWidthCacheEnabled = true,
+    nodePowerHelpers = false,
   ) {
     this.onDiagnostic = onDiagnostic;
+    this.nodePowerHelpersEnabled = build === 'release' && nodePowerHelpers;
     this.diagnostic("worker", "start");
     this.imageRepo = new ImageRepository(`${assetPrefix}/root/`);
 
@@ -194,6 +198,7 @@ export class DriverWorker {
       runtimeItemTooltipCacheMode: itemTooltipCacheMode,
       nativeTextWidthCacheEnabled,
       uniqueSortAvailable: () => this.uniqueHelpersEnabled,
+      nodePowerAvailable: () => this.nodePowerHelpersEnabled ? this.uniqueHelpersEnabled : 0,
       cancelUniqueSort: () => {
         sortSequence++; sortReplies.clear();
         void sortRequest(null).catch(() => {});

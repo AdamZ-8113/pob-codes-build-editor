@@ -5,6 +5,23 @@ const job = (identity = 'build-A:1', count = 180): UniqueJob => ({ identity, xml
   sortMode: 'TotalDPS', weaponSet: false, uiBytes: 2 ** 30,
   items: Array.from({length: count}, (_, i) => ({key: String(i), raw: 'candidate-' + i})) });
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+
+Deno.test('node-power jobs preserve numeric fields, separate hydration kinds, and reject malformed results', async () => {
+  const h = harness();
+  try {
+    await h.pool.start(2);
+    h.setBehavior((worker, request) => worker.reply(request, request.job?.kind === 'nodePower' && request.job.items
+      ? request.job.items.map((item: any) => ({singleStat: String(item.addNodes[0].id)})) : undefined));
+    const nodeJob = {kind: 'nodePower' as const, identity: 'shared:1', xml: 'public test XML', metric: 'Hit DPS', uiBytes: 2 ** 30,
+      items: Array.from({length: 80}, (_, i) => ({addNodes: [{id: i}]}))};
+    assertEquals(await h.pool.run(nodeJob), nodeJob.items.map(item => ({singleStat: String(item.addNodes[0].id)})));
+    assertEquals((await h.pool.run(job('shared:1', 30)))?.length, 30);
+    assert(h.workers.every(w => w.requests.filter((r: any) => r.job?.xml).length === 2));
+    h.setBehavior((worker, request) => worker.reply(request, request.job?.items ? request.job.items.map(() => ({singleStat: 'NaN'})) : undefined));
+    assertEquals(await h.pool.run(nodeJob), null);
+    assertEquals(h.pool.profile().ready, 0);
+  } finally { h.pool.close(); }
+});
 function harness(timeout = 1000) {
   const workers: any[] = [], detached: number[] = [], available: boolean[] = [];
   let behavior: (worker: any, request: any) => void = (worker, request) => worker.reply(request);

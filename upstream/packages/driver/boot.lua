@@ -206,6 +206,7 @@ mainObject["OnInit"] = function(self)
         calculationScheduler.install(build)
         installUniqueComparisonDelay(build)
         installUniqueSortWorkers(build)
+        installNodePowerWorkers(build)
     end
 end
 

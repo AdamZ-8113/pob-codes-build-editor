@@ -1,5 +1,16 @@
 export type UniqueJob = { identity: string; xml: string; sortMode: string; weaponSet: boolean;
   items: { key: string; raw: string }[]; uiBytes: number };
+export type NodePowerItem = { addNodes?: { id?: number; effect?: number; cluster?: string }[];
+  removeNodes?: { id?: number; effect?: number; cluster?: string }[] };
+export type NodePowerJob = { kind: 'nodePower'; identity: string; xml: string; metric: string;
+  items: NodePowerItem[]; uiBytes: number };
+export type HelperJob = UniqueJob | NodePowerJob;
+
+const numberText = (v: unknown) => typeof v === 'string' &&
+  /^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(v) && Number.isFinite(Number(v));
+const nodePowerResult = (v: unknown) => !!v && typeof v === 'object' && !Array.isArray(v) &&
+  Object.keys(v).length > 0 && Object.entries(v).every(([key, value]) =>
+    ['singleStat', 'offence', 'defence'].includes(key) && numberText(value));
 
 type Member = { id: number; worker: Worker; bytes: number; identity?: string;
   pending: Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void }> };
@@ -102,7 +113,9 @@ export class HelperPool {
         <= HELPER_MEMORY.admissionBytes;
   }
   cancel() { this.generation++; }
-  run(job: UniqueJob): Promise<unknown[] | null> {
+  run(job: HelperJob): Promise<unknown[] | null> {
+    const nodePower = 'kind' in job && job.kind === 'nodePower';
+    const identity = `${nodePower ? 'nodePower' : 'unique'}:${job.identity}`;
     const generation = ++this.generation;
     const run = async () => {
       if (this.closed || generation !== this.generation || this.starting || (!this.members.length && !this.armed)) return null;
@@ -112,9 +125,9 @@ export class HelperPool {
       if (!this.admitted(job.uiBytes)) { this.retire(); return null; }
       try {
         await Promise.all(this.members.map(async member => {
-          if (member.identity !== job.identity) {
-            await this.send(member, { job: { identity: job.identity, xml: job.xml } });
-            member.identity = job.identity;
+          if (member.identity !== identity) {
+            await this.send(member, { job: { identity: job.identity, xml: job.xml, ...(nodePower ? {kind: 'nodePower'} : {}) } });
+            member.identity = identity;
           }
         }));
         if (generation !== this.generation) return null;
@@ -127,11 +140,13 @@ export class HelperPool {
             const offset = cursor; cursor += first || member.bytes > .4 * GiB ? 25 : 100;
             first = false;
             const items = job.items.slice(offset, cursor);
+            const details = 'kind' in job ? {kind: job.kind, metric: job.metric}
+              : {sortMode: job.sortMode, weaponSet: job.weaponSet};
             const results = await this.send(member, { job: { identity: job.identity, operation: generation,
-              sortMode: job.sortMode, weaponSet: job.weaponSet, items } }) as unknown[];
+              ...details, items } }) as unknown[];
             if (generation !== this.generation) return;
-            if (!Array.isArray(results) || results.length !== items.length || results.some(v => v !== '-inf' &&
-                (typeof v !== 'string' || !/^-?\d+(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(v) || !Number.isFinite(Number(v))))) throw new Error('Invalid helper result');
+            if (!Array.isArray(results) || results.length !== items.length || results.some(v =>
+                nodePower ? !nodePowerResult(v) : v !== '-inf' && !numberText(v))) throw new Error('Invalid helper result');
             results.forEach((value, index) => values[offset + index] = value);
             this.completed += results.length;
           }

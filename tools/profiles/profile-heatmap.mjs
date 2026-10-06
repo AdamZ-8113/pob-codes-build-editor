@@ -18,11 +18,13 @@ const metric = argument('metric', 'Hit DPS'), depth = argument('depth', '5');
 const scenario = argument('scenario', 'timing');
 const reportMode = argument('report', scenario === 'restarts' ? 'shown' : 'hidden');
 const rounds = Number(argument('rounds', '5')), warm = Number(argument('warm', '3'));
+const direct = args.includes('--direct');
 const review = args.includes('--review'), reviewArm = argument('arm', 'candidate');
 assert.ok(['5', '10', '15', 'All'].includes(depth), 'Depth must be 5, 10, 15 or All');
 assert.ok(['hidden', 'shown', 'deferred'].includes(reportMode), 'Report must be hidden, shown or deferred');
 assert.ok(['timing', 'restarts'].includes(scenario), 'Unknown scenario');
 assert.ok(scenario !== 'restarts' || (reportMode === 'shown' && !review), 'Restart scenario requires an automated shown-report run');
+assert.ok(!direct || (warm === 0 && scenario === 'timing'), 'Direct trials require timing scenario and zero warm repetitions');
 assert.ok(['baseline', 'candidate'].includes(reviewArm), 'Arm must be baseline or candidate');
 assert.ok(Number.isInteger(rounds) && rounds > 0 && Number.isInteger(warm) && warm >= 0, 'Invalid sample counts');
 const output = resolve(argument('out', `tmp/power-report-speed/${new Date().toISOString().replaceAll(':', '-')}.json`));
@@ -41,7 +43,7 @@ for (const name of ['baseline', 'candidate']) {
   };
 }
 const calibration = JSON.stringify(arms.baseline.overlay.evidence) === JSON.stringify(arms.candidate.overlay.evidence) && arms.baseline.query === arms.candidate.query;
-const noiseReference = !calibration && !review
+const noiseReference = !calibration && !review && argument('noise-floor') !== 'none'
   ? JSON.parse(await readFile(resolve(argument('noise-floor', 'tmp/power-report-speed/noise-floor.json')), 'utf8')) : undefined;
 if (noiseReference) {
   assert.ok(noiseReference.passed && noiseReference.calibration, 'Noise reference must be a successful A/A calibration');
@@ -57,6 +59,7 @@ const report = {
   harnessNodeVersion: process.version,
   noiseReferenceSha256: noiseReference ? sha256(JSON.stringify(noiseReference)) : undefined,
   inputXmlSha256: input.xmlHash, metric, depth, reportMode, scenario, roundsRequested: rounds, warmRequested: warm,
+  direct, noiseScope: argument('noise-floor') === 'none' ? 'No calibration for this rebuilt binary; no noise-floor claim' : 'Recorded A/A calibration',
   environment: { browser: browser.version(), cpu: cpus()[0]?.model, logicalCores: cpus().length, viewport: { width: 1600, height: 1000, dpr: 1 } },
   harnessSha256: sha256(await readFile(new URL(import.meta.url))), diagnosticsSha256: sha256(diagnostics),
   scope: 'Same binary, new context per arm per round; cold means first target metric after discarded heatmap warm-up. Warm samples follow an alternate metric. Readiness is CPU completion, not GPU presentation. Fixed Lua hash seed in both arms; clocks used for timing remain real.',
@@ -108,7 +111,16 @@ async function runArm(name, round) {
     const state = async () => (await profile()).samples.nodePower;
     const errors = async () => {
       assert.deepEqual(faults, [], 'No page errors');
-      assert.equal(await page.evaluate(() => window.__DESKTOP_POB__.errors.length), 0, 'No Lua errors');
+      const count = await page.evaluate(() => window.__DESKTOP_POB__.errors.length);
+      if (count) {
+        report.luaFailure = (await state()).runs.at(-1)?.failure;
+        report.luaErrorLocations = await page.evaluate(() => window.__DESKTOP_POB__.errors.map(value => {
+          const text = String(value);
+          return {locations: text.match(/[A-Za-z_/.-]+\.lua:\d+/g), lines: text.match(/:\d+:/g),
+            kind: text.match(/attempt to [a-z ]+/)?.[0], assertion: /assertion failed/.test(text)};
+        }));
+      }
+      assert.equal(count, 0, 'No Lua errors');
     };
     await page.keyboard.press('Control+1'); await flush();
     await errors();
@@ -201,7 +213,15 @@ async function runArm(name, round) {
       const snapshotHashes = Object.fromEntries(Object.entries(snapshots).map(([key, text]) => [key, sha256(text)]));
       const result = { arm: name, round, sample, parityGroup, ...current, heatmapLuaMs: current.heatmapReadyAt - current.startedAt, reportLuaMs: current.reportReadyAt == null ? null : current.reportReadyAt - current.startedAt, heatmapWallMs, reportWallMs: reportWallMs ?? null, openedReportWallMs: openedAt == null ? null : Math.max(0, start + reportWallMs - openedAt), snapshots: snapshotHashes, runtimeHeatmap: captured.samples.summary.heatmap, luaKiB: captured.samples.luaKiB, wasmBytes: captured.wasmBytes, peakLuaKiB: Math.max(peakLuaKiB, captured.samples.luaKiB), peakWasmBytes: Math.max(peakWasmBytes, captured.wasmBytes), memoryScope: 'Peak observed during readiness polling; may miss transients within a coroutine resume', errors: [] };
       if (sample) {
+        result.helpers = captured.helpers && { ...captured.helpers, errors: captured.helpers.errors.map(sha256) };
+        result.delegation = captured.samples.nodePower.delegation;
         report.runs.push(result);
+        if (new URLSearchParams(arm.query.replace(/^\?/, '')).get('nodePowerHelpers') === '1') {
+          assert.equal(result.delegation?.completed, true, 'Candidate actually completed helper delegation');
+          assert.ok(result.helpers?.ready > 0 && result.helpers.completed > 0, 'Helper work was performed');
+          assert.deepEqual(result.helpers.errors, [], 'No helper errors');
+          assert.ok(result.helpers.bytes.every(bytes => bytes <= result.helpers.memory.helperMaximum), 'Per-helper memory budget');
+        }
         for (const [kind, text] of Object.entries(snapshots)) {
           const referenceKey = `${parityGroup}/${kind}`;
           const reference = snapshotReferences.get(referenceKey);
@@ -223,6 +243,30 @@ async function runArm(name, round) {
     let initial = await state();
     if (initial.enabled) await clickControl('heatmap');
     await select('depth', depth);
+    if (direct) {
+      if (new URLSearchParams(arm.query.replace(/^\?/, '')).get('nodePowerHelpers') === '1') {
+        const deadline = performance.now() + 30000;
+        while (!(await profile()).helperAvailability?.count) {
+          assert.ok(performance.now() < deadline, 'Eligible helper pool became ready');
+          await page.waitForTimeout(50);
+        }
+        await flush();
+      }
+      const previous = (await state()).runs.at(-1)?.id ?? 0;
+      let start = await clickControl('heatmap');
+      if (reportMode === 'shown') await clickControl('report');
+      const selectedAt = await select('metric', metric);
+      if (selectedAt !== false) start = selectedAt;
+      stage = `${name}:${round}:cold`;
+      await waitRun(previous, start, metric, 'cold');
+      await errors();
+      if (review) {
+        console.log(`Review ready: ${name}, ${metric}, depth ${depth}. Close Chrome to finish.`);
+        clearTimeout(watchdog);
+        await new Promise(resolve => browser.once('disconnected', resolve));
+      }
+      return;
+    }
     const beforeWarmup = (await state()).runs.at(-1)?.id ?? 0;
     const warmStart = await clickControl('heatmap');
     const warmMetric = (await state()).controls.metric;
@@ -271,6 +315,11 @@ try {
     await cdp.detach();
   }
   if (review) await runArm(reviewArm, 0);
+  else if (argument('only-arm')) {
+    assert.ok(['baseline', 'candidate'].includes(argument('only-arm')), 'Single arm name');
+    report.singleArm = argument('only-arm');
+    await runArm(report.singleArm, 0);
+  }
   else {
     for (let round = 0; round < rounds; round++) for (const name of round % 2 ? ['candidate', 'baseline'] : ['baseline', 'candidate']) await runArm(name, round);
     assert.equal(arms.baseline.wasmSha256, arms.candidate.wasmSha256, 'Same binary in both arms');
@@ -303,10 +352,10 @@ try {
         }
         const medianAbsolutePairedDeltaPercent = summarize(paired).median;
         const referenceRow = noiseReference?.comparisons.find(row => row.sample === sample && row.field === field);
-        assert.ok(calibration || referenceRow, 'Noise reference covers requested sample and measurement');
-        const noiseFloorPercent = calibration ? Math.max(3, 2 * (medianAbsolutePairedDeltaPercent ?? 0)) : referenceRow.noiseFloorPercent;
+        assert.ok(calibration || referenceRow || argument('noise-floor') === 'none', 'Noise reference covers requested sample and measurement');
+        const noiseFloorPercent = calibration ? Math.max(3, 2 * (medianAbsolutePairedDeltaPercent ?? 0)) : referenceRow?.noiseFloorPercent ?? null;
         const changePercent = byArm.baseline.median ? (byArm.candidate.median / byArm.baseline.median - 1) * 100 : null;
-        report.comparisons.push({ group, sample, field, baselineMedian: byArm.baseline.median, candidateMedian: byArm.candidate.median, changePercent, medianAbsolutePairedDeltaPercent, noiseFloorPercent, beatsNoiseFloor: changePercent != null && -changePercent > noiseFloorPercent, snapshotParity: true });
+        report.comparisons.push({ group, sample, field, baselineMedian: byArm.baseline.median, candidateMedian: byArm.candidate.median, changePercent, medianAbsolutePairedDeltaPercent, noiseFloorPercent, beatsNoiseFloor: noiseFloorPercent == null ? null : changePercent != null && -changePercent > noiseFloorPercent, snapshotParity: true });
       }
     }
   }
