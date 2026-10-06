@@ -6,6 +6,7 @@ import { cpus } from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { startProcessMemory } from '../../scripts/lib/process-memory.mjs';
 import { loadBuildInput, readCorePackage, loadSourceTransforms, rewriteCorePackage, routeCorePackage, sha256 } from './core-package-overlay.mjs';
+import { comparePowerSnapshots } from './power-snapshot-parity.mjs';
 
 const args = process.argv.slice(2);
 const argument = (name, fallback) => args.find(a => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -49,6 +50,7 @@ const summarize = values => {
 const browser = await chromium.launch({ headless: !review, channel: 'chrome' });
 const report = {
   schemaVersion: 1, measuredAt: new Date().toISOString(), passed: false, review, calibration,
+  harnessNodeVersion: process.version,
   noiseReferenceSha256: noiseReference ? sha256(JSON.stringify(noiseReference)) : undefined,
   inputXmlSha256: input.xmlHash, metric, depth, reportMode, roundsRequested: rounds, warmRequested: warm,
   environment: { browser: browser.version(), cpu: cpus()[0]?.model, logicalCores: cpus().length, viewport: { width: 1600, height: 1000, dpr: 1 } },
@@ -58,6 +60,7 @@ const report = {
   runs: [], errors: [],
 };
 let memory, stage = 'startup';
+const snapshotReferences = new Map();
 
 async function runArm(name, round) {
   const arm = arms[name];
@@ -142,9 +145,12 @@ async function runArm(name, round) {
     };
     const waitRun = async (previous, start, target, sample, requireReport = reportMode === 'shown') => {
       let heatmapWallMs, reportWallMs, current, p;
+      let peakLuaKiB = 0, peakWasmBytes = 0;
       do {
         await page.waitForTimeout(40);
         p = await profile();
+        peakLuaKiB = Math.max(peakLuaKiB, p.samples.luaKiB);
+        peakWasmBytes = Math.max(peakWasmBytes, p.wasmBytes);
         await errors();
         current = p.samples.nodePower.runs.at(-1);
         if (current?.id > previous) {
@@ -161,9 +167,20 @@ async function runArm(name, round) {
       const snapshots = captured.samples.nodePower.snapshots;
       assert.ok(snapshots?.heatmap, 'Heatmap snapshot available');
       const snapshotHashes = Object.fromEntries(Object.entries(snapshots).map(([key, text]) => [key, sha256(text)]));
-      const result = { arm: name, round, sample, ...current, heatmapLuaMs: current.heatmapReadyAt - current.startedAt, reportLuaMs: current.reportReadyAt == null ? null : current.reportReadyAt - current.startedAt, heatmapWallMs, reportWallMs: reportWallMs ?? null, snapshots: snapshotHashes, runtimeHeatmap: captured.samples.summary.heatmap, luaKiB: captured.samples.luaKiB, wasmBytes: captured.wasmBytes, errors: [] };
+      const result = { arm: name, round, sample, ...current, heatmapLuaMs: current.heatmapReadyAt - current.startedAt, reportLuaMs: current.reportReadyAt == null ? null : current.reportReadyAt - current.startedAt, heatmapWallMs, reportWallMs: reportWallMs ?? null, snapshots: snapshotHashes, runtimeHeatmap: captured.samples.summary.heatmap, luaKiB: captured.samples.luaKiB, wasmBytes: captured.wasmBytes, peakLuaKiB: Math.max(peakLuaKiB, captured.samples.luaKiB), peakWasmBytes: Math.max(peakWasmBytes, captured.wasmBytes), memoryScope: 'Peak observed during readiness polling; may miss transients within a coroutine resume', errors: [] };
       if (sample) {
         report.runs.push(result);
+        for (const [kind, text] of Object.entries(snapshots)) {
+          const reference = snapshotReferences.get(kind);
+          if (!reference) snapshotReferences.set(kind, { text, arm: name, round, sample });
+          else {
+            const mismatch = comparePowerSnapshots(reference.text, text);
+            if (mismatch) {
+              report.snapshotMismatch = { kind, metric, reference: { arm: reference.arm, round: reference.round, sample: reference.sample }, candidate: { arm: name, round, sample }, ...mismatch };
+              assert.fail(`${kind}: identical snapshots within and across arms`);
+            }
+          }
+        }
         console.log(JSON.stringify({ arm: name, round, sample, heatmapLuaMs: result.heatmapLuaMs, reportLuaMs: result.reportLuaMs, calculators: result.calculators }));
       }
       return result;

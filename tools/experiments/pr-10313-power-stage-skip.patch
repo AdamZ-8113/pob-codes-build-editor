@@ -1,0 +1,151 @@
+diff --git a/src/Classes/CalcsTab.lua b/src/Classes/CalcsTab.lua
+index 7d79e865d98..dba7d88c91a 100644
+--- a/src/Classes/CalcsTab.lua
++++ b/src/Classes/CalcsTab.lua
+@@ -495,9 +495,16 @@ end
+ -- Estimate the offensive and defensive power of all unallocated nodes
+ function CalcsTabClass:PowerBuilder()
+ 	-- local timer_start = GetTime()
+-	local useFullDPS = self.powerStat and self.powerStat.stat == "FullDPS"
++	local useFullDPS = self.powerStat and self.powerStat.requiresFullDPS or false
+ 	local useClusterPower = self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes
++	local calcOptions = {
++		skipEHP = not (self.powerStat and self.powerStat.requiresEHP),
++		skipFullDPS = not useFullDPS,
++	}
+ 	local calcFunc, calcBase = self:GetMiscCalculator()
++	local function calcPower(override)
++		return calcFunc(override, useFullDPS, calcOptions)
++	end
+ 	local cache = { }
+ 	local distanceMap = { }
+ 	local distanceList = { }
+@@ -541,7 +548,7 @@ function CalcsTabClass:PowerBuilder()
+ 				newPowerMax.singleStat = m_max(newPowerMax.singleStat, power.singleStat)
+ 				power.pathPower = power.singleStat
+ 				if distance > 1 then
+-					power.pathPower = self:CalculatePowerStat(self.powerStat, calcFunc({ addNodes = buildPathNodes() }, useFullDPS), calcBase)
++					power.pathPower = self:CalculatePowerStat(self.powerStat, calcPower({ addNodes = buildPathNodes() }), calcBase)
+ 				end
+ 			end
+ 		elseif not self.powerStat or not self.powerStat.ignoreForNodes then
+@@ -611,7 +618,7 @@ function CalcsTabClass:PowerBuilder()
+ 		for nodeId, node in pairs(nodes) do
+ 			if not node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[nodeId] then
+ 				if not cache[node.modKey] then
+-					cache[node.modKey] = calcFunc({ addNodes = { [node] = true } }, useFullDPS)
++					cache[node.modKey] = calcPower({ addNodes = { [node] = true } })
+ 				end
+ 				local output = cache[node.modKey]
+ 				calculateAddNodePower(node.power, distance, node, output, function()
+@@ -623,7 +630,7 @@ function CalcsTabClass:PowerBuilder()
+ 				end)
+ 			elseif node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[nodeId] then
+ 				if not cache[node.modKey.."_remove"] then
+-					cache[node.modKey.."_remove"] = calcFunc({ removeNodes = { [node] = true } }, useFullDPS)
++					cache[node.modKey.."_remove"] = calcPower({ removeNodes = { [node] = true } })
+ 				end
+ 				local output = cache[node.modKey.."_remove"]
+ 				if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
+@@ -635,7 +642,7 @@ function CalcsTabClass:PowerBuilder()
+ 							pathNodes[node] = true
+ 						end
+ 						if #node.depends > 1 then
+-							node.power.pathPower = self:CalculatePowerStat(self.powerStat, calcFunc({ removeNodes = pathNodes }, useFullDPS), calcBase)
++							node.power.pathPower = self:CalculatePowerStat(self.powerStat, calcPower({ removeNodes = pathNodes }), calcBase)
+ 						end
+ 					end
+ 				end
+@@ -670,7 +677,7 @@ function CalcsTabClass:PowerBuilder()
+ 					local effectNode = buildMasteryEffectNode(node, effect)
+ 					if effectNode.modKey ~= "" then
+ 						if not cache[effectNode.modKey] then
+-							cache[effectNode.modKey] = calcFunc({ addNodes = { [effectNode] = true } }, useFullDPS)
++							cache[effectNode.modKey] = calcPower({ addNodes = { [effectNode] = true } })
+ 						end
+ 						local output = cache[effectNode.modKey]
+ 						node.power.masteryEffects[effect.id] = { }
+@@ -718,7 +725,7 @@ function CalcsTabClass:PowerBuilder()
+ 		wipeTable(node.power)
+ 		if useClusterPower and not node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[node.id] then
+ 			if not cache[node.modKey] then
+-				cache[node.modKey] = calcFunc({ addNodes = { [node] = true } }, useFullDPS)
++				cache[node.modKey] = calcPower({ addNodes = { [node] = true } })
+ 			end
+ 			local output = cache[node.modKey]
+ 			node.power.singleStat = self:CalculatePowerStat(self.powerStat, output, calcBase)
+diff --git a/src/Modules/Calcs.lua b/src/Modules/Calcs.lua
+index dc12041374f..403d11aab44 100644
+--- a/src/Modules/Calcs.lua
++++ b/src/Modules/Calcs.lua
+@@ -82,9 +82,13 @@ end
+ ---@field conditions string[]?
+ ---@field extraJewelFuncs ModList?
+ 
++---@class MiscCalculatorOptions
++---@field skipEHP boolean? Skip effective hit pool and maximum hit estimations.
++---@field skipFullDPS boolean? Skip the Full DPS roll-up.
++
+ -- Get calculator for other changes (adding/removing nodes, items, gems, etc)
+ ---@param build Build
+----@return fun(override?: CalcOverride, useFullDPS?: boolean): Output calcFunc
++---@return fun(override?: CalcOverride, useFullDPS?: boolean, options?: MiscCalculatorOptions): Output calcFunc
+ ---@return Output output
+ function calcs.getMiscCalculator(build)
+ 	-- Run base calculation pass
+@@ -97,10 +101,11 @@ function calcs.getMiscCalculator(build)
+ 		env.player.output.FullDPS = fullDPS.combinedDPS
+ 		env.player.output.FullDotDPS = fullDPS.TotalDotDPS
+ 	end
+-	return function(override, useFullDPS)
++	return function(override, useFullDPS, options)
+ 		local env, cachedPlayerDB, cachedEnemyDB, cachedMinionDB = calcs.initEnv(build, "CALCULATOR", override)
+-		calcs.perform(env)
+-		if (useFullDPS ~= false or build.viewMode == "TREE") and usedFullDPS then
++		calcs.perform(env, options and options.skipEHP)
++		local calculateFullDPS = not (options and options.skipFullDPS) and (useFullDPS ~= false or build.viewMode == "TREE")
++		if calculateFullDPS and usedFullDPS then
+ 			-- prevent upcoming calculation from using Cached Data and thus forcing it to re-calculate new FullDPS roll-up 
+ 			-- without this, FullDPS increase/decrease when for node/item/gem comparison would be all 0 as it would be comparing
+ 			-- A with A (due to cache reuse) instead of A with B
+diff --git a/src/Modules/Data.lua b/src/Modules/Data.lua
+index 26afb5f4dfb..5ae791387db 100644
+--- a/src/Modules/Data.lua
++++ b/src/Modules/Data.lua
+@@ -124,12 +124,14 @@ end
+ ---@field ignoreForItems? boolean
+ ---@field reverseSort? boolean
+ ---@field itemField string?
++---@field requiresEHP? boolean Whether this stat requires effective health and maximum hit estimations
++---@field requiresFullDPS? boolean Whether this stat requires the Full DPS roll-up
+ 
+ ---@type PowerStat[]
+ data.powerStatList = {
+ 	{ stat=nil, label="Offence/Defence", combinedOffDef=true, ignoreForItems=true },
+ 	{ stat=nil, label="Name", itemField="Name", ignoreForNodes=true, reverseSort=true, transform=function(value) return value:gsub("^The ","") end},
+-	{ stat="FullDPS", label="Full DPS" },
++	{ stat="FullDPS", label="Full DPS", requiresFullDPS=true },
+ 	{ stat="CombinedDPS", label="Combined DPS" },
+ 	{ stat="TotalDPS", label="Hit DPS" },
+ 	{ stat="WithImpaleDPS", label="Impale + Hit DPS" },
+@@ -159,13 +161,13 @@ data.powerStatList = {
+ 	{ stat="MeleeAvoidChance", label="Melee avoid chance" },
+ 	{ stat="SpellAvoidChance", label="Spell avoid chance" },
+ 	{ stat="ProjectileAvoidChance", label="Projectile avoid chance" },
+-	{ stat="TotalEHP", label="Effective Hit Pool" },
+-	{ stat="SecondMinimalMaximumHitTaken", label="Eff. Maximum Hit Taken" },
+-	{ stat="PhysicalTakenHit", label="Taken Phys dmg", transform=function(value) return -value end },
+-	{ stat="LightningTakenHit", label="Taken Lightning dmg", transform=function(value) return -value end },
+-	{ stat="ColdTakenHit", label="Taken Cold dmg", transform=function(value) return -value end },
+-	{ stat="FireTakenHit", label="Taken Fire dmg", transform=function(value) return -value end },
+-	{ stat="ChaosTakenHit", label="Taken Chaos dmg", transform=function(value) return -value end },
++	{ stat="TotalEHP", label="Effective Hit Pool", requiresEHP=true },
++	{ stat="SecondMinimalMaximumHitTaken", label="Eff. Maximum Hit Taken", requiresEHP=true },
++	{ stat="PhysicalTakenHit", label="Taken Phys dmg", transform=function(value) return -value end, requiresEHP=true },
++	{ stat="LightningTakenHit", label="Taken Lightning dmg", transform=function(value) return -value end, requiresEHP=true },
++	{ stat="ColdTakenHit", label="Taken Cold dmg", transform=function(value) return -value end, requiresEHP=true },
++	{ stat="FireTakenHit", label="Taken Fire dmg", transform=function(value) return -value end, requiresEHP=true },
++	{ stat="ChaosTakenHit", label="Taken Chaos dmg", transform=function(value) return -value end, requiresEHP=true },
+ 	{ stat="CritChance", label="Crit Chance" },
+ 	{ stat="CritMultiplier", label="Crit Multiplier" },
+ 	{ stat="BleedChance", label="Bleed Chance" },
