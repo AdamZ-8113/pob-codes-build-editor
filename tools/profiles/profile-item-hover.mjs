@@ -1,14 +1,12 @@
 import { chromium } from '@playwright/test';
 import assert from 'node:assert/strict';
-import { createHash } from 'node:crypto';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
-import { createRequire } from 'node:module';
 import { resolve, join } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import { canonicalExportTree } from '../../scripts/lib/canonical-export.mjs';
 import { startProcessMemory } from '../../scripts/lib/process-memory.mjs';
 import { cpus, totalmem } from 'node:os';
-import { pathToFileURL } from 'node:url';
+import { loadBuildInput, readCorePackage, loadSourceTransforms, rewriteCorePackage, routeCorePackage, sha256 } from './core-package-overlay.mjs';
 
 // Private input remains in memory. Reports retain aggregate timings and hashes only.
 const argument = name => process.argv.find(a => a.startsWith(`--${name}=`))?.slice(name.length + 3);
@@ -18,7 +16,7 @@ const rounds = Number(argument('rounds') ?? 2);
 const buildFile = argument('build-file');
 const buildUrl = argument('build-url');
 const runtimeDirectory = argument('runtime-dir');
-const sourceTransform = argument('source-transform');
+const sourceTransforms = process.argv.filter(a => a.startsWith('--source-transform=')).map(a => a.slice('--source-transform='.length));
 const memoryEnabled = process.argv.includes('--memory');
 const verifyContext = process.argv.includes('--verify-context');
 const includeJewels = process.argv.includes('--jewels');
@@ -28,68 +26,28 @@ const verifyEdits = process.argv.includes('--verify-edits') || verifyContext;
 const compareFile = argument('compare');
 const referenceReport = compareFile ? JSON.parse(await readFile(resolve(compareFile),'utf8')) : undefined;
 assert.ok(buildFile || buildUrl, 'Supply --build-file=<file> or --build-url=https://pob.codes/b/<id>');
-let inputUrl;
-if(buildUrl){
- const shared = new URL(buildUrl);
- const id = shared.hostname==='pob.codes' && shared.pathname.match(/^\/b\/([\w-]+)\/?$/)?.[1];
- assert.ok(id,'Build URL must be a pob.codes/b/<id> link');
- inputUrl = `https://api.pob.codes/${id}/raw`;
-}
-const response = !buildFile ? await fetch(inputUrl) : undefined;
-if(response)assert.ok(response.ok,`Build input HTTP ${response.status}`);
-const buildCode = buildFile ? (await readFile(buildFile, 'utf8')).trim() : (await response.text()).trim();
-const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
-const app = new URL('../../', import.meta.url);
-const require = createRequire(new URL('./upstream/deno.json', app));
-const AdmZip = require('adm-zip');
-const diagnostics = await readFile(new URL('tools/profiles/item-hover-profile.lua', app), 'utf8');
+const { buildCode } = await loadBuildInput({ buildFile, buildUrl });
+const diagnostics = await readFile(new URL('./item-hover-profile.lua', import.meta.url), 'utf8');
 const production = new URL(origin).hostname === 'pob.codes';
-let manifest, archive;
-if (production) {
-  const html = await (await fetch(origin)).text();
-  const release = html.match(/\/import2\/releases\/([a-f0-9]{24})\//)?.[1];
-  assert.ok(release, 'Live release pointer');
-  const prefix = `https://pob.codes/import2/releases/${release}/payload/`;
-  manifest = await (await fetch(`${prefix}manifest.json`)).json();
-  archive = Buffer.from(await (await fetch(`${prefix}packages/${manifest.packages.find(p=>p.id==='core').sha256}.zip`)).arrayBuffer());
-} else {
-  manifest = JSON.parse(await readFile(new URL('.runtime/payload/manifest.json', app)));
-  archive = await readFile(new URL(`.runtime/payload/packages/${manifest.packages.find(p=>p.id==='core').sha256}.zip`, app));
-}
-const core = manifest.packages.find(p=>p.id==='core');
-assert.equal(sha256(archive), core.sha256);
-const originalCoreHash = core.sha256;
-const zip = new AdmZip(archive);
-const source = zip.readAsText('Classes/ItemsTab.lua');
-const transformModule = sourceTransform ? await import(pathToFileURL(resolve(sourceTransform)).href) : undefined;
-const transform = transformModule?.transform;
-if(sourceTransform)assert.equal(typeof transform,'function','Test-only source transform exports transform(source)');
-const transformedSource = transform ? transform(source) : source;
-const content = Buffer.from(`${transformedSource}\n${diagnostics}`);
-zip.updateFile('Classes/ItemsTab.lua', content);
-const file = core.files.find(f=>f.path==='Classes/ItemsTab.lua');
-core.uncompressedBytes += content.length - file.bytes;
-file.bytes = content.length;
-const additionalSourceHashes = {};
-for(const extra of transformModule?.additionalTransforms ?? []){
- assert.ok(core.files.some(f=>f.path===extra.path),'Additional source must belong to core package');
- const before = zip.readAsText(extra.path), after = extra.transform(before);
- const updated = Buffer.from(after), entry = core.files.find(f=>f.path===extra.path);
- additionalSourceHashes[extra.path] = {before:sha256(before),after:sha256(after)};
- zip.updateFile(extra.path,updated);
- core.uncompressedBytes += updated.length-entry.bytes; entry.bytes=updated.length;
-}
-const bytes = zip.toBuffer();
-core.bytes = bytes.length; core.sha256 = sha256(bytes);
+const loadedTransforms = await loadSourceTransforms(sourceTransforms);
+const overlay = rewriteCorePackage(await readCorePackage(origin), [
+ ...loadedTransforms.transforms,
+ {path:'Classes/ItemsTab.lua', transform:source => `${source}\n${diagnostics}`},
+]);
+const originalCoreHash = overlay.sourceCoreHash;
+const itemEvidence = overlay.evidence.filter(e => e.path === 'Classes/ItemsTab.lua');
+const additionalSourceHashes = Object.fromEntries(overlay.evidence.filter(e => e.path !== 'Classes/ItemsTab.lua').map(e => [e.path, {before:e.before,after:e.after}]));
+const transformModule = loadedTransforms.modules[0];
 await mkdir(resolve(output, '..'), {recursive:true});
 const browser = await chromium.launch({headless:true,channel:'chrome'});
 let memory;
-const report = {origin, measuredAt:new Date().toISOString(), browser:browser.version(),cpu:cpus()[0]?.model,logicalCores:cpus().length,systemMemoryBytes:totalmem(),sourceCoreHash:originalCoreHash, sourceItemsHash:sha256(source),
+const report = {origin, measuredAt:new Date().toISOString(), browser:browser.version(),cpu:cpus()[0]?.model,logicalCores:cpus().length,systemMemoryBytes:totalmem(),sourceCoreHash:originalCoreHash, sourceItemsHash:itemEvidence[0].before,
   harnessSha256:sha256(await readFile(new URL(import.meta.url))),diagnosticsSha256:sha256(diagnostics),
-  experimentSourceHash:sha256(transformedSource),
+  experimentSourceHash:itemEvidence.at(-1).before,
   additionalSourceHashes,
   sourceExperiment:transformModule?.experiment,
   transformationEvidence:transformModule?.transformationEvidence,
+  transformModules:loadedTransforms.modules,
   includeJewels,
   deterministicSeed,
   scope:'Worker frame CPU and mouse-to-flushed-frame wall time; excludes GPU presentation. Two movements ensure PoB observes the hover.', rounds:[]};
@@ -120,8 +78,7 @@ try {
    seededRuntimeRequests++;
    await route.fulfill({contentType:'text/javascript',body:'Date.now = () => 1790812800000;\n'+body});
   });
-  await context.route('**/payload/manifest.json',r=>r.fulfill({contentType:'application/json',body:JSON.stringify(manifest)}));
-  await context.route(`**/payload/packages/${core.sha256}.zip`,r=>r.fulfill({contentType:'application/octet-stream',body:bytes}));
+  await routeCorePackage(context, overlay);
   const page=await context.newPage();
   const nativeResponses=[];
   page.on('response',response=>{
