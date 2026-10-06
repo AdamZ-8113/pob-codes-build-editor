@@ -30,6 +30,9 @@ maintainer:
 - [PoB #10373](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10373)
   skips cluster-passive work that Offence/Defence power mode never uses, reducing
   calculation time without changing power values.
+- [PoB #10313](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10313)
+  skips the Full DPS and eHP stages of power-report calculations whose selected
+  metric never reads them, without changing any reported value.
 
 The fork also carries focused PoB optimizations for gem-hover tooltips,
 limited-unique comparisons, and radius-jewel comparisons (the calculation-only

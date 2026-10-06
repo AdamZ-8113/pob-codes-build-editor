@@ -1,8 +1,8 @@
 diff --git a/src/Classes/CalcsTab.lua b/src/Classes/CalcsTab.lua
-index 42fb04c4418acfa1863699fc1d20d61a3e03641e..64b0021e46a753fe0610923566a9179315d3d9b8 100644
+index 45ed8b7aa17bcdd151f990f8e201242b02971e4c..10571b8d9cf79ab526e60bb865a7551372cec1ec 100644
 --- a/src/Classes/CalcsTab.lua
 +++ b/src/Classes/CalcsTab.lua
-@@ -511,86 +511,120 @@
+@@ -511,93 +511,124 @@ function CalcsTabClass:BuildPower()
  	if self.powerBuildFlag then
  		self.powerBuildFlag = false
  		self.powerMax = nil
@@ -24,17 +24,29 @@ index 42fb04c4418acfa1863699fc1d20d61a3e03641e..64b0021e46a753fe0610923566a91793
  end
  
  -- Estimate the offensive and defensive power of all unallocated nodes
+-function CalcsTabClass:PowerBuilder()
+-	-- local timer_start = GetTime()
 +-- The evaluator is shared by the serial path and optional browser helpers.
 +function CalcsTabClass:EvaluateNodePowerItem(item, calcFunc, calcBase)
-+	local output = calcFunc(item, self.powerStat and self.powerStat.stat == "FullDPS")
+ 	local useFullDPS = self.powerStat and self.powerStat.requiresFullDPS or false
+-	local useClusterPower = self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes
+-	local calcOptions = {
++	local output = calcFunc(item, useFullDPS, {
+ 		skipEHP = not (self.powerStat and self.powerStat.requiresEHP),
+ 		skipFullDPS = not useFullDPS,
+-	}
+-	local calcFunc, calcBase = self:GetMiscCalculator()
+-	local function calcPower(override)
+-		return calcFunc(override, useFullDPS, calcOptions)
++	})
 +	if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
 +		return { singleStat = self:CalculatePowerStat(self.powerStat, output, calcBase) }
-+	end
+ 	end
 +	local offence, defence = self:CalculateCombinedOffDefStat(output, calcBase)
 +	return { offence = offence, defence = defence, singleStat = offence }
 +end
 +
- function CalcsTabClass:PowerBuilder()
++function CalcsTabClass:PowerBuilder()
 +	local calcFunc, calcBase = self:GetMiscCalculator()
 +	self.nodePowerDelegation = nil
 +	local results
@@ -60,10 +72,8 @@ index 42fb04c4418acfa1863699fc1d20d61a3e03641e..64b0021e46a753fe0610923566a91793
 +end
 +
 +function CalcsTabClass:PowerBuilderPass(calcPower, planning)
- 	-- local timer_start = GetTime()
--	local useFullDPS = self.powerStat and self.powerStat.stat == "FullDPS"
- 	local useClusterPower = self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes
--	local calcFunc, calcBase = self:GetMiscCalculator()
++	-- local timer_start = GetTime()
++	local useClusterPower = self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes
  	local cache = { }
  	local distanceMap = { }
  	local distanceList = { }
@@ -110,7 +120,7 @@ index 42fb04c4418acfa1863699fc1d20d61a3e03641e..64b0021e46a753fe0610923566a91793
  				newPowerMax.singleStat = m_max(newPowerMax.singleStat, power.singleStat)
  				power.pathPower = power.singleStat
  				if distance > 1 then
--					power.pathPower = self:CalculatePowerStat(self.powerStat, calcFunc({ addNodes = buildPathNodes() }, useFullDPS), calcBase)
+-					power.pathPower = self:CalculatePowerStat(self.powerStat, calcPower({ addNodes = buildPathNodes() }), calcBase)
 +					power.pathPower = calcPower({ addNodes = buildPathNodes() }).singleStat
  				end
  			end
@@ -129,24 +139,7 @@ index 42fb04c4418acfa1863699fc1d20d61a3e03641e..64b0021e46a753fe0610923566a91793
  	
  	local start = GetTime()
  	local nodeIndex = 0
-@@ -640,84 +674,84 @@
- 			end
- 		end
- 	end
- 
- 	for _, data in ipairs(distanceList) do
- 		local distance, nodes = data[1], data[2]
- 		if self.nodePowerMaxDepth and self.nodePowerMaxDepth < distance then
- 			break
- 		end
- 		for nodeId, node in pairs(nodes) do
- 			if not node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[nodeId] then
- 				if not cache[node.modKey] then
--					cache[node.modKey] = calcFunc({ addNodes = { [node] = true } }, useFullDPS)
-+					cache[node.modKey] = calcPower({ addNodes = { [node] = true } })
- 				end
- 				local output = cache[node.modKey]
- 				calculateAddNodePower(node.power, distance, node, output, function()
+@@ -663,51 +694,51 @@ function CalcsTabClass:PowerBuilder()
  					local pathNodes = { }
  					for _, pathNode in pairs(node.path) do
  						pathNodes[pathNode] = true
@@ -155,8 +148,7 @@ index 42fb04c4418acfa1863699fc1d20d61a3e03641e..64b0021e46a753fe0610923566a91793
  				end)
  			elseif node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[nodeId] then
  				if not cache[node.modKey.."_remove"] then
--					cache[node.modKey.."_remove"] = calcFunc({ removeNodes = { [node] = true } }, useFullDPS)
-+					cache[node.modKey.."_remove"] = calcPower({ removeNodes = { [node] = true } })
+ 					cache[node.modKey.."_remove"] = calcPower({ removeNodes = { [node] = true } })
  				end
  				local output = cache[node.modKey.."_remove"]
  				if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
@@ -169,7 +161,7 @@ index 42fb04c4418acfa1863699fc1d20d61a3e03641e..64b0021e46a753fe0610923566a91793
  							pathNodes[node] = true
  						end
  						if #node.depends > 1 then
--							node.power.pathPower = self:CalculatePowerStat(self.powerStat, calcFunc({ removeNodes = pathNodes }, useFullDPS), calcBase)
+-							node.power.pathPower = self:CalculatePowerStat(self.powerStat, calcPower({ removeNodes = pathNodes }), calcBase)
 +							node.power.pathPower = calcPower({ removeNodes = pathNodes }).singleStat
  						end
  					end
@@ -202,25 +194,7 @@ index 42fb04c4418acfa1863699fc1d20d61a3e03641e..64b0021e46a753fe0610923566a91793
  		for _, masteryEffect in ipairs(node.masteryEffects or { }) do
  			if masteryEffectCanBeAssignedToNode(node, masteryEffect) then
  				local effect = self.build.spec.tree.masteryEffects[masteryEffect.effect]
- 				if effect then
- 					local effectNode = buildMasteryEffectNode(node, effect)
- 					if effectNode.modKey ~= "" then
- 						if not cache[effectNode.modKey] then
--							cache[effectNode.modKey] = calcFunc({ addNodes = { [effectNode] = true } }, useFullDPS)
-+							cache[effectNode.modKey] = calcPower({ addNodes = { [effectNode] = true } })
- 						end
- 						local output = cache[effectNode.modKey]
- 						node.power.masteryEffects[effect.id] = { }
- 						local effectPower = node.power.masteryEffects[effect.id]
- 						calculateAddNodePower(effectPower, node.pathDist, node, output, function()
- 							local pathNodes = {
- 								[effectNode] = true
- 							}
- 							for _, pathNode in pairs(node.path) do
- 								if pathNode ~= node then
- 									pathNodes[pathNode] = true
- 								end
-@@ -727,60 +761,62 @@
+@@ -734,60 +765,62 @@ function CalcsTabClass:PowerBuilder()
  						if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
  							effectPower.pathPower = effectPower.pathPower or effectPower.singleStat
  							node.power.singleStat = m_max(node.power.singleStat or 0, effectPower.singleStat)
@@ -254,8 +228,7 @@ index 42fb04c4418acfa1863699fc1d20d61a3e03641e..64b0021e46a753fe0610923566a91793
  		wipeTable(node.power)
  		if useClusterPower and not node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[node.id] then
  			if not cache[node.modKey] then
--				cache[node.modKey] = calcFunc({ addNodes = { [node] = true } }, useFullDPS)
-+				cache[node.modKey] = calcPower({ addNodes = { [node] = true } })
+ 				cache[node.modKey] = calcPower({ addNodes = { [node] = true } })
  			end
  			local output = cache[node.modKey]
 -			node.power.singleStat = self:CalculatePowerStat(self.powerStat, output, calcBase)

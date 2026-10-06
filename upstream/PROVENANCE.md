@@ -27,14 +27,17 @@ The ledger carries upstream PRs
 [#10360](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10360),
 [#10371](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10371),
 [#10372](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10372),
-and [#10373](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10373)
+[#10373](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10373),
+and [#10313](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10313)
 at their exact recorded heads. Their individual diffs and SHA-256 values are
 preserved under `../patches/upstream/`; `../patches/pob-pr-composite.patch`
 records the composition onto beta revision
 `a431f3a28823270acbdd6864c644f93678581f1e`, including the semantic resolution
-where #10371 and #10372 both change `ItemDBControl.lua`. The composite SHA-256 is
-`ab7e2808e25b0ec66e24fd7a0162623bcdb744ca694844e34a4e118568209605`
-and its result tree is `d0a7d98fd0aff990d3fd8884f4b55b37a7aaef42`.
+where #10371 and #10372 both change `ItemDBControl.lua`, and where #10313 is
+applied after #10373 (both change `CalcsTab.lua` and `TestPowerReport_spec.lua`; the
+resolution keeps #10373's `useClusterPower` gating and both specs). The composite
+SHA-256 is `c8935f99ee79448210d0e47d251e7242e6fec7854a95da38db2927166a8d9cd4`
+and its result tree is `c31ecf2001a19ea955c78dbcaefc19681457a53d`.
 
 The maintainer-supplied 2026-09-30 gem-dropdown hover patch is preserved in
 `../patches/gem-dropdown-hover-tooltip.patch` (SHA-256

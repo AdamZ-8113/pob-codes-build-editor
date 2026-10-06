@@ -391,13 +391,206 @@ index 3aa079e67b968dd4b3b291d9721027c53a45b78d..362ce3a1c80bad43b773bbec9ca78b0c
  		build.itemsTab:CreateDisplayItemFromRaw([[
  			Rarity: Unique
 diff --git a/spec/System/TestPowerReport_spec.lua b/spec/System/TestPowerReport_spec.lua
-index a98126e57515376b3bbec11aa0d00920c955573b..899c5e57ad05117d8d0c89579bba199d0f619aeb 100644
+index a98126e57515376b3bbec11aa0d00920c955573b..343751a314c793818e3fd875fa7f55410835af66 100644
 --- a/spec/System/TestPowerReport_spec.lua
 +++ b/spec/System/TestPowerReport_spec.lua
-@@ -36,3 +36,136 @@ describe("PowerReportListControl", function()
+@@ -36,3 +36,329 @@ describe("PowerReportListControl", function()
  		assert.are.equal("allocated", list[1].name)
  	end)
  end)
++
++local function findPowerStat(stat)
++	for _, powerStat in ipairs(data.powerStatList) do
++		if powerStat.stat == stat then
++			return powerStat
++		end
++	end
++end
++
++describe("Power report calculation requirements", function()
++	before_each(function()
++		newBuild()
++	end)
++
++	it("marks only the metrics that require eHP or Full DPS", function()
++		local expectedEHPStats = {
++			TotalEHP = true,
++			SecondMinimalMaximumHitTaken = true,
++			PhysicalTakenHit = true,
++			LightningTakenHit = true,
++			ColdTakenHit = true,
++			FireTakenHit = true,
++			ChaosTakenHit = true,
++		}
++		local eHPStatCount = 0
++		local fullDPSStatCount = 0
++		for _, powerStat in ipairs(data.powerStatList) do
++			if powerStat.requiresEHP then
++				eHPStatCount = eHPStatCount + 1
++				assert.is_true(expectedEHPStats[powerStat.stat:gsub("^Minion", "")])
++			end
++			if powerStat.requiresFullDPS then
++				fullDPSStatCount = fullDPSStatCount + 1
++				assert.are.equal("FullDPS", powerStat.stat)
++			end
++		end
++
++		assert.are.equal(14, eHPStatCount)
++		assert.are.equal(1, fullDPSStatCount)
++		assert.is_true(findPowerStat("MinionTotalEHP").requiresEHP)
++		assert.is_nil(findPowerStat("MeleeAvoidChance").requiresEHP)
++		assert.is_nil(findPowerStat("SpellAvoidChance").requiresEHP)
++		assert.is_nil(findPowerStat("ProjectileAvoidChance").requiresEHP)
++	end)
++end)
++
++describe("Power report calculator options", function()
++	local calcs
++	local originalCalcFullDPS
++	local originalPerform
++
++	before_each(function()
++		newBuild()
++		calcs = build.calcsTab.calcs
++		originalCalcFullDPS = calcs.calcFullDPS
++		originalPerform = calcs.perform
++	end)
++
++	after_each(function()
++		calcs.calcFullDPS = originalCalcFullDPS
++		calcs.perform = originalPerform
++	end)
++
++	local function makeCalculator()
++		local state = {
++			fullDPSCalls = 0,
++			performSkipEHP = { },
++		}
++		calcs.calcFullDPS = function()
++			state.fullDPSCalls = state.fullDPSCalls + 1
++			return { skills = { { } }, combinedDPS = 1, TotalDotDPS = 0 }
++		end
++		calcs.perform = function(env, skipEHP)
++			table.insert(state.performSkipEHP, skipEHP == nil and "nil" or skipEHP)
++			return originalPerform(env, skipEHP)
++		end
++
++		local calcFunc = calcs.getMiscCalculator(build)
++		state.fullDPSCalls = 0
++		state.performSkipEHP = { }
++		return calcFunc, state
++	end
++
++	it("honors explicit stage skips for each report type", function()
++		build.viewMode = "TREE"
++		local calcFunc, state = makeCalculator()
++
++		calcFunc({ }, nil, { skipEHP = true, skipFullDPS = true })
++		assert.are.same({ true }, state.performSkipEHP)
++		assert.are.equal(0, state.fullDPSCalls)
++
++		state.performSkipEHP = { }
++		calcFunc({ }, true, { skipEHP = true, skipFullDPS = false })
++		assert.are.same({ true }, state.performSkipEHP)
++		assert.are.equal(1, state.fullDPSCalls)
++
++		state.performSkipEHP = { }
++		calcFunc({ }, false, { skipEHP = false, skipFullDPS = true })
++		assert.are.same({ false }, state.performSkipEHP)
++		assert.are.equal(1, state.fullDPSCalls)
++	end)
++
++	it("preserves legacy Tree calculations when options are omitted", function()
++		build.viewMode = "TREE"
++		local calcFunc, state = makeCalculator()
++
++		calcFunc({ }, false)
++		assert.are.same({ "nil" }, state.performSkipEHP)
++		assert.are.equal(1, state.fullDPSCalls)
++	end)
++
++	it("preserves representative report values", function()
++		build.viewMode = "TREE"
++		local calcFunc, calcBase = calcs.getMiscCalculator(build)
++		local testNode
++		for nodeId, node in pairs(build.spec.nodes) do
++			if not node.alloc and node.type ~= "Mastery" and node.modKey ~= "" and not build.calcsTab.mainEnv.grantedPassives[nodeId] then
++				testNode = node
++				break
++			end
++		end
++		assert(testNode)
++		local override = { addNodes = { [testNode] = true } }
++
++		for _, stat in ipairs({ "Life", "TotalDPS", "FullDPS", "TotalEHP" }) do
++			local powerStat = findPowerStat(stat)
++			local useFullDPS = powerStat.requiresFullDPS or false
++			local legacyOutput = calcFunc(override, useFullDPS)
++			local optimizedOutput = calcFunc(override, useFullDPS, {
++				skipEHP = not powerStat.requiresEHP,
++				skipFullDPS = not useFullDPS,
++			})
++			assert.are.near(
++				data.powerStatList.GetFromOutput(legacyOutput, powerStat),
++				data.powerStatList.GetFromOutput(optimizedOutput, powerStat),
++				10 ^ -9
++			)
++		end
++
++		local legacyOutput = calcFunc(override, false)
++		local optimizedOutput = calcFunc(override, false, { skipEHP = true, skipFullDPS = true })
++		local legacyOffence, legacyDefence = build.calcsTab:CalculateCombinedOffDefStat(legacyOutput, calcBase)
++		local optimizedOffence, optimizedDefence = build.calcsTab:CalculateCombinedOffDefStat(optimizedOutput, calcBase)
++		assert.are.near(legacyOffence, optimizedOffence, 10 ^ -9)
++		assert.are.near(legacyDefence, optimizedDefence, 10 ^ -9)
++	end)
++end)
++
++describe("PowerBuilder calculation options", function()
++	before_each(function()
++		newBuild()
++	end)
++
++	it("uses one selected-metric option set for all candidate calculations", function()
++		local output = {
++			Life = 101,
++			TotalEHP = 101,
++			FullDPS = 101,
++			CombinedDPS = 101,
++			LifeUnreserved = 101,
++			Armour = 101,
++			EnergyShield = 101,
++			Evasion = 101,
++			LifeRegenRecovery = 101,
++			EnergyShieldRegenRecovery = 101,
++			Minion = { TotalEHP = 101, CombinedDPS = 101 },
++		}
++		local baseOutput = output
++
++		local function runPowerBuilder(powerStat, expectedOptions)
++			local callCount = 0
++			build.calcsTab.powerStat = powerStat
++			build.calcsTab.powerMax = nil
++			build.calcsTab.nodePowerMaxDepth = 1
++			build.calcsTab.miscCalculator = { function(override, useFullDPS, options)
++				callCount = callCount + 1
++				assert.are.same(expectedOptions, options)
++				assert.are.equal(not expectedOptions.skipFullDPS, useFullDPS)
++				return output
++			end, baseOutput }
++
++			build.calcsTab:PowerBuilder()
++			assert.is_true(callCount > 0)
++		end
++
++		runPowerBuilder(findPowerStat("Life"), { skipEHP = true, skipFullDPS = true })
++		runPowerBuilder(findPowerStat("FullDPS"), { skipEHP = true, skipFullDPS = false })
++		runPowerBuilder(findPowerStat("TotalEHP"), { skipEHP = false, skipFullDPS = true })
++		runPowerBuilder(findPowerStat("MinionTotalEHP"), { skipEHP = false, skipFullDPS = true })
++		runPowerBuilder(findPowerStat("MeleeAvoidChance"), { skipEHP = true, skipFullDPS = true })
++		runPowerBuilder(data.powerStatList[1], { skipEHP = true, skipFullDPS = true })
++	end)
++end)
 +
 +describe("Power report cluster calculations", function()
 +	local calcsTab, originalCalculator, originalTime, originalProgress, originalComplete
@@ -743,7 +936,7 @@ index 668e742d4376907f0ad1d653dda95def2ce627c5..cbe1bd74b832ead2c16d1aa4cc6664d3
  						local cellH = colData.height or 18
  
 diff --git a/src/Classes/CalcsTab.lua b/src/Classes/CalcsTab.lua
-index 7d79e865d98a5e76e11c5604b3083f03cb86fa8d..42fb04c4418acfa1863699fc1d20d61a3e03641e 100644
+index 7d79e865d98a5e76e11c5604b3083f03cb86fa8d..45ed8b7aa17bcdd151f990f8e201242b02971e4c 100644
 --- a/src/Classes/CalcsTab.lua
 +++ b/src/Classes/CalcsTab.lua
 @@ -35,7 +35,8 @@ function CalcsTabClass:CalcsTab(build)
@@ -834,15 +1027,34 @@ index 7d79e865d98a5e76e11c5604b3083f03cb86fa8d..42fb04c4418acfa1863699fc1d20d61a
  	self.controls.scrollBar.height = viewPort.height
  	self.controls.scrollBar:SetContentDimension(maxY - (baseY - 26), viewPort.height)
  	for _, section in ipairs(self.sectionList) do
-@@ -496,6 +531,7 @@ end
+@@ -495,8 +530,16 @@ end
+ -- Estimate the offensive and defensive power of all unallocated nodes
  function CalcsTabClass:PowerBuilder()
  	-- local timer_start = GetTime()
- 	local useFullDPS = self.powerStat and self.powerStat.stat == "FullDPS"
+-	local useFullDPS = self.powerStat and self.powerStat.stat == "FullDPS"
++	local useFullDPS = self.powerStat and self.powerStat.requiresFullDPS or false
 +	local useClusterPower = self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes
++	local calcOptions = {
++		skipEHP = not (self.powerStat and self.powerStat.requiresEHP),
++		skipFullDPS = not useFullDPS,
++	}
  	local calcFunc, calcBase = self:GetMiscCalculator()
++	local function calcPower(override)
++		return calcFunc(override, useFullDPS, calcOptions)
++	end
  	local cache = { }
  	local distanceMap = { }
-@@ -597,9 +633,11 @@ function CalcsTabClass:PowerBuilder()
+ 	local distanceList = { }
+@@ -541,7 +584,7 @@ function CalcsTabClass:PowerBuilder()
+ 				newPowerMax.singleStat = m_max(newPowerMax.singleStat, power.singleStat)
+ 				power.pathPower = power.singleStat
+ 				if distance > 1 then
+-					power.pathPower = self:CalculatePowerStat(self.powerStat, calcFunc({ addNodes = buildPathNodes() }, useFullDPS), calcBase)
++					power.pathPower = self:CalculatePowerStat(self.powerStat, calcPower({ addNodes = buildPathNodes() }), calcBase)
+ 				end
+ 			end
+ 		elseif not self.powerStat or not self.powerStat.ignoreForNodes then
+@@ -597,9 +640,11 @@ function CalcsTabClass:PowerBuilder()
  	distanceMap = nil
  	table.sort(distanceList, function(a, b) return a[1] < b[1] end)
  	-- Count eligible cluster nodes
@@ -857,14 +1069,51 @@ index 7d79e865d98a5e76e11c5604b3083f03cb86fa8d..42fb04c4418acfa1863699fc1d20d61a
  		end
  	end
  
-@@ -716,14 +754,12 @@ function CalcsTabClass:PowerBuilder()
+@@ -611,7 +656,7 @@ function CalcsTabClass:PowerBuilder()
+ 		for nodeId, node in pairs(nodes) do
+ 			if not node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[nodeId] then
+ 				if not cache[node.modKey] then
+-					cache[node.modKey] = calcFunc({ addNodes = { [node] = true } }, useFullDPS)
++					cache[node.modKey] = calcPower({ addNodes = { [node] = true } })
+ 				end
+ 				local output = cache[node.modKey]
+ 				calculateAddNodePower(node.power, distance, node, output, function()
+@@ -623,7 +668,7 @@ function CalcsTabClass:PowerBuilder()
+ 				end)
+ 			elseif node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[nodeId] then
+ 				if not cache[node.modKey.."_remove"] then
+-					cache[node.modKey.."_remove"] = calcFunc({ removeNodes = { [node] = true } }, useFullDPS)
++					cache[node.modKey.."_remove"] = calcPower({ removeNodes = { [node] = true } })
+ 				end
+ 				local output = cache[node.modKey.."_remove"]
+ 				if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
+@@ -635,7 +680,7 @@ function CalcsTabClass:PowerBuilder()
+ 							pathNodes[node] = true
+ 						end
+ 						if #node.depends > 1 then
+-							node.power.pathPower = self:CalculatePowerStat(self.powerStat, calcFunc({ removeNodes = pathNodes }, useFullDPS), calcBase)
++							node.power.pathPower = self:CalculatePowerStat(self.powerStat, calcPower({ removeNodes = pathNodes }), calcBase)
+ 						end
+ 					end
+ 				end
+@@ -670,7 +715,7 @@ function CalcsTabClass:PowerBuilder()
+ 					local effectNode = buildMasteryEffectNode(node, effect)
+ 					if effectNode.modKey ~= "" then
+ 						if not cache[effectNode.modKey] then
+-							cache[effectNode.modKey] = calcFunc({ addNodes = { [effectNode] = true } }, useFullDPS)
++							cache[effectNode.modKey] = calcPower({ addNodes = { [effectNode] = true } })
+ 						end
+ 						local output = cache[effectNode.modKey]
+ 						node.power.masteryEffects[effect.id] = { }
+@@ -716,14 +761,12 @@ function CalcsTabClass:PowerBuilder()
  			node.power = {}
  		end
  		wipeTable(node.power)
 -		if not node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[node.id] then
 +		if useClusterPower and not node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[node.id] then
  			if not cache[node.modKey] then
- 				cache[node.modKey] = calcFunc({ addNodes = { [node] = true } }, useFullDPS)
+-				cache[node.modKey] = calcFunc({ addNodes = { [node] = true } }, useFullDPS)
++				cache[node.modKey] = calcPower({ addNodes = { [node] = true } })
  			end
  			local output = cache[node.modKey]
 -			if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
@@ -5749,6 +5998,40 @@ index 7030116836054fed579e2a3385b76ff48d54d15a..13242a8c3e9264a26073db7e3479858f
  
  				-- Save the active skill list for display in the socket group tooltip
  				group.displaySkillList = socketGroupSkillList
+diff --git a/src/Modules/Calcs.lua b/src/Modules/Calcs.lua
+index dc12041374f31f905ab105dbf001adcfe18c60a3..403d11aab4467bff0a9517c2becb85ffaa7de67e 100644
+--- a/src/Modules/Calcs.lua
++++ b/src/Modules/Calcs.lua
+@@ -82,9 +82,13 @@ end
+ ---@field conditions string[]?
+ ---@field extraJewelFuncs ModList?
+ 
++---@class MiscCalculatorOptions
++---@field skipEHP boolean? Skip effective hit pool and maximum hit estimations.
++---@field skipFullDPS boolean? Skip the Full DPS roll-up.
++
+ -- Get calculator for other changes (adding/removing nodes, items, gems, etc)
+ ---@param build Build
+----@return fun(override?: CalcOverride, useFullDPS?: boolean): Output calcFunc
++---@return fun(override?: CalcOverride, useFullDPS?: boolean, options?: MiscCalculatorOptions): Output calcFunc
+ ---@return Output output
+ function calcs.getMiscCalculator(build)
+ 	-- Run base calculation pass
+@@ -97,10 +101,11 @@ function calcs.getMiscCalculator(build)
+ 		env.player.output.FullDPS = fullDPS.combinedDPS
+ 		env.player.output.FullDotDPS = fullDPS.TotalDotDPS
+ 	end
+-	return function(override, useFullDPS)
++	return function(override, useFullDPS, options)
+ 		local env, cachedPlayerDB, cachedEnemyDB, cachedMinionDB = calcs.initEnv(build, "CALCULATOR", override)
+-		calcs.perform(env)
+-		if (useFullDPS ~= false or build.viewMode == "TREE") and usedFullDPS then
++		calcs.perform(env, options and options.skipEHP)
++		local calculateFullDPS = not (options and options.skipFullDPS) and (useFullDPS ~= false or build.viewMode == "TREE")
++		if calculateFullDPS and usedFullDPS then
+ 			-- prevent upcoming calculation from using Cached Data and thus forcing it to re-calculate new FullDPS roll-up 
+ 			-- without this, FullDPS increase/decrease when for node/item/gem comparison would be all 0 as it would be comparing
+ 			-- A with A (due to cache reuse) instead of A with B
 diff --git a/src/Modules/ConfigModBrowser.lua b/src/Modules/ConfigModBrowser.lua
 index 2408963bb6fa5bb7af4acf6c61e770e194dda985..0b0cde3bdf8a89c31348c547a2dd89b50097510e 100644
 --- a/src/Modules/ConfigModBrowser.lua
@@ -5791,10 +6074,47 @@ index 2408963bb6fa5bb7af4acf6c61e770e194dda985..0b0cde3bdf8a89c31348c547a2dd89b5
  
  return M
 diff --git a/src/Modules/Data.lua b/src/Modules/Data.lua
-index 26afb5f4dfb24630be383305136c31ff280b0faf..3e52eb2c9bcaf0540928c14fe1e0ed32646e852a 100644
+index 26afb5f4dfb24630be383305136c31ff280b0faf..6ea348bdc6a984884f2df6d89d671279012c7705 100644
 --- a/src/Modules/Data.lua
 +++ b/src/Modules/Data.lua
-@@ -635,11 +635,11 @@ data.enchantmentSource = {
+@@ -124,12 +124,14 @@ end
+ ---@field ignoreForItems? boolean
+ ---@field reverseSort? boolean
+ ---@field itemField string?
++---@field requiresEHP? boolean Whether this stat requires effective health and maximum hit estimations
++---@field requiresFullDPS? boolean Whether this stat requires the Full DPS roll-up
+ 
+ ---@type PowerStat[]
+ data.powerStatList = {
+ 	{ stat=nil, label="Offence/Defence", combinedOffDef=true, ignoreForItems=true },
+ 	{ stat=nil, label="Name", itemField="Name", ignoreForNodes=true, reverseSort=true, transform=function(value) return value:gsub("^The ","") end},
+-	{ stat="FullDPS", label="Full DPS" },
++	{ stat="FullDPS", label="Full DPS", requiresFullDPS=true },
+ 	{ stat="CombinedDPS", label="Combined DPS" },
+ 	{ stat="TotalDPS", label="Hit DPS" },
+ 	{ stat="WithImpaleDPS", label="Impale + Hit DPS" },
+@@ -159,13 +161,13 @@ data.powerStatList = {
+ 	{ stat="MeleeAvoidChance", label="Melee avoid chance" },
+ 	{ stat="SpellAvoidChance", label="Spell avoid chance" },
+ 	{ stat="ProjectileAvoidChance", label="Projectile avoid chance" },
+-	{ stat="TotalEHP", label="Effective Hit Pool" },
+-	{ stat="SecondMinimalMaximumHitTaken", label="Eff. Maximum Hit Taken" },
+-	{ stat="PhysicalTakenHit", label="Taken Phys dmg", transform=function(value) return -value end },
+-	{ stat="LightningTakenHit", label="Taken Lightning dmg", transform=function(value) return -value end },
+-	{ stat="ColdTakenHit", label="Taken Cold dmg", transform=function(value) return -value end },
+-	{ stat="FireTakenHit", label="Taken Fire dmg", transform=function(value) return -value end },
+-	{ stat="ChaosTakenHit", label="Taken Chaos dmg", transform=function(value) return -value end },
++	{ stat="TotalEHP", label="Effective Hit Pool", requiresEHP=true },
++	{ stat="SecondMinimalMaximumHitTaken", label="Eff. Maximum Hit Taken", requiresEHP=true },
++	{ stat="PhysicalTakenHit", label="Taken Phys dmg", transform=function(value) return -value end, requiresEHP=true },
++	{ stat="LightningTakenHit", label="Taken Lightning dmg", transform=function(value) return -value end, requiresEHP=true },
++	{ stat="ColdTakenHit", label="Taken Cold dmg", transform=function(value) return -value end, requiresEHP=true },
++	{ stat="FireTakenHit", label="Taken Fire dmg", transform=function(value) return -value end, requiresEHP=true },
++	{ stat="ChaosTakenHit", label="Taken Chaos dmg", transform=function(value) return -value end, requiresEHP=true },
+ 	{ stat="CritChance", label="Crit Chance" },
+ 	{ stat="CritMultiplier", label="Crit Multiplier" },
+ 	{ stat="BleedChance", label="Bleed Chance" },
+@@ -635,11 +637,11 @@ data.enchantmentSource = {
  	{ name = "RUNESMITH", label = "Runecraft Bench" },
  	{ name = "HEIST", label = "Heist" },
  	{ name = "HARVEST", label = "Harvest" },

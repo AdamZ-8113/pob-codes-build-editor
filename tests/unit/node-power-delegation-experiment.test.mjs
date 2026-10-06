@@ -4,7 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { transforms, identities, transformationEvidence } from '../../tools/experiments/node-power-delegation-experiment.mjs';
 
-const source = await readFile(new URL('../../.runtime/source-ab7e2808e25b/src/Classes/CalcsTab.lua', import.meta.url), 'utf8').catch(error => {
+const source = await readFile(new URL('../../.runtime/source-c8935f99ee79/src/Classes/CalcsTab.lua', import.meta.url), 'utf8').catch(error => {
   if (error.code === 'ENOENT') return null;
   throw error;
 });

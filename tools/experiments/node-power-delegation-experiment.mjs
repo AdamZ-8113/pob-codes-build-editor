@@ -5,9 +5,9 @@ import { createHash } from 'node:crypto';
 import { parseDriftPatch, transformDriftPatch } from '../../scripts/build/drift-patch.mjs';
 
 const sha256 = text => createHash('sha256').update(text).digest('hex');
-export const experiment = Object.freeze({"name": "node-power-delegation", "base": "current shipped core; serial PowerBuilder", "patchSha256": "ae30b4f9516ebf59e68c1fcee6be122ad023b8477dfe7e5002937f6ebb1e6930", "scope": "In-memory source seam; helpers require default-off nodePowerHelpers=1"});
+export const experiment = Object.freeze({"name": "node-power-delegation", "base": "current shipped core; serial PowerBuilder", "patchSha256": "6a013908eaae9b7826cb2ac029b10694a092596c18dfc22007fe113c1224f9b1", "scope": "In-memory source seam; helpers require default-off nodePowerHelpers=1"});
 export const identities = Object.freeze({
-  "Classes/CalcsTab.lua": Object.freeze({"source": "e5f0f283dc1149f530ea4c21ea4961f08ad1e1159d0d346f1329598ce5d564fa", "result": "6642f4f4aba8fe418ced8e1a4934fbedcde20c86c849930aa9a5293dd5bef430"})
+  "Classes/CalcsTab.lua": Object.freeze({"source": "639090c0722129115b0efc1b68796fb61a511b0d72d359768284f6070169e860", "result": "ebdce73fd4bac6cb87c6c42cae2486a629e06d89bda9d5fe52a22ca77a9239e7"})
 });
 const patch = readFileSync(new URL('./node-power-delegation.patch', import.meta.url), 'utf8').replaceAll('\r\n', '\n');
 assert.equal(sha256(patch), experiment.patchSha256, 'Retained experiment patch identity');
