@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { startProcessMemory } from '../../scripts/lib/process-memory.mjs';
 import { loadBuildInput, readCorePackage, loadSourceTransforms, rewriteCorePackage, routeCorePackage, sha256 } from './core-package-overlay.mjs';
 import { comparePowerSnapshots } from './power-snapshot-parity.mjs';
+import { runRestartScenarios } from './heatmap-restarts.mjs';
 
 const args = process.argv.slice(2);
 const argument = (name, fallback) => args.find(a => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -14,11 +15,14 @@ const repeated = name => args.filter(a => a.startsWith(`--${name}=`)).map(a => a
 const origin = argument('origin', 'http://127.0.0.1:3010/');
 assert.ok(['127.0.0.1', 'localhost'].includes(new URL(origin).hostname), 'Heatmap experiments require a loopback server');
 const metric = argument('metric', 'Hit DPS'), depth = argument('depth', '5');
-const reportMode = argument('report', 'hidden');
+const scenario = argument('scenario', 'timing');
+const reportMode = argument('report', scenario === 'restarts' ? 'shown' : 'hidden');
 const rounds = Number(argument('rounds', '5')), warm = Number(argument('warm', '3'));
 const review = args.includes('--review'), reviewArm = argument('arm', 'candidate');
 assert.ok(['5', '10', '15', 'All'].includes(depth), 'Depth must be 5, 10, 15 or All');
-assert.ok(['hidden', 'shown'].includes(reportMode), 'Report must be hidden or shown');
+assert.ok(['hidden', 'shown', 'deferred'].includes(reportMode), 'Report must be hidden, shown or deferred');
+assert.ok(['timing', 'restarts'].includes(scenario), 'Unknown scenario');
+assert.ok(scenario !== 'restarts' || (reportMode === 'shown' && !review), 'Restart scenario requires an automated shown-report run');
 assert.ok(['baseline', 'candidate'].includes(reviewArm), 'Arm must be baseline or candidate');
 assert.ok(Number.isInteger(rounds) && rounds > 0 && Number.isInteger(warm) && warm >= 0, 'Invalid sample counts');
 const output = resolve(argument('out', `tmp/power-report-speed/${new Date().toISOString().replaceAll(':', '-')}.json`));
@@ -52,15 +56,16 @@ const report = {
   schemaVersion: 1, measuredAt: new Date().toISOString(), passed: false, review, calibration,
   harnessNodeVersion: process.version,
   noiseReferenceSha256: noiseReference ? sha256(JSON.stringify(noiseReference)) : undefined,
-  inputXmlSha256: input.xmlHash, metric, depth, reportMode, roundsRequested: rounds, warmRequested: warm,
+  inputXmlSha256: input.xmlHash, metric, depth, reportMode, scenario, roundsRequested: rounds, warmRequested: warm,
   environment: { browser: browser.version(), cpu: cpus()[0]?.model, logicalCores: cpus().length, viewport: { width: 1600, height: 1000, dpr: 1 } },
   harnessSha256: sha256(await readFile(new URL(import.meta.url))), diagnosticsSha256: sha256(diagnostics),
   scope: 'Same binary, new context per arm per round; cold means first target metric after discarded heatmap warm-up. Warm samples follow an alternate metric. Readiness is CPU completion, not GPU presentation. Fixed Lua hash seed in both arms; clocks used for timing remain real.',
   arms: Object.fromEntries(Object.entries(arms).map(([name, arm]) => [name, { sourceCoreHash: arm.overlay.sourceCoreHash, routedCoreHash: arm.overlay.core.sha256, fileHashes: arm.overlay.evidence, modules: arm.modules, query: arm.query }])),
-  runs: [], errors: [],
+  runs: [], restarts: [], errors: [],
 };
 let memory, stage = 'startup';
 const snapshotReferences = new Map();
+const freshReferences = new Set();
 
 async function runArm(name, round) {
   const arm = arms[name];
@@ -143,8 +148,8 @@ async function runArm(name, round) {
       assert.equal((await state()).controls[key].selected, index + 1, 'Native dropdown selected requested value');
       return startedAt;
     };
-    const waitRun = async (previous, start, target, sample, requireReport = reportMode === 'shown') => {
-      let heatmapWallMs, reportWallMs, current, p;
+    const waitRun = async (previous, start, target, sample, { requireReport = reportMode === 'shown', expectedDepth = depth, parityGroup = 'target', deferOpen = reportMode === 'deferred' && !!sample } = {}) => {
+      let heatmapWallMs, reportWallMs, current, p, earlyHeatmap, openedAt;
       let peakLuaKiB = 0, peakWasmBytes = 0;
       do {
         await page.waitForTimeout(40);
@@ -154,35 +159,64 @@ async function runArm(name, round) {
         await errors();
         current = p.samples.nodePower.runs.at(-1);
         if (current?.id > previous) {
-          if (current.heatmapReadyAt != null) heatmapWallMs ??= performance.now() - start;
-          if (current.reportReadyAt != null) reportWallMs ??= performance.now() - start;
-          if (heatmapWallMs != null && (!requireReport || reportWallMs != null)) break;
+          const observedAt = performance.now() - start;
+          if (current.reportReadyAt != null) reportWallMs ??= observedAt;
+          if (current.heatmapReadyAt != null && heatmapWallMs == null) {
+            heatmapWallMs = observedAt;
+            // Observe the heatmap at its own readiness boundary, before report work can alter it.
+            earlyHeatmap = (await profile(true)).samples.nodePower.snapshots?.heatmap;
+          }
+          if (heatmapWallMs != null && deferOpen && openedAt == null) {
+            assert.equal(p.samples.nodePower.reportShown, false, 'Deferred report starts hidden');
+            if (current.pending) {
+              assert.equal(p.samples.nodePower.reportRows, 0, 'No stale or partial deferred report rows');
+              assert.equal(p.samples.nodePower.toastShown, false, 'Hidden heatmap completion clears progress toast');
+            }
+            openedAt = await clickControl('report');
+            continue;
+          }
+          if (heatmapWallMs != null && (!(requireReport || deferOpen) || reportWallMs != null)) break;
         }
         assert.ok(performance.now() - start < 240000, 'Builder readiness deadline');
       } while (true);
       assert.equal(current.metric, target, 'Measured intended metric');
-      assert.equal(String(current.depth), depth, 'Measured intended depth');
+      assert.equal(String(current.depth), expectedDepth, 'Measured intended depth');
       // Snapshot only after readiness; retain hashes, never node text or build data.
       const captured = await profile(true);
       const snapshots = captured.samples.nodePower.snapshots;
+      if (earlyHeatmap) snapshots.heatmap = earlyHeatmap;
       assert.ok(snapshots?.heatmap, 'Heatmap snapshot available');
+      if (requireReport || deferOpen) assert.ok(snapshots.full, 'Completed report has full snapshot');
+      assert.equal(current.reportCallbacks, current.reportReadyAt == null ? 0 : 1, 'One callback per completed report');
+      if (current.token != null) {
+        assert.equal(current.heatmapCallbacks, 1, 'One heatmap callback per run');
+        if (current.reportReadyAt != null) assert.equal(current.publishedToken, current.token, 'Only the current run token publishes');
+        for (const phase of Object.values(current.progress)) assert.equal(phase.valid, true, 'Finite monotonic phase progress');
+        for (const category of ['pathAdd', 'allocatedRemove', 'removePath', 'clusterNotable']) assert.equal(current.heatmapCalculators[category].count, 0, 'Heatmap excludes report-only calculations');
+        if (current.pending) {
+          assert.equal(captured.samples.nodePower.reportRows, 0, 'Pending list stays empty');
+          assert.equal(captured.samples.nodePower.toastShown, false, 'Pending hidden report has no toast');
+        }
+      }
       const snapshotHashes = Object.fromEntries(Object.entries(snapshots).map(([key, text]) => [key, sha256(text)]));
-      const result = { arm: name, round, sample, ...current, heatmapLuaMs: current.heatmapReadyAt - current.startedAt, reportLuaMs: current.reportReadyAt == null ? null : current.reportReadyAt - current.startedAt, heatmapWallMs, reportWallMs: reportWallMs ?? null, snapshots: snapshotHashes, runtimeHeatmap: captured.samples.summary.heatmap, luaKiB: captured.samples.luaKiB, wasmBytes: captured.wasmBytes, peakLuaKiB: Math.max(peakLuaKiB, captured.samples.luaKiB), peakWasmBytes: Math.max(peakWasmBytes, captured.wasmBytes), memoryScope: 'Peak observed during readiness polling; may miss transients within a coroutine resume', errors: [] };
+      const result = { arm: name, round, sample, parityGroup, ...current, heatmapLuaMs: current.heatmapReadyAt - current.startedAt, reportLuaMs: current.reportReadyAt == null ? null : current.reportReadyAt - current.startedAt, heatmapWallMs, reportWallMs: reportWallMs ?? null, openedReportWallMs: openedAt == null ? null : Math.max(0, start + reportWallMs - openedAt), snapshots: snapshotHashes, runtimeHeatmap: captured.samples.summary.heatmap, luaKiB: captured.samples.luaKiB, wasmBytes: captured.wasmBytes, peakLuaKiB: Math.max(peakLuaKiB, captured.samples.luaKiB), peakWasmBytes: Math.max(peakWasmBytes, captured.wasmBytes), memoryScope: 'Peak observed during readiness polling; may miss transients within a coroutine resume', errors: [] };
       if (sample) {
         report.runs.push(result);
         for (const [kind, text] of Object.entries(snapshots)) {
-          const reference = snapshotReferences.get(kind);
-          if (!reference) snapshotReferences.set(kind, { text, arm: name, round, sample });
+          const referenceKey = `${parityGroup}/${kind}`;
+          const reference = snapshotReferences.get(referenceKey);
+          if (!reference) snapshotReferences.set(referenceKey, { text, arm: name, round, sample });
           else {
             const mismatch = comparePowerSnapshots(reference.text, text);
             if (mismatch) {
-              report.snapshotMismatch = { kind, metric, reference: { arm: reference.arm, round: reference.round, sample: reference.sample }, candidate: { arm: name, round, sample }, ...mismatch };
+              report.snapshotMismatch = { kind, metric: target, parityGroup, reference: { arm: reference.arm, round: reference.round, sample: reference.sample }, candidate: { arm: name, round, sample }, ...mismatch };
               assert.fail(`${kind}: identical snapshots within and across arms`);
             }
           }
         }
         console.log(JSON.stringify({ arm: name, round, sample, heatmapLuaMs: result.heatmapLuaMs, reportLuaMs: result.reportLuaMs, calculators: result.calculators }));
       }
+      if (deferOpen) await clickControl('report');
       return result;
     };
     stage = `${name}:${round}:warmup`;
@@ -192,9 +226,15 @@ async function runArm(name, round) {
     const beforeWarmup = (await state()).runs.at(-1)?.id ?? 0;
     const warmStart = await clickControl('heatmap');
     const warmMetric = (await state()).controls.metric;
-    await waitRun(beforeWarmup, warmStart, warmMetric.options[warmMetric.selected - 1], undefined, false);
+    await waitRun(beforeWarmup, warmStart, warmMetric.options[warmMetric.selected - 1], undefined, { requireReport: false });
     if (reportMode === 'shown') await clickControl('report');
     assert.equal((await state()).reportShown, reportMode === 'shown', 'Requested report visibility');
+    if (scenario === 'restarts') {
+      await runRestartScenarios({ arm: name, round, warm, input, page, state, profile, flush, select, clickControl, clickPoint, waitRun, freshReferences, report,
+        setStage: value => { stage = value; console.log(stage); } });
+      await errors();
+      return;
+    }
     const options = (await state()).controls.metric.options;
     const alternate = options.find(label => label !== metric);
     const measure = async (label, sample) => {
@@ -238,21 +278,22 @@ try {
       assert.equal(noiseReference.arms.baseline.wasmSha256, arms.baseline.wasmSha256, 'Noise reference Wasm identity');
       assert.deepEqual(noiseReference.environment, report.environment, 'Noise reference browser and machine identity');
     }
-    for (const kind of ['heatmap', 'full']) {
-      const hashes = report.runs.map(run => run.snapshots[kind]).filter(Boolean);
-      assert.ok(kind !== 'heatmap' || hashes.length === report.runs.length, 'Every run has heatmap parity evidence');
-      assert.ok(new Set(hashes).size <= 1, `${kind}: identical snapshots within and across arms`);
+    for (const group of new Set(report.runs.map(run => run.parityGroup))) for (const kind of ['heatmap', 'full']) {
+      const runs = report.runs.filter(run => run.parityGroup === group);
+      const hashes = runs.map(run => run.snapshots[kind]).filter(Boolean);
+      assert.ok(kind !== 'heatmap' || hashes.length === runs.length, 'Every run has heatmap parity evidence');
+      assert.ok(new Set(hashes).size <= 1, `${group}/${kind}: identical snapshots within and across arms`);
     }
     report.snapshotParity = true;
     report.summary = {};
     report.comparisons = [];
-    for (const sample of ['cold', 'warm']) {
-      const matching = run => sample === 'cold' ? run.sample === 'cold' : run.sample.startsWith('warm-');
+    for (const group of new Set(report.runs.map(run => run.parityGroup))) for (const sample of ['cold', 'warm']) {
+      const matching = run => run.parityGroup === group && (sample === 'cold' ? run.sample === 'cold' || run.sample.startsWith('cold:') : run.sample.startsWith('warm-'));
       for (const field of ['heatmapLuaMs', 'reportLuaMs', 'heatmapWallMs', 'reportWallMs', 'resumes', 'maxResumeMs']) {
         const byArm = {};
         for (const name of ['baseline', 'candidate']) {
           byArm[name] = summarize(report.runs.filter(run => run.arm === name && matching(run)).map(run => run[field]).filter(value => value != null));
-          report.summary[`${name}.${sample}.${field}`] = byArm[name];
+          report.summary[`${scenario === 'timing' ? '' : `${group}.`}${name}.${sample}.${field}`] = byArm[name];
         }
         if (!byArm.baseline.count || !byArm.candidate.count) continue;
         const paired = [];
@@ -265,7 +306,7 @@ try {
         assert.ok(calibration || referenceRow, 'Noise reference covers requested sample and measurement');
         const noiseFloorPercent = calibration ? Math.max(3, 2 * (medianAbsolutePairedDeltaPercent ?? 0)) : referenceRow.noiseFloorPercent;
         const changePercent = byArm.baseline.median ? (byArm.candidate.median / byArm.baseline.median - 1) * 100 : null;
-        report.comparisons.push({ sample, field, baselineMedian: byArm.baseline.median, candidateMedian: byArm.candidate.median, changePercent, medianAbsolutePairedDeltaPercent, noiseFloorPercent, beatsNoiseFloor: changePercent != null && -changePercent > noiseFloorPercent, snapshotParity: true });
+        report.comparisons.push({ group, sample, field, baselineMedian: byArm.baseline.median, candidateMedian: byArm.candidate.median, changePercent, medianAbsolutePairedDeltaPercent, noiseFloorPercent, beatsNoiseFloor: changePercent != null && -changePercent > noiseFloorPercent, snapshotParity: true });
       }
     }
   }

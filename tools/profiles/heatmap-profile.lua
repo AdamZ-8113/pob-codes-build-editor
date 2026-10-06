@@ -1,7 +1,7 @@
 -- Appended to TreeTab only in routed, in-memory profiling packages.
 do
     local encode = require('dkjson').encode
-    local active, installed, current
+    local active, installed, current, treeViewport
     local runs = {}
     local wrapped = setmetatable({}, {__mode = 'k'})
     local draw = TreeTabClass.Draw
@@ -17,9 +17,11 @@ do
             rows[#rows + 1] = key .. ':' .. number(value.singleStat) .. ':' .. number(value.offence) .. ':' .. number(value.defence) .. (full and ':' .. number(value.pathPower) or '')
         end
         for id, node in pairs(tab.build.spec.nodes) do
-            if full or not node.alloc then power('node:' .. id, node.power) end
-            for effect, value in pairs(node.power and node.power.masteryEffects or {}) do
-                power('mastery:' .. id .. ':' .. effect, value)
+            if full or not node.alloc then
+                power('node:' .. id, node.power)
+                for effect, value in pairs(node.power and node.power.masteryEffects or {}) do
+                    power('mastery:' .. id .. ':' .. effect, value)
+                end
             end
         end
         for key, value in pairs(tab.powerMax or {}) do rows[#rows + 1] = 'max:' .. key .. ':' .. number(value) end
@@ -28,6 +30,15 @@ do
         end
         table.sort(rows)
         return table.concat(rows, '\n')
+    end
+
+    local function heatmapReady(run)
+        if not run or run.heatmapReadyAt then return end
+        run.heatmapReadyAt = GetTime()
+        run.heatmapCalculators = {}
+        for name, value in pairs(run.calculators) do
+            run.heatmapCalculators[name] = {count = value.count, ms = value.ms}
+        end
     end
 
     local function installBuilder(tab)
@@ -61,18 +72,42 @@ do
 
         tab.BuildPower = function(self, ...)
             if self.powerBuildFlag then
-                current = {id = #runs + 1, metric = (self.powerStat or data.powerStatList[1]).label, depth = self.nodePowerMaxDepth or 'All', startedAt = GetTime(), resumes = 0, maxResumeMs = 0, calculators = {}}
+                if current and not current.reportReadyAt then current.abandonedAt = GetTime() end
+                current = {id = #runs + 1, token = self.powerBuildToken and self.powerBuildToken + 1 or nil, metric = (self.powerStat or data.powerStatList[1]).label, depth = self.nodePowerMaxDepth or 'All', startedAt = GetTime(), resumes = 0, maxResumeMs = 0, calculators = {}, progress = {}, reportCallbacks = 0, heatmapCallbacks = 0}
                 for _, category in ipairs(categories) do current.calculators[category] = {count = 0, ms = 0} end
                 runs[#runs + 1] = current
             end
             local run = current
-            local pending = self.powerBuildFlag or self.powerBuilder ~= nil
+            local pending = self.powerBuildFlag or self.powerBuilder ~= nil or self.powerReportPending ~= nil
             local callback = self.build.powerBuilderCallback
+            local heatmapCallback = self.build.powerBuilderHeatmapCallback
+            local progressCallback = self.build.powerBuilderProgressCallback
             if callback and pending then
                 self.build.powerBuilderCallback = function(...)
                     local result = table.pack(callback(...))
-                    if run then run.reportReadyAt = GetTime() end
+                    if run then
+                        run.reportReadyAt = GetTime()
+                        run.reportCallbacks = run.reportCallbacks + 1
+                        run.publishedToken = self.powerBuildToken
+                    end
                     return table.unpack(result, 1, result.n)
+                end
+            end
+            if pending then
+                self.build.powerBuilderHeatmapCallback = function(...)
+                    if heatmapCallback then heatmapCallback(...) end
+                    if run then run.heatmapCallbacks = run.heatmapCallbacks + 1 end
+                    heatmapReady(run)
+                end
+                self.build.powerBuilderProgressCallback = function(percent)
+                    if run then
+                        local phase = self.powerPhase or 'combined'
+                        local p = run.progress[phase] or {count = 0, last = 0, valid = true}
+                        p.valid = p.valid and type(percent) == 'number' and percent == percent and percent >= p.last and percent <= 100
+                        p.last, p.count = percent, p.count + 1
+                        run.progress[phase] = p
+                    end
+                    if progressCallback then progressCallback(percent) end
                 end
             end
             -- Propagate coroutine failures even when PoB's development mode is off.
@@ -92,9 +127,17 @@ do
             local result = table.pack(pcall(buildPower, self, ...))
             coroutine.resume = resume
             self.build.powerBuilderCallback = callback
+            self.build.powerBuilderHeatmapCallback = heatmapCallback
+            self.build.powerBuilderProgressCallback = progressCallback
             if not result[1] then error('Heatmap profiling: BuildPower failed') end
+            if run then
+                run.token = self.powerBuildToken
+                run.phase = self.powerPhase or (self.powerBuilder and 'combined' or 'complete')
+                run.pending = self.powerReportPending ~= nil
+                run.clusterRecomputes = self.powerReportCollisions or 0
+            end
             if run and pending and not run.heatmapReadyAt and (self.powerHeatmapReady == true or self.powerBuilder == nil) then
-                run.heatmapReadyAt = GetTime()
+                heatmapReady(run)
             end
             return table.unpack(result, 2, result.n)
         end
@@ -117,6 +160,14 @@ do
     TreeTabClass.Draw = function(self, ...)
         active = self
         installBuilder(self.build.calcsTab)
+        if not wrapped[self.viewer] then
+            wrapped[self.viewer] = true
+            local viewerDraw = self.viewer.Draw
+            self.viewer.Draw = function(viewer, build, viewport, events)
+                treeViewport = viewport
+                return viewerDraw(viewer, build, viewport, events)
+            end
+        end
         if not installed and getRuntimeProfile then
             installed = true
             local profile = getRuntimeProfile
@@ -129,6 +180,22 @@ do
                     end
                     state.enabled = active.viewer.showHeatMap or false
                     state.reportShown = active.controls.powerReportList.shown or false
+                    state.reportRows = #(active.controls.powerReportList.originalList or {})
+                    state.toastShown = active.powerBuilderToastId ~= nil and ToastNotification:Exists(active.powerBuilderToastId) or false
+                    state.allocatedNodes = active.build.spec:CountAllocNodes()
+                    if reset and treeViewport then
+                        local v, viewer = treeViewport, active.viewer
+                        local scale = math.min(v.width, v.height) / active.build.spec.tree.size * viewer.zoom
+                        for id, node in pairs(active.build.spec.nodes) do
+                            if node.type == 'Normal' and not node.alloc and not node.ascendancyName and node.path and node.pathDist == 1 then
+                                local x = node.x * scale + viewer.zoomX + v.x + v.width / 2
+                                local y = node.y * scale + viewer.zoomY + v.y + v.height / 2
+                                if x > v.x + 20 and x < v.x + v.width - 20 and y > v.y + 220 and y < v.y + v.height - 40 and (not state.allocationTarget or id < state.allocationTarget.id) then
+                                    state.allocationTarget = {id = id, x = x, y = y}
+                                end
+                            end
+                        end
+                    end
                     -- A reset read requests snapshots after timing has been observed.
                     -- Ordinary polling never serializes node values.
                     if reset and current and current.heatmapReadyAt then

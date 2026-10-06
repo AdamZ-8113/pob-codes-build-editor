@@ -1,0 +1,460 @@
+diff --git a/src/Classes/CalcsTab.lua b/src/Classes/CalcsTab.lua
+index 8cb9b77fd340..74494b28346f 100644
+--- a/src/Classes/CalcsTab.lua
++++ b/src/Classes/CalcsTab.lua
+@@ -501,48 +501,69 @@
+ 		self.controls.breakdown:SetBreakdownData(self.displayData, self.displayPinned)
+ 	end
+ 	
+ 	-- Retrieve calculator functions
+ 	local miscCalcFunc, miscCalcBase = self.calcs.getMiscCalculator(self.build)
+ 	self.miscCalculator = { miscCalcFunc, miscCalcBase }
+ end
+ 
+ -- Controls the coroutine that calculates node power
+ function CalcsTabClass:BuildPower()
+ 	if self.powerBuildFlag then
+ 		self.powerBuildFlag = false
++		self.powerBuildToken = (self.powerBuildToken or 0) + 1
+ 		self.powerMax = nil
++		self.powerHeatmapReady = nil
++		self.powerReportPending = nil
++		self.powerReportBuilder = nil
++		self.powerBuilderInitialized = nil
+ 		self.powerBuilder = coroutine.create(self.PowerBuilder)
++	elseif not self.powerBuilder and self.powerReportPending == self.powerBuildToken and self.powerReportBuilder
++		and (not self.build.powerReportWanted or self.build.powerReportWanted()) then
++		self.powerReportPending = nil
++		self.powerBuilder = coroutine.create(self.powerReportBuilder)
++		self.powerReportBuilder = nil
+ 	end
+ 	if self.powerBuilder then
++		local token = self.powerBuildToken
+ 		local res, errMsg = coroutine.resume(self.powerBuilder, self)
+ 		if launch.devMode and not res then
+ 			error(errMsg)
+ 		end
+ 		if coroutine.status(self.powerBuilder) == "dead" then
+ 			self.powerBuilder = nil
+-			if self.build.powerBuilderCallback then
+-				self.build.powerBuilderCallback()
++			if not self.powerReportPending and token == self.powerBuildToken and not self.powerBuildFlag then
++				self.powerPhase = "complete"
++				if self.build.powerBuilderCallback then
++					self.build.powerBuilderCallback()
++				end
+ 			end
+ 		end
+ 	end
+ end
+ 
+ -- Estimate the offensive and defensive power of all unallocated nodes
+ function CalcsTabClass:PowerBuilder()
+ 	-- local timer_start = GetTime()
+ 	local useFullDPS = self.powerStat and self.powerStat.stat == "FullDPS"
+ 	local useClusterPower = self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes
+ 	local calcFunc, calcBase = self:GetMiscCalculator()
+ 	local cache = { }
++	local reportCache, reportTasks = { }, { }
++	local token = self.powerBuildToken
++	self.powerPhase = "heatmap"
++	self.powerReportCollisions = 0
++	if self.build.powerBuilderProgressCallback then
++		self.build.powerBuilderProgressCallback(0)
++	end
+ 	local distanceMap = { }
+ 	local distanceList = { }
+ 	local masteryNodeList = { }
+ 	local newPowerMax = {
+ 		singleStat = 0,
+ 		offence = 0,
+ 		offencePerPoint = 0,
+ 		defence = 0,
+ 		defencePerPoint = 0
+ 	}
+ 	if not self.powerMax then
+ 		self.powerMax = newPowerMax
+@@ -566,41 +587,51 @@
+ 	end
+ 
+ 	local function masteryEffectCanBeAssignedToNode(node, masteryEffect)
+ 		local assignedNodeId = isValueInTable(self.build.spec.masterySelections, masteryEffect.effect)
+ 		return not assignedNodeId or assignedNodeId == node.id
+ 	end
+ 
+ 	local function calculateAddNodePower(power, distance, node, output, buildPathNodes)
+ 		if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
+ 			power.singleStat = self:CalculatePowerStat(self.powerStat, output, calcBase)
+ 			if node.path and not node.ascendancyName then
+ 				newPowerMax.singleStat = m_max(newPowerMax.singleStat, power.singleStat)
+-				power.pathPower = power.singleStat
+-				if distance > 1 then
+-					power.pathPower = self:CalculatePowerStat(self.powerStat, calcFunc({ addNodes = buildPathNodes() }, useFullDPS), calcBase)
++				reportTasks[#reportTasks + 1] = function()
++					power.pathPower = power.singleStat
++					if distance > 1 then
++						power.pathPower = self:CalculatePowerStat(self.powerStat, calcFunc({ addNodes = buildPathNodes() }, useFullDPS), calcBase)
++					end
++					local selected = self.build.spec.masterySelections[node.id]
++					if power == node.power and selected and power.masteryEffects and power.masteryEffects[selected] then
++						power.masteryEffects[selected].pathPower = power.pathPower
++					end
+ 				end
+ 			end
+ 		elseif not self.powerStat or not self.powerStat.ignoreForNodes then
+ 			power.offence, power.defence = self:CalculateCombinedOffDefStat(output, calcBase)
+ 			power.singleStat = power.offence
+ 			if node.path and not node.ascendancyName then
+ 				newPowerMax.offence = m_max(newPowerMax.offence, power.offence)
+ 				newPowerMax.defence = m_max(newPowerMax.defence, power.defence)
+ 				newPowerMax.offencePerPoint = m_max(newPowerMax.offencePerPoint, power.offence / distance)
+ 				newPowerMax.defencePerPoint = m_max(newPowerMax.defencePerPoint, power.defence / distance)
+ 			end
+ 		end
+ 	end
+ 	
++	for _, node in pairs(self.build.spec.tree.clusterNodeMap) do
++		node.power = node.power or { }
++		wipeTable(node.power)
++	end
+ 	local start = GetTime()
+ 	local nodeIndex = 0
+ 	local total = 0
+ 
+ 	for nodeId, node in pairs(self.build.spec.nodes) do
+ 		wipeTable(node.power)
+ 		if node.type == "Mastery" then
+ 			node.power.masteryEffects = { }
+ 		end
+ 		if node.modKey ~= "" and not self.mainEnv.grantedPassives[nodeId] then
+ 			if node.type == "Mastery" and node.allMasteryOptions then
+ 				if not (self.nodePowerMaxDepth and self.nodePowerMaxDepth < node.pathDist) then
+@@ -623,85 +654,90 @@
+ 				node.power.distance = dist
+ 				if (not self.nodePowerMaxDepth) or dist <= self.nodePowerMaxDepth then
+ 					total = total + 1
+ 				end
+ 			end
+ 		end
+ 	end
+ 	for distance, nodes in pairs(distanceMap) do
+ 		t_insert(distanceList, { distance, nodes })
+ 	end
+ 	distanceMap = nil
+ 	table.sort(distanceList, function(a, b) return a[1] < b[1] end)
+-	-- Count eligible cluster nodes
+-	if useClusterPower then
+-		for _, node in pairs(self.build.spec.tree.clusterNodeMap) do
+-			if not node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[node.id] then
+-				total = total + 1
+-			end
+-		end
+-	end
+ 
+ 	for _, data in ipairs(distanceList) do
+ 		local distance, nodes = data[1], data[2]
+ 		if self.nodePowerMaxDepth and self.nodePowerMaxDepth < distance then
+ 			break
+ 		end
+ 		for nodeId, node in pairs(nodes) do
+ 			if not node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[nodeId] then
+ 				if not cache[node.modKey] then
+ 					cache[node.modKey] = calcFunc({ addNodes = { [node] = true } }, useFullDPS)
+ 				end
+ 				local output = cache[node.modKey]
+ 				calculateAddNodePower(node.power, distance, node, output, function()
+ 					local pathNodes = { }
+ 					for _, pathNode in pairs(node.path) do
+ 						pathNodes[pathNode] = true
+ 					end
+ 					return pathNodes
+ 				end)
+ 			elseif node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[nodeId] then
+-				if not cache[node.modKey.."_remove"] then
+-					cache[node.modKey.."_remove"] = calcFunc({ removeNodes = { [node] = true } }, useFullDPS)
+-				end
+-				local output = cache[node.modKey.."_remove"]
+-				if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
+-					node.power.singleStat = self:CalculatePowerStat(self.powerStat, output, calcBase)
+-					if node.depends and not node.ascendancyName then
+-						node.power.pathPower = node.power.singleStat
+-						local pathNodes = { }
+-						for _, node in pairs(node.depends) do
+-							pathNodes[node] = true
+-						end
+-						if #node.depends > 1 then
+-							node.power.pathPower = self:CalculatePowerStat(self.powerStat, calcFunc({ removeNodes = pathNodes }, useFullDPS), calcBase)
++				if useClusterPower then
++					reportTasks[#reportTasks + 1] = function()
++						if not reportCache[node.modKey.."_remove"] then
++							reportCache[node.modKey.."_remove"] = calcFunc({ removeNodes = { [node] = true } }, useFullDPS)
++						end
++						local output = reportCache[node.modKey.."_remove"]
++						if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
++							node.power.singleStat = self:CalculatePowerStat(self.powerStat, output, calcBase)
++							if node.depends and not node.ascendancyName then
++								node.power.pathPower = node.power.singleStat
++								local pathNodes = { }
++								for _, node in pairs(node.depends) do
++									pathNodes[node] = true
++								end
++								if #node.depends > 1 then
++									node.power.pathPower = self:CalculatePowerStat(self.powerStat, calcFunc({ removeNodes = pathNodes }, useFullDPS), calcBase)
++								end
++							end
++						end
++						if node.type == "Mastery" then
++							local selected = self.build.spec.masterySelections[node.id]
++							if selected then
++								node.power.masteryEffects[selected] = {
++									singleStat = node.power.singleStat, pathPower = node.power.pathPower,
++									offence = node.power.offence, defence = node.power.defence,
++								}
++							end
+ 						end
+ 					end
+ 				end
+ 			end
+ 			if node.type == "Mastery" then
+ 				local selectedEffectId = self.build.spec.masterySelections[node.id]
+ 				if selectedEffectId then
+ 					node.power.masteryEffects[selectedEffectId] = {
+ 						singleStat = node.power.singleStat,
+ 						pathPower = node.power.pathPower,
+ 						offence = node.power.offence,
+ 						defence = node.power.defence,
+ 					}
+ 				end
+ 			end
+ 			nodeIndex = nodeIndex + 1
+ 			if coroutine.running() and GetTime() - start > 100 then
+ 				if self.build.powerBuilderProgressCallback then
+-					self.build.powerBuilderProgressCallback(m_floor(nodeIndex/total*100))
++					self.build.powerBuilderProgressCallback(m_floor(nodeIndex / m_max(1, total) * 100))
+ 				end
+ 				coroutine.yield()
+ 				start = GetTime()
+ 			end
+ 		end
+ 	end
+ 
+ 	for _, node in ipairs(masteryNodeList) do
+ 		for _, masteryEffect in ipairs(node.masteryEffects or { }) do
+ 			if masteryEffectCanBeAssignedToNode(node, masteryEffect) then
+ 				local effect = self.build.spec.tree.masteryEffects[masteryEffect.effect]
+ 				if effect then
+@@ -716,72 +752,121 @@
+ 						calculateAddNodePower(effectPower, node.pathDist, node, output, function()
+ 							local pathNodes = {
+ 								[effectNode] = true
+ 							}
+ 							for _, pathNode in pairs(node.path) do
+ 								if pathNode ~= node then
+ 									pathNodes[pathNode] = true
+ 								end
+ 							end
+ 							return pathNodes
+ 						end)
+ 						if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
+-							effectPower.pathPower = effectPower.pathPower or effectPower.singleStat
+ 							node.power.singleStat = m_max(node.power.singleStat or 0, effectPower.singleStat)
+-							node.power.pathPower = m_max(node.power.pathPower or 0, effectPower.pathPower)
++							reportTasks[#reportTasks + 1] = function()
++								effectPower.pathPower = effectPower.pathPower or effectPower.singleStat
++								node.power.pathPower = m_max(node.power.pathPower or 0, effectPower.pathPower)
++							end
+ 						elseif not self.powerStat or not self.powerStat.ignoreForNodes then
+ 							node.power.offence = m_max(node.power.offence or 0, effectPower.offence)
+ 							node.power.defence = m_max(node.power.defence or 0, effectPower.defence)
+ 							node.power.singleStat = m_max(node.power.singleStat or 0, effectPower.singleStat)
+ 						end
+ 					end
+ 					nodeIndex = nodeIndex + 1
+ 					if coroutine.running() and GetTime() - start > 100 then
+ 						if self.build.powerBuilderProgressCallback then
+-							self.build.powerBuilderProgressCallback(m_floor(nodeIndex/total*100))
++							self.build.powerBuilderProgressCallback(m_floor(nodeIndex / m_max(1, total) * 100))
+ 						end
+ 						coroutine.yield()
+ 						start = GetTime()
+ 					end
+ 				end
+ 			end
+ 		end
+ 	end
+ 
+-	-- Calculate the impact of every cluster notable
+-	-- used for the power report screen
+-	for nodeName, node in pairs(self.build.spec.tree.clusterNodeMap) do
+-		if not node.power then
+-			node.power = {}
+-		end
+-		wipeTable(node.power)
+-		if useClusterPower and not node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[node.id] then
+-			if not cache[node.modKey] then
+-				cache[node.modKey] = calcFunc({ addNodes = { [node] = true } }, useFullDPS)
+-			end
+-			local output = cache[node.modKey]
+-			node.power.singleStat = self:CalculatePowerStat(self.powerStat, output, calcBase)
++	self.powerMax = newPowerMax
++	self.powerBuilderInitialized = true
++	self.powerHeatmapReady = true
++	if self.build.powerBuilderProgressCallback then self.build.powerBuilderProgressCallback(100) end
++	if self.build.powerBuilderHeatmapCallback then self.build.powerBuilderHeatmapCallback() end
++	if not useClusterPower then return end
++
++	-- Retain only cache keys while report-only work is deferred.
++	local heatmapKeys = { }
++	for key in pairs(cache) do heatmapKeys[key] = true end
++	cache = nil
++	local function reportPhase()
++		if token ~= self.powerBuildToken then return end
++		self.powerPhase = "report"
++		if self.build.powerBuilderProgressCallback then self.build.powerBuilderProgressCallback(0) end
++		start, nodeIndex, total = GetTime(), 0, #reportTasks
++		-- Count eligible cluster nodes
++		if useClusterPower then
++			for _, node in pairs(self.build.spec.tree.clusterNodeMap) do
++				if not node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[node.id] then
++					total = total + 1
++				end
++			end
++		end
++		for _, task in ipairs(reportTasks) do
++			if token ~= self.powerBuildToken then return end
++			task()
+ 			nodeIndex = nodeIndex + 1
+ 			if coroutine.running() and GetTime() - start > 100 then
+ 				if self.build.powerBuilderProgressCallback then
+-					self.build.powerBuilderProgressCallback(m_floor(nodeIndex/total*100))
++					self.build.powerBuilderProgressCallback(m_floor(nodeIndex / m_max(1, total) * 100))
+ 				end
+ 				coroutine.yield()
+ 				start = GetTime()
+ 			end
+ 		end
+-	end
+-	self.powerMax = newPowerMax
+-	self.powerBuilderInitialized = true
+-	-- ConPrintf("Power Build time: %d ms", GetTime() - timer_start)
++		-- Calculate the impact of every cluster notable
++		-- used for the power report screen
++		for nodeName, node in pairs(self.build.spec.tree.clusterNodeMap) do
++			if token ~= self.powerBuildToken then return end
++			if useClusterPower and not node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[node.id] then
++				if not reportCache[node.modKey] then
++					if heatmapKeys[node.modKey] then
++						self.powerReportCollisions = self.powerReportCollisions + 1
++					end
++					reportCache[node.modKey] = calcFunc({ addNodes = { [node] = true } }, useFullDPS)
++				end
++				local output = reportCache[node.modKey]
++				node.power.singleStat = self:CalculatePowerStat(self.powerStat, output, calcBase)
++				nodeIndex = nodeIndex + 1
++				if coroutine.running() and GetTime() - start > 100 then
++					if self.build.powerBuilderProgressCallback then
++						self.build.powerBuilderProgressCallback(m_floor(nodeIndex / m_max(1, total) * 100))
++					end
++					coroutine.yield()
++					start = GetTime()
++				end
++			end
++		end
++		if token ~= self.powerBuildToken then return end
++		if self.build.powerBuilderProgressCallback then self.build.powerBuilderProgressCallback(100) end
++		self.powerPhase = "complete"
++	end
++	if self.build.powerReportWanted and not self.build.powerReportWanted() then
++		self.powerReportPending = token
++		self.powerReportBuilder = reportPhase
++		self.powerPhase = "pending"
++		return
++	end
++	-- Publish heatmap readiness before the first report-only calculation.
++	self.powerPhase = "report"
++	if coroutine.running() then coroutine.yield() end
++	reportPhase()
+ end
+ 
+ function CalcsTabClass:CalculatePowerStat(selection, original, modified)
+ 	local originalValue = data.powerStatList.GetFromOutput(original, selection)
+ 	local modifiedValue = data.powerStatList.GetFromOutput(modified, selection)
+ 	return originalValue - modifiedValue
+ end
+ 
+ function CalcsTabClass:CalculateCombinedOffDefStat(original, modified)
+ 	local defence = (original.LifeUnreserved - modified.LifeUnreserved) / m_max(3000, modified.Life) +
+ 					(original.Armour - modified.Armour) / m_max(10000, modified.Armour) +
+ 					((original.EnergyShieldRecoveryCap or original.EnergyShield) - (modified.EnergyShieldRecoveryCap or modified.EnergyShield)) / m_max(3000, (modified.EnergyShieldRecoveryCap or modified.EnergyShield)) +
+diff --git a/src/Classes/TreeTab.lua b/src/Classes/TreeTab.lua
+index 390d70e88a0e..a3aa26f85853 100644
+--- a/src/Classes/TreeTab.lua
++++ b/src/Classes/TreeTab.lua
+@@ -265,42 +265,67 @@
+ 
+ 	self.powerStatList = { }
+ 	for _, stat in ipairs(data.powerStatList) do
+ 		if not stat.ignoreForNodes then
+ 			t_insert(self.powerStatList, stat)
+ 		end
+ 	end
+ 
+ 	-- Show/Hide Power Report Button
+ 	self.controls.powerReport = new("ButtonControl"):ButtonControl({ "LEFT", self.controls.treeHeatMapStatSelect, "RIGHT" }, { 8, 0, 150, 20 },
+ 		function() return self.controls.powerReportList.shown and "Hide Power Report" or "Show Power Report" end, function()
+ 		self.controls.powerReportList.shown = not self.controls.powerReportList.shown
++		if self.controls.powerReportList.shown and self.build.calcsTab.powerReportPending then
++			self.build.powerBuilderProgressCallback(0)
++		end
+ 	end)
+ 
+ 	-- Power Report List
+ 	local yPos = self.controls.treeHeatMap.y == 0 and self.controls.specSelect.height + 4 or self.controls.specSelect.height * 2 + 8
+ 	self.controls.powerReportList = new("PowerReportListControl"):PowerReportListControl({ "TOPLEFT", self.controls.specSelect, "BOTTOMLEFT" }, { 0, yPos, 700, 170 }, function(selectedNode)
+ 		-- this code is called by the list control when the user "selects" one of the passives in the list.
+ 		-- we use this to set a flag which causes the next Draw() to recenter the passive tree on the desired node.
+ 		if selectedNode.x then
+ 			self.jumpToNode = true
+ 			self.jumpToX = selectedNode.x
+ 			self.jumpToY = selectedNode.y
+ 		end
+ 	end)
+ 	self.controls.powerReportList.shown = false
++	self.build.powerReportWanted = function()
++		return self.controls.powerReportList.shown
++	end
++	self.build.powerBuilderHeatmapCallback = function()
++		if not self.build.powerReportWanted() then
++			self.controls.powerReportList:SetReport(self.build.calcsTab.powerStat or data.powerStatList[1], nil)
++			if self.powerBuilderToastId then
++				ToastNotification:ClearDismissed(self.powerBuilderToastId)
++				ToastNotification:Remove(self.powerBuilderToastId)
++				self.powerBuilderToastId = nil
++			end
++		end
++	end
+ 	-- Progress callback from the CalcsTab power builder coroutine
+ 	self.powerBuilderToastId = nil
+ 	self.lastProgressToastUpdate = 0
+ 	self.build.powerBuilderProgressCallback = function(percent)
++		if percent == 0 then
++			self.controls.powerReportList:SetReport(self.build.calcsTab.powerStat or data.powerStatList[1], nil)
++			self.lastProgressToastUpdate = 0
++			if self.powerBuilderToastId then
++				ToastNotification:ClearDismissed(self.powerBuilderToastId)
++				ToastNotification:Remove(self.powerBuilderToastId)
++				self.powerBuilderToastId = nil
++			end
++		end
+ 		local now = GetTime()
+ 		if now - self.lastProgressToastUpdate < 100 then
+ 			return
+ 		end
+ 
+ 		local message = percent and string.format("Building Power Report... (%d%%)", percent) or "Building Power Report..."
+ 
+ 		self.controls.powerReportList.label = message
+ 
+ 		if self.powerBuilderToastId and ToastNotification:WasDismissed(self.powerBuilderToastId) then
+ 			return
+ 		end
