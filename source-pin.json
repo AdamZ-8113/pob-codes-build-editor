@@ -105,6 +105,17 @@
       "preparedSourceBlobHashes": { "src/Classes/ImportTab.lua": "ba2af22a92f5c533e1011ec3d7dfffb87ea0f608" },
       "sourceBlobHashes": { "src/Classes/ImportTab.lua": "0e32713d7b6fb87e6ebb3e83d0ebb29c3c8bb991" },
       "resultBlobHashes": { "src/Classes/ImportTab.lua": "849057f900ff88125c03a3e18cff489377af5fdd" }
+    },
+    "nodePowerDelegation": {
+      "version": 1,
+      "patchFile": "patches/node-power-delegation.patch",
+      "patchSha256": "ae30b4f9516ebf59e68c1fcee6be122ad023b8477dfe7e5002937f6ebb1e6930",
+      "sourceBlobHashes": {
+        "src/Classes/CalcsTab.lua": "42fb04c4418acfa1863699fc1d20d61a3e03641e"
+      },
+      "resultBlobHashes": {
+        "src/Classes/CalcsTab.lua": "64b0021e46a753fe0610923566a9179315d3d9b8"
+      }
     }
   },
   "overlays": [
@@ -260,6 +271,19 @@
         "Omit unused nodeCopy.power allocation only in temporary jewel-comparison clones; this addition is not part of upstream PR #9863"
       ],
       "lastObserved": "2026-10-01"
+    },
+    {
+      "kind": "local-patch",
+      "id": "node-power-delegation",
+      "sourceBase": "a431f3a28823270acbdd6864c644f93678581f1e",
+      "patchFile": "patches/node-power-delegation.patch",
+      "patchSha256": "ae30b4f9516ebf59e68c1fcee6be122ad023b8477dfe7e5002937f6ebb1e6930",
+      "files": [
+        "src/Classes/CalcsTab.lua"
+      ],
+      "applicationStage": "pack-time",
+      "upstreamPr": null,
+      "lastObserved": "2026-10-06"
     }
   ],
   "compositePatch": {

@@ -1,4 +1,4 @@
--- Default-off scheduling adapter. PoB owns evaluation, cache keys and merging.
+-- Browser scheduling adapter. PoB owns evaluation, cache keys and merging.
 local epoch = 0
 return function(build)
     epoch = epoch + 1

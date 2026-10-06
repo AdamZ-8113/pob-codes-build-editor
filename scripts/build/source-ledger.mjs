@@ -19,7 +19,7 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
     throw new Error("Desktop PoB upstream overlay order changed");
   }
   const local = pin.overlays.filter((entry) => entry.kind === "local-patch");
-  if (JSON.stringify(local.map((overlay) => overlay.id)) !== JSON.stringify(["gem-dropdown-hover", "limited-unique-item-comparisons", "importtab-host-capabilities", "preferred-export-site", "calculation-only-jewel-specs"]) ||
+  if (JSON.stringify(local.map((overlay) => overlay.id)) !== JSON.stringify(["gem-dropdown-hover", "limited-unique-item-comparisons", "importtab-host-capabilities", "preferred-export-site", "calculation-only-jewel-specs", "node-power-delegation"]) ||
       local.some((overlay) => overlay.applicationStage !== "pack-time")) {
     throw new Error("Desktop PoB local overlay ownership changed");
   }
@@ -83,6 +83,16 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
       jewel.sourceBlobHashes[itemsPath] !== pin.adapters.limitedUniqueItemComparisons.resultBlobHashes[itemsPath] ||
       jewel.preparedSourceBlobHashes[passivePath] !== jewel.sourceBlobHashes[passivePath]) {
     throw new Error("Jewel-spec pack-time overlay chain changed");
+  }
+  const nodePower = pin.adapters.nodePowerDelegation;
+  const nodeOverlay = local[5];
+  const calcsPath = "src/Classes/CalcsTab.lua";
+  if (nodePower?.version !== 1 || nodePower.patchFile !== nodeOverlay.patchFile ||
+      nodePower.patchSha256 !== nodeOverlay.patchSha256 ||
+      nodePower.sourceBlobHashes?.[calcsPath] !== pin.compositePatch.resultBlobHashes[calcsPath] ||
+      !/^[a-f0-9]{40}$/.test(nodePower.resultBlobHashes?.[calcsPath] ?? '') ||
+      Object.keys(nodePower.sourceBlobHashes).length !== 1 || Object.keys(nodePower.resultBlobHashes).length !== 1) {
+    throw new Error("Node-power overlay identities differ");
   }
   const compositeBytes = await readFile(join(appDir, pin.compositePatch.patchFile));
   if (sha256(compositeBytes) !== pin.compositePatch.patchSha256) throw new Error("PoB PR composite patch SHA-256 mismatch");

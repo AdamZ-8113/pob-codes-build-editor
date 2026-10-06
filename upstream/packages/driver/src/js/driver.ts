@@ -75,7 +75,7 @@ export class Driver {
   private helpers: HelperPool | undefined;
   private readonly requestedHelpers = Number(new URLSearchParams(location.search).get('helpers') ?? 3);
   private readonly eagerHelpers = new URLSearchParams(location.search).get('helperStart') !== 'lazy';
-  private readonly nodePowerHelpers = new URLSearchParams(location.search).get('nodePowerHelpers') === '1';
+  private readonly nodePowerHelpers = new URLSearchParams(location.search).get('nodePowerHelpers') !== '0';
   private isStarted = false;
   private eventHandler: EventHandler | undefined;
   private mouseHandler: MouseHandler | undefined;

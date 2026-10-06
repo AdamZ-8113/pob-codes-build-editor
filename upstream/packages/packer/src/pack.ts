@@ -14,6 +14,7 @@ import { guardJewelInflate, sparseTimelessSeeds } from "./timeless-adapter.ts";
 import { applyGemHoverPatch } from "../../../../scripts/patches/gem-hover-patch.mjs";
 import { applyItemComparisonPatch } from "../../../../scripts/patches/item-comparison-patch.mjs";
 import { applyJewelSpecPatch } from "../../../../scripts/patches/jewel-spec-patch.mjs";
+import { applyNodePowerPatch } from "../../../../scripts/patches/node-power-patch.mjs";
 import { applyUniqueSortPatch } from "../../../../scripts/patches/unique-sort-patch.mjs";
 import { applyImportTabHostPatch } from "../../../../scripts/patches/importtab-host-patch.mjs";
 import { applyPreferredExportSitePatch } from "../../../../scripts/patches/preferred-export-site-patch.mjs";
@@ -29,6 +30,7 @@ const pin = JSON.parse(await Deno.readTextFile(new URL("../../../../source-pin.j
 const gemHoverPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.gemDropdownHover.patchFile}`, import.meta.url));
 const itemComparisonPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.limitedUniqueItemComparisons.patchFile}`, import.meta.url));
 const jewelSpecPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.calculationOnlyJewelSpecs.patchFile}`, import.meta.url));
+const nodePowerPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.nodePowerDelegation.patchFile}`, import.meta.url));
 const uniqueSortPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.uniqueSortDelegation.patchFile}`, import.meta.url));
 const importTabHostPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.importTabHostCapabilities.patchFile}`, import.meta.url));
 const preferredExportSitePatch = await Deno.readFile(new URL(`../../../../${pin.adapters.preferredExportSite.patchFile}`, import.meta.url));
@@ -82,6 +84,8 @@ for (const entry of entries) {
       ? new TextEncoder().encode(exposeExactRebuild(new TextDecoder().decode(newContent)))
       : relPath === "Classes/GemSelectControl.lua"
       ? new TextEncoder().encode(applyGemHoverPatch(new TextDecoder().decode(newContent), Buffer.from(gemHoverPatch), pin.adapters.gemDropdownHover))
+      : relPath === "Classes/CalcsTab.lua"
+      ? new TextEncoder().encode(applyNodePowerPatch(new TextDecoder().decode(newContent), Buffer.from(nodePowerPatch), pin.adapters.nodePowerDelegation))
       : relPath === "Classes/ItemDBControl.lua"
       ? new TextEncoder().encode(applyUniqueSortPatch(new TextDecoder().decode(newContent), Buffer.from(uniqueSortPatch), pin.adapters.uniqueSortDelegation))
       : relPath === "Classes/ItemsTab.lua"

@@ -100,7 +100,7 @@ test('pack-time inventory and actual chained transforms produce source and resul
   // Build each minimal runtime input from its retained exact contexts. Include
   // the original whitespace: no fixture downloads or prepared-source dependency.
   for (const [name] of PACK_STAGES) patches[pin.adapters[name].patchFile] = await readFile(pin.adapters[name].patchFile);
-  for (const name of ['limitedUniqueItemComparisons', 'gemDropdownHover', 'uniqueSortDelegation', 'importTabHostCapabilities']) {
+  for (const name of ['limitedUniqueItemComparisons', 'gemDropdownHover', 'uniqueSortDelegation', 'importTabHostCapabilities', 'nodePowerDelegation']) {
     for (const section of parseDriftPatch(patches[pin.adapters[name].patchFile])) {
       if (section.path.startsWith('src/')) raw[section.path] = section.blocks.map(block => block.before).join('\nseparation\n');
     }

@@ -413,3 +413,18 @@ lower median private-commit peak, 10.2% faster warm sorts and 2.1% faster heatma
 reproduction and update requirements are in `../README.md`.
 This comparison is manual Windows-only acceptance evidence and is excluded
 from the development browser CI subset. The recorded results above are retained.
+
+The October 6 browser node-power adapter is retained in
+`../patches/node-power-delegation.patch` and checked by
+`../scripts/patches/node-power-patch.mjs`. The pin records its patch and exact
+CalcsTab source/result identities. Every pack and release includes it; the
+prepared desktop checkout and composite remain unchanged. It shares the
+existing bounded helper pool, preserving PoB calculation functions, cache
+keys and result merge order. Eligible release sessions enable it by default;
+`?nodePowerHelpers=0` forces serial calculation for diagnostics.
+
+Delegation is currently limited to Hit DPS at depth 5, at least 200 evaluation
+items, and builds without Timeless jewels. Other reports and unsupported,
+failed or unavailable helpers use serial calculation. Helpers require the
+existing desktop CPU/memory admission checks and retain build inputs only in
+memory. This is a browser-owned adaptation, not a desktop PoB contribution.
