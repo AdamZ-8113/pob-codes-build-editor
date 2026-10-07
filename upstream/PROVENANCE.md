@@ -350,6 +350,8 @@ integrity failures close the whole pool and preserve the existing session
 failure behavior.
 
 Whole-browser acceptance uses a 6 GiB hard budget and 5.5 GiB admission ceiling.
+Each helper may reserve up to 1 GiB of Wasm memory, subject to the aggregate
+admission model; the pool is not guaranteed three helpers at that maximum.
 Conservative runtime guards reserve space beyond observed Wasm capacities;
 they are not an OS process-memory limiter. Mobile, low-core/low-memory devices
 and unadmitted UI heaps remain serial. `?helpers=0` forces serial comparison.
@@ -451,8 +453,10 @@ original unwrapped collector at 400. Explicit collections and allocation-failure
 recovery are unchanged. `runtimeGCPolicy.pause` is the active policy;
 `configuredPause` and the pool's `gcPause` retain the configured startup setting.
 The UI's share of delegated work yields between complete evaluations after
-approximately 20 ms. The 2 GiB Wasm ceiling, per-helper retirement threshold and
-whole-browser admission budget have not increased. Pool diagnostics preserve the
+approximately 20 ms. The 2 GiB Wasm ceiling and whole-browser admission budget
+are unchanged. The per-helper retirement threshold is now 1 GiB, allowing
+the observed 708 MiB Firefox helpers when the aggregate budget also permits them.
+Pool diagnostics preserve the
 last retired workers' capacities so a fallback's memory cause remains inspectable.
 
 `../tools/profiles/profile-heatmap.mjs` checks exact heatmap and full-report

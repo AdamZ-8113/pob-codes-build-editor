@@ -86,7 +86,7 @@ for (const fault of ['timeout', 'crash', 'invalid-result', 'memory-growth']) {
         if (fault === 'timeout') return;
         if (fault === 'crash') return w.onerror({message:'test crash'});
         w.reply(r, fault === 'invalid-result' ? ['not-a-score'] : undefined,
-          fault === 'memory-growth' ? 2 ** 30 : 256 * 2 ** 20);
+          fault === 'memory-growth' ? 2 ** 30 + 65536 : 256 * 2 ** 20);
       });
       assertEquals(await h.pool.run(job()), null);
       assertEquals(h.pool.profile().ready, 0);
@@ -107,12 +107,44 @@ Deno.test('unadmitted UI memory and teardown cannot keep a helper pool alive', a
   assertEquals(await h.pool.run(job()), null);
 });
 
+for (const bytes of [742326272, 2 ** 30, 2 ** 30 + 65536]) {
+  Deno.test(`helper capacity ${bytes} respects the 1 GiB per-helper boundary`, async () => {
+    const h = harness();
+    try {
+      await h.pool.start(1);
+      h.setBehavior((worker, request) => worker.reply(request, undefined, bytes));
+      const result = await h.pool.run(job());
+      if (bytes <= 2 ** 30) {
+        assertEquals(result, Array.from({length: 180}, (_, i) => String(i)));
+        assertEquals(h.pool.profile().state, 'ready');
+      } else {
+        assertEquals(result, null);
+        assertEquals(h.pool.profile().state, 'retired');
+      }
+    } finally { h.pool.close(); }
+  });
+}
+
+Deno.test('three larger helpers remain subject to the aggregate memory ceiling', async () => {
+  const h = harness();
+  try {
+    await h.pool.start(3);
+    h.setBehavior((worker, request) => worker.reply(request, undefined, 742326272));
+    assertEquals((await h.pool.run(job()))?.length, 180);
+    assertEquals(h.pool.profile().ready, 3);
+    h.setBehavior((worker, request) => worker.reply(request, undefined, 2 ** 30));
+    assertEquals(await h.pool.run(job('larger-build:1')), null);
+    assertEquals(h.pool.profile().state, 'retired');
+    assert(h.workers.every(worker => worker.stopped));
+  } finally { h.pool.close(); }
+});
+
 Deno.test('retirement preserves bounded memory diagnostics until the next populated pool retires', async () => {
   const h = harness();
   try {
     assertEquals(h.pool.profile().lastRetiredBytes, []);
     await h.pool.start(2);
-    const oversizedBytes = 768 * 2 ** 20;
+    const oversizedBytes = 2 ** 30 + 65536;
     h.setBehavior((worker, request) => worker.reply(request, undefined, oversizedBytes));
     assertEquals(await h.pool.run(job()), null);
     const retired = h.pool.profile();

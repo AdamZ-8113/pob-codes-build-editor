@@ -15,7 +15,7 @@ const nodePowerResult = (v: unknown) => !!v && typeof v === 'object' && !Array.i
 type Member = { id: number; worker: Worker; bytes: number; identity?: string;
   pending: Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void }> };
 export const HELPER_MEMORY = { hardBytes: 6 * 2 ** 30, admissionBytes: 5.5 * 2 ** 30,
-  uiMaximum: 2 * 2 ** 30, helperMaximum: .65 * 2 ** 30, maximumCount: 3 };
+  uiMaximum: 2 * 2 ** 30, helperMaximum: 2 ** 30, maximumCount: 3 };
 const GiB = 2 ** 30;
 
 export class HelperPool {
