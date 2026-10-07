@@ -117,3 +117,8 @@ from `pob-web`, Path of Building, Lua, luautf8, and bundled fonts under their
 respective licenses and notices. Keep [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md),
 [`PATH_OF_BUILDING_LICENSE.md`](PATH_OF_BUILDING_LICENSE.md), and the vendored
 notices with redistributed builds.
+
+PoB Codes is an unofficial fan-made Path of Exile tool. Path of Exile and related
+assets are © Grinding Gear Games. Not affiliated with or endorsed by Grinding
+Gear Games. [Privacy](https://pob.codes/content/privacy) ·
+[Terms](https://pob.codes/content/terms)

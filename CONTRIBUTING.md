@@ -31,5 +31,8 @@ captures, browser profiles, reports containing raw inputs, generated payloads,
 compiler output, dependencies, or credentials. Use the public fixtures or pass
 private inputs locally.
 
+Report security vulnerabilities privately as described in `SECURITY.md`, not in
+public issues or pull requests.
+
 By contributing, you agree that your changes are provided under this
 repository's MIT License while preserving all applicable third-party terms.

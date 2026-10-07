@@ -8,6 +8,7 @@ import { createTelemetryV1 } from "./telemetry-v1.ts";
 import { createConfigurationBridgeV1 } from "./configuration-v1.ts";
 import type { ConfigurationRequestV1 } from "./configuration-v1.ts";
 import { createBuildTransferV1 } from "./build-transfer-v1.ts";
+import { bindAboutDialog } from "./about-dialog.ts";
 declare const __IMPORT2_PREVIEW__: boolean;
 declare const __IMPORT2_PAYLOAD_PREFIX__: string;
 declare const __DESKTOP_DEV_LAN_HOSTS__: string[];
@@ -30,6 +31,8 @@ telemetry.emit("build_editor_open_v1", { result: "opened", actionTarget: locatio
 if (import2Preview) performance.mark(`${performancePrefix}-shell-start`);
 
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
+// Bind before startup so the legal notices stay reachable if PoB fails to start.
+bindAboutDialog({ trigger: element<HTMLButtonElement>("about-legal"), dialog: element<HTMLDialogElement>("about-dialog") });
 const status = element<HTMLOutputElement>("status");
 const calculationStatus = element<HTMLOutputElement>("calculation-status");
 const payloadProgress = createPayloadProgressOverlay();

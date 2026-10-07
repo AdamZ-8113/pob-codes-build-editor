@@ -1,8 +1,10 @@
-:root { --control-h: 30px; --control-h-compact: 29px; --text-accent: #af8040; --text-dim: #8f8f8f; --text-main: #c8c8c8; --bg-panel: #111111; --border-panel: #2a2a2a; --build-page-side-padding: clamp(16px, 4vw, 100px); }
+:root { --control-h: 30px; --control-h-compact: 29px; --text-accent: #af8040; --text-dim: #8f8f8f; --text-main: #c8c8c8; --bg-panel: #111111; --border-panel: #2a2a2a; --build-page-side-padding: clamp(16px, 4vw, 100px); --header-side-min: 384px; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #161616; color: #c8c8c8; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif; }
 body { display: flex; flex-direction: column; }
 .site-header { flex: 0 0 auto; position: relative; z-index: 1100; background: #161616; }
-.site-header-inner { display: grid; grid-template-columns: minmax(317px, 1fr) minmax(0, 2fr) minmax(317px, 1fr); align-items: center; gap: 12px; padding: 10px var(--build-page-side-padding); }
+/* Equal side columns keep the status centered; their minimum fits Launch, About
+   and the 182px toolbar on the compact row. */
+.site-header-inner { display: grid; grid-template-columns: minmax(var(--header-side-min), 1fr) minmax(0, 2fr) minmax(var(--header-side-min), 1fr); align-items: center; gap: 12px; padding: 10px var(--build-page-side-padding); }
 .site-header-links { display: inline-flex; align-items: center; justify-content: flex-end; gap: 10px; width: 317px; padding-right: 2px; box-sizing: border-box; min-width: 0; min-height: var(--control-h-compact); white-space: nowrap; }
 .site-brand, .site-header-link { color: var(--text-accent); font: 500 .88rem/var(--control-h-compact) -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif; letter-spacing: .01em; text-decoration: none; }
 .site-brand:hover, .site-header-link:hover { color: #c9954f; }
@@ -13,6 +15,10 @@ body { display: flex; flex-direction: column; }
 .site-discord-link:hover .site-discord-icon { opacity: .9; }
 .site-header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
 #launch-build { padding: 2px 10px; white-space: nowrap; }
+/* About uses the toolbar's icon colors in a row-height square, like the Discord link. */
+.site-about-button { flex: 0 0 auto; display: inline-flex; align-items: center; justify-content: center; width: var(--control-h-compact); height: var(--control-h-compact); padding: 0; border: 1px solid transparent; border-radius: 4px; background: transparent; color: #8f8f8f; box-shadow: none; }
+.site-about-button:hover { color: #c8c8c8; background: rgba(255,255,255,.08); }
+.site-about-icon { display: block; flex: none; }
 /* Keep the core site's 29px header row; larger hit targets must not move its text. */
 #editor-accessibility { min-width: 176px; height: var(--control-h-compact); }
 .embedded-toolbar > div { display: flex; align-items: center; flex-direction: row; gap: 2px; padding: 0; height: var(--control-h-compact); min-height: 0; background: transparent; box-shadow: none; }
@@ -53,16 +59,37 @@ dialog { color: #eee; background: #202020; border: 1px solid #777; border-radius
 dialog::backdrop { background: #0009; }
 dialog h1 { font-size: 20px; }
 #authorize { display: inline-block; }
+/* The frame fills the padding-free dialog, so only backdrop clicks target the
+   dialog. Margin restores the UA centering that the overlay's Tailwind preflight resets. */
+.about-dialog { width: min(640px, calc(100vw - 40px)); max-height: min(760px, calc(100dvh - 40px)); margin: auto; padding: 0; overflow: hidden; }
+.about-dialog[open] { display: flex; flex-direction: column; }
+.about-dialog-frame { display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+.about-dialog-header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 10px 10px 20px; border-bottom: 1px solid #3a3a3a; }
+.about-dialog-header h1 { margin: 0; font-size: 17px; line-height: 24px; font-weight: 600; }
+.about-dialog-header form { margin: 0; }
+.about-dialog-close { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; padding: 0; border: 1px solid transparent; border-radius: 4px; background: transparent; color: #8f8f8f; }
+.about-dialog-close:hover { color: #c8c8c8; background: rgba(255,255,255,.08); }
+.about-dialog-content { min-height: 0; overflow: auto; padding: 4px 20px 18px; font-size: 13px; line-height: 1.5; }
+.about-dialog h2 { margin: 14px 0 6px; color: var(--text-accent); font-size: 14px; }
+.about-dialog h3 { margin: 14px 0 4px; color: var(--text-dim); font-size: 11px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.about-dialog p { margin: 0 0 8px; }
+.about-dialog a { color: #c9954f; }
+.about-dialog a:hover { color: #ddb070; }
+.about-notices { display: grid; gap: 5px; margin: 0; padding: 0; list-style: none; color: var(--text-dim); }
+.about-notices strong { color: #e0e0e0; font-weight: 600; }
 @media (max-width: 1180px) {
   .site-header-inner { grid-template-columns: auto minmax(0, 1fr) auto; }
   .site-header-links { justify-content: flex-start; width: auto; padding-right: 0; }
 }
-@media (max-width: 640px) {
+/* Two rows at 720px and below: from 641px to about 700px the single row has no
+   spare width for the links, Launch, About and the toolbar together. */
+@media (max-width: 720px) {
   .site-header-inner { grid-template-columns: minmax(0, 1fr) auto; column-gap: 8px; row-gap: 0; }
   .site-header-links { grid-column: 1 / -1; justify-content: center; width: 100%; }
   .site-header-actions { grid-column: 2; }
   .header-status { grid-column: 1; }
   #editor-accessibility, .embedded-toolbar > div, .header-status { height: 44px; }
+  .site-about-button { width: 44px; height: 44px; }
   .header-status output { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; max-height: 36px; line-height: 18px; overflow-wrap: anywhere; }
   .site-discord-icon { width: 19px; }
   .embedded-toolbar .driver-zoom-panel { position: fixed; top: 93px; left: 12px; right: 12px; width: auto; margin-top: 0; }
@@ -71,3 +98,9 @@ dialog h1 { font-size: 20px; }
   .payload-progress-grid { grid-template-columns: repeat(15, minmax(0, 18.12px)); gap: 3px; }
 }
 @media (max-width: 420px) { .site-header-links { gap: 8px; } }
+/* Phones: wrap Launch onto two lines inside the 44px row so About and the
+   toolbar fit beside it without horizontal overflow. */
+@media (max-width: 440px) {
+  #launch-build { width: min-content; padding: 2px 8px; line-height: 18px; white-space: normal; text-wrap: balance; }
+  .site-about-button { width: 36px; }
+}

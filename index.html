@@ -29,6 +29,7 @@
         </div>
         <div class="site-header-actions">
           <button id="launch-build" type="button" disabled>Launch in PoB.Codes</button>
+          <button id="about-legal" class="site-about-button" type="button" aria-haspopup="dialog" aria-controls="about-dialog" aria-label="About, disclaimer and open-source notices" title="About, disclaimer and open-source notices"><svg class="site-about-icon" aria-hidden="true" focusable="false" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9.25"/><path d="M9.6 9.4a2.45 2.45 0 1 1 3.35 2.28c-.58.23-.95.79-.95 1.41v.56"/><circle cx="12" cy="16.6" r=".85" fill="currentColor" stroke="none"/></svg></button>
           <div id="editor-accessibility" role="group" aria-label="Editor accessibility controls"></div>
         </div>
       </div>
@@ -40,6 +41,68 @@
       <a id="authorize" target="_blank" rel="noopener noreferrer">Open Path of Exile authorization</a>
       <p id="auth-status" role="status">Waiting for authorization…</p>
       <button id="cancel-auth">Cancel</button>
+    </dialog>
+    <!-- Static About content: keep it in sync with THIRD_PARTY_NOTICES.md (tests/unit/about-dialog.test.mjs). -->
+    <dialog id="about-dialog" class="about-dialog" aria-labelledby="about-dialog-title">
+      <div class="about-dialog-frame">
+        <div class="about-dialog-header">
+          <h1 id="about-dialog-title">About PoB Codes Build Editor</h1>
+          <form method="dialog"><button id="about-dialog-close" class="about-dialog-close" type="submit" aria-label="Close" title="Close"><svg aria-hidden="true" focusable="false" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></form>
+        </div>
+        <div class="about-dialog-content">
+          <section aria-labelledby="about-disclaimer-title">
+            <h2 id="about-disclaimer-title">Disclaimer</h2>
+            <p id="about-disclaimer" class="about-disclaimer">PoB Codes is an unofficial fan-made Path of Exile tool. Path of Exile and related assets are &copy; Grinding Gear Games. Not affiliated with or endorsed by Grinding Gear Games. <a href="https://pob.codes/content/privacy" target="_blank" rel="noopener noreferrer">Privacy</a> &middot; <a href="https://pob.codes/content/terms" target="_blank" rel="noopener noreferrer">Terms</a></p>
+          </section>
+          <section aria-labelledby="about-notices-title">
+            <h2 id="about-notices-title">Open-source notices</h2>
+            <p>This editor runs Path of Building in your browser and ships the open-source components below. Each license name links to its full text. See also the <a href="https://github.com/AdamZ-8113/pob-codes-build-editor" target="_blank" rel="noopener noreferrer">source code</a> and <a href="https://github.com/AdamZ-8113/pob-codes-build-editor/blob/main/THIRD_PARTY_NOTICES.md" target="_blank" rel="noopener noreferrer">third-party notices</a>.</p>
+            <h3>Editor and Path of Building</h3>
+            <ul class="about-notices">
+              <li><strong>PoB Codes Build Editor</strong> &copy; 2026 PoB Codes contributors &middot; <a href="https://github.com/AdamZ-8113/pob-codes-build-editor/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></li>
+              <li><strong>pob-web</strong> &copy; 2024 Koji AGAWA &middot; <a href="https://github.com/AdamZ-8113/pob-codes-build-editor/blob/main/upstream/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></li>
+              <li><strong>Path of Building Community</strong> &copy; 2016 David Gowor &middot; <a href="https://github.com/AdamZ-8113/pob-codes-build-editor/blob/main/PATH_OF_BUILDING_LICENSE.md" target="_blank" rel="noopener noreferrer">MIT</a></li>
+              <li><strong>Lua libraries in Path of Building</strong> base64.lua &copy; 2009 Alex Kloss (LGPL 2); dkjson.lua &copy; 2010-2013 David Heiko Kolf (MIT); lua-profiler.lua &copy; 2018-2020 Charles Mallah, based on ProFi &copy; 2012 Luke Perkin (MIT); sha1 &copy; 2013 Enrique Garc&iacute;a Cota, Eike Decker, Jeffrey Friedl, &copy; 2018 Peter Melnichenko (MIT); xml.lua &copy; 2016 David Gowor (MIT) &middot; <a href="https://github.com/AdamZ-8113/pob-codes-build-editor/blob/main/PATH_OF_BUILDING_LICENSE.md" target="_blank" rel="noopener noreferrer">license texts</a></li>
+            </ul>
+            <h3>WebAssembly runtime</h3>
+            <ul class="about-notices">
+              <li><strong>Lua 5.2.4</strong> &copy; 1994-2015 Lua.org, PUC-Rio &middot; <a href="https://github.com/AdamZ-8113/pob-codes-build-editor/blob/main/upstream/vendor/lua/lua.h#L420-L441" target="_blank" rel="noopener noreferrer">MIT</a></li>
+              <li><strong>luautf8</strong> &copy; 2018 Xavier Wang &middot; <a href="https://github.com/AdamZ-8113/pob-codes-build-editor/blob/main/upstream/vendor/luautf8/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></li>
+              <li><strong>Emscripten runtime and WasmFS</strong> &copy; The Emscripten Authors &middot; <a href="https://github.com/emscripten-core/emscripten/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT or University of Illinois/NCSA</a></li>
+              <li><strong>musl libc</strong> &copy; Rich Felker, et al. &middot; <a href="https://github.com/emscripten-core/emscripten/blob/main/system/lib/libc/musl/COPYRIGHT" target="_blank" rel="noopener noreferrer">MIT</a></li>
+              <li><strong>LLVM libc++ and libc++abi</strong> LLVM Project &middot; <a href="https://github.com/llvm/llvm-project/blob/main/libcxx/LICENSE.TXT" target="_blank" rel="noopener noreferrer">Apache-2.0 with LLVM Exceptions</a></li>
+              <li><strong>mimalloc</strong> &copy; Microsoft Corporation, Daan Leijen &middot; <a href="https://github.com/microsoft/mimalloc/blob/master/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></li>
+              <li><strong>zlib</strong> &copy; Jean-loup Gailly and Mark Adler &middot; <a href="https://zlib.net/zlib_license.html" target="_blank" rel="noopener noreferrer">zlib License</a></li>
+            </ul>
+            <h3>Fonts</h3>
+            <ul class="about-notices">
+              <li><strong>Liberation Sans</strong> &copy; 2010 Google Corporation, &copy; 2012 Red Hat, Inc. &middot; <a href="https://github.com/AdamZ-8113/pob-codes-build-editor/blob/main/upstream/NOTICE.md#liberation-fonts" target="_blank" rel="noopener noreferrer">SIL Open Font License 1.1</a></li>
+              <li><strong>Bitstream Vera Sans Mono</strong> &copy; 2003 Bitstream, Inc. &middot; <a href="https://github.com/AdamZ-8113/pob-codes-build-editor/blob/main/upstream/NOTICE.md#bitstream-vera-fonts" target="_blank" rel="noopener noreferrer">Bitstream Vera Fonts license</a></li>
+              <li><strong>Fontin</strong> by Jos Buivenga (exljbris), &copy; 2004 Jos Buivenga</li>
+            </ul>
+            <h3>Browser libraries</h3>
+            <ul class="about-notices">
+              <li><strong>React, React DOM and Scheduler</strong> &copy; Facebook, Inc. and its affiliates &middot; <a href="https://unpkg.com/react@18.3.1/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></li>
+              <li><strong>react-icons</strong> &copy; 2018 kamijin_fanta &middot; <a href="https://unpkg.com/react-icons@5.7.0/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a>. Icons used: Circum Icons (<a href="https://github.com/Klarr-Agency/Circum-Icons/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MPL-2.0</a>), Heroicons 2 (<a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer">MIT</a>), Material Design icons (<a href="https://github.com/google/material-design-icons/blob/master/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0</a>), Phosphor Icons (<a href="https://github.com/phosphor-icons/core/blob/main/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a>)</li>
+              <li><a href="https://github.com/zen-fs/core" target="_blank" rel="noopener noreferrer">ZenFS</a>, Licensed under the <a href="https://www.gnu.org/licenses/lgpl-3.0.html" target="_blank" rel="noopener noreferrer">LGPL 3.0 or later</a> and <a href="https://github.com/zen-fs/core/blob/main/COPYING.md" target="_blank" rel="noopener noreferrer">COPYING.md</a>, Copyright &copy; James Prevett and other ZenFS contributors</li>
+              <li><a href="https://github.com/zen-fs/dom" target="_blank" rel="noopener noreferrer">@zenfs/dom</a>, Licensed under the <a href="https://www.gnu.org/licenses/lgpl-3.0.html" target="_blank" rel="noopener noreferrer">LGPL 3.0 or later</a> and <a href="https://github.com/zen-fs/dom/blob/main/COPYING.md" target="_blank" rel="noopener noreferrer">COPYING.md</a>, Copyright &copy; James Prevett and other ZenFS contributors</li>
+              <li><a href="https://github.com/zen-fs/archives" target="_blank" rel="noopener noreferrer">@zenfs/archives</a>, Licensed under the <a href="https://www.gnu.org/licenses/lgpl-3.0.html" target="_blank" rel="noopener noreferrer">LGPL 3.0 or later</a> and <a href="https://github.com/zen-fs/archives/blob/main/COPYING.md" target="_blank" rel="noopener noreferrer">COPYING.md</a>, Copyright &copy; James Prevett and other ZenFS contributors</li>
+              <li><strong>memium and utilium</strong> by James Prevett &middot; <a href="https://unpkg.com/memium@0.4.5/LICENSE.md" target="_blank" rel="noopener noreferrer">LGPL-3.0-or-later</a> (<a href="https://github.com/james-pre/memium" target="_blank" rel="noopener noreferrer">memium</a>, <a href="https://github.com/james-pre/utilium" target="_blank" rel="noopener noreferrer">utilium</a>)</li>
+              <li><strong>kerium</strong> by James Prevett &middot; <a href="https://www.npmjs.com/package/kerium/v/1.4.2" target="_blank" rel="noopener noreferrer">MIT</a></li>
+              <li><strong>Comlink</strong> &copy; Google LLC &middot; <a href="https://unpkg.com/comlink@4.4.2/LICENSE" target="_blank" rel="noopener noreferrer">Apache-2.0</a></li>
+              <li><strong>fflate</strong> &copy; Arjun Barrett &middot; <a href="https://unpkg.com/fflate@0.8.3/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></li>
+              <li><strong>@bokuweb/zstd-wasm</strong> bokuweb &middot; <a href="https://www.npmjs.com/package/@bokuweb/zstd-wasm/v/0.0.22" target="_blank" rel="noopener noreferrer">MIT</a>, with <strong>Zstandard</strong> &copy; Meta Platforms, Inc. and affiliates &middot; <a href="https://github.com/facebook/zstd/blob/dev/LICENSE" target="_blank" rel="noopener noreferrer">BSD License</a></li>
+              <li><strong>texture2ddecoder-wasm</strong> &copy; 2024 K0lb3 &middot; <a href="https://unpkg.com/texture2ddecoder-wasm@1.2.2/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a>, including codecs from AssetStudio, mikunyan and FP16 (MIT), Crunch (public domain) and Unity Crunch (zlib)</li>
+              <li><strong>buffer</strong> &copy; Feross Aboukhadijeh and other contributors &middot; <a href="https://unpkg.com/buffer@6.0.3/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a>; <strong>safe-buffer</strong> &copy; Feross Aboukhadijeh &middot; <a href="https://unpkg.com/safe-buffer@5.2.1/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a>; <strong>ieee754</strong> &copy; 2008 Fair Oaks Labs, Inc. &middot; <a href="https://unpkg.com/ieee754@1.2.1/LICENSE" target="_blank" rel="noopener noreferrer">BSD-3-Clause</a>; <strong>base64-js</strong> &copy; 2014 Jameson Little &middot; <a href="https://unpkg.com/base64-js@1.5.1/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></li>
+              <li><strong>readable-stream</strong> and <strong>string_decoder</strong> &copy; Node.js contributors, Joyent, Inc. and other Node contributors &middot; <a href="https://unpkg.com/readable-stream@4.7.0/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a>; <strong>events</strong> &copy; Joyent, Inc. and other Node contributors &middot; <a href="https://unpkg.com/events@3.3.0/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a>; <strong>process</strong> &copy; 2013 Roman Shtylman &middot; <a href="https://unpkg.com/process@0.11.10/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></li>
+              <li><strong>eventemitter3</strong> &copy; 2014 Arnout Kazemier &middot; <a href="https://unpkg.com/eventemitter3@5.0.4/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a>; <strong>abort-controller</strong> &copy; 2017 Toru Nagashima &middot; <a href="https://unpkg.com/abort-controller@3.0.0/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></li>
+              <li><strong>missionlog</strong> (adapted as the driver logger) &copy; 2019-2022 Ray Martone &middot; <a href="https://github.com/AdamZ-8113/pob-codes-build-editor/blob/main/upstream/packages/driver/src/js/logger.ts" target="_blank" rel="noopener noreferrer">MIT</a></li>
+              <li><strong>Tailwind CSS</strong> &copy; Tailwind Labs, Inc. &middot; <a href="https://unpkg.com/tailwindcss@4.3.3/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a>; <strong>daisyUI</strong> &copy; 2020 Pouya Saadeghi &middot; <a href="https://unpkg.com/daisyui@5.7.16/LICENSE" target="_blank" rel="noopener noreferrer">MIT</a></li>
+              <li><strong>Vite runtime helpers</strong> &copy; VoidZero Inc. and Vite contributors &middot; <a href="https://unpkg.com/vite@6.4.3/LICENSE.md" target="_blank" rel="noopener noreferrer">MIT</a></li>
+            </ul>
+          </section>
+        </div>
+      </div>
     </dialog>
     <script type="module" src="/src/main.ts"></script>
   </body>

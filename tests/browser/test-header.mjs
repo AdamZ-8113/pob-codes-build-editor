@@ -9,7 +9,7 @@ try {
   page.on("pageerror", error => faults.push(error.message));
   await page.goto("http://127.0.0.1:3010");
   await page.waitForFunction(() => window.__DESKTOP_POB__?.ready, null, { timeout: 120_000 });
-  for (const width of [1600, 641, 640, 390, 320]) {
+  for (const width of [1600, 721, 720, 390, 320]) {
     await page.setViewportSize({width,height:900});
     await page.waitForTimeout(250);
     const layout = await page.evaluate(() => {
@@ -23,7 +23,7 @@ try {
       assert.ok(button.width >= 44 && button.height >= 44);
     }
     assert.ok(layout.canvas.top >= layout.header.bottom,"Header must not obscure the canvas");
-    if (width <= 640) assert.ok(layout.controls.top >= layout.nav.bottom,"Mobile controls belong below links");
+    if (width <= 720) assert.ok(layout.controls.top >= layout.nav.bottom,"Mobile controls belong below links");
     else assert.ok(layout.controls.top < layout.nav.bottom,"Desktop controls share the navigation row");
     await page.getByRole("button",{name:"Zoom Controls",exact:true}).click();
     const zoom = page.getByRole("group",{name:"Zoom and canvas controls"});
