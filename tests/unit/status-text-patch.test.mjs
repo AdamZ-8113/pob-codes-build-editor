@@ -9,8 +9,12 @@ const { pin } = await validateSourceLedger(root);
 const adapter = pin.adapters.compactStatusText;
 const patch = await readFile(adapter.patchFile);
 const prepared = `.runtime/source-${pin.compositePatch.patchSha256.slice(0, 12)}`;
+const preparedAvailable = await readFile(`${prepared}/src/Classes/GemSelectControl.lua`).then(() => true, error => {
+  if (error.code === 'ENOENT') return false;
+  throw error;
+});
 
-test('compact status text adapter changes only the three accepted UI paths and rejects drift', async () => {
+test('compact status text adapter changes only the three accepted UI paths and rejects drift', { skip: !preparedAvailable }, async () => {
   for (const path of Object.keys(adapter.sourceBlobHashes)) {
     let source = await readFile(`${prepared}/${path}`, 'utf8');
     if (path === 'src/Classes/GemSelectControl.lua') {
