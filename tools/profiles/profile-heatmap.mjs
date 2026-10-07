@@ -8,6 +8,7 @@ import { startProcessMemory } from '../../scripts/lib/process-memory.mjs';
 import { loadBuildInput, readCorePackage, loadSourceTransforms, rewriteCorePackage, routeCorePackage, sha256 } from './core-package-overlay.mjs';
 import { comparePowerSnapshots } from './power-snapshot-parity.mjs';
 import { runRestartScenarios } from './heatmap-restarts.mjs';
+import { createResponsivenessCollector } from './responsiveness-summary.mjs';
 
 const args = process.argv.slice(2);
 const argument = (name, fallback) => args.find(a => a.startsWith(`--${name}=`))?.slice(name.length + 3) ?? fallback;
@@ -16,9 +17,17 @@ const origin = argument('origin', 'http://127.0.0.1:3010/');
 assert.ok(['127.0.0.1', 'localhost'].includes(new URL(origin).hostname), 'Heatmap experiments require a loopback server');
 const metric = argument('metric', 'Hit DPS'), depth = argument('depth', '5');
 const scenario = argument('scenario', 'timing');
+// Restart cases deliberately switch to unsupported metrics/depths. Declare the
+// candidate's admitted depths; ordinary timing runs always require delegation.
+const delegatedDepths = argument('delegated-depths', '5').split(',');
+assert.ok(delegatedDepths.length > 0 && new Set(delegatedDepths).size === delegatedDepths.length
+  && delegatedDepths.every(value => ['5', '10', '15', 'All'].includes(value)), 'Delegated depths must be unique choices from 5,10,15,All');
 const reportMode = argument('report', scenario === 'restarts' ? 'shown' : 'hidden');
 const rounds = Number(argument('rounds', '5')), warm = Number(argument('warm', '3'));
 const direct = args.includes('--direct');
+const browserSelection = argument('browser', 'chrome');
+assert.ok(['chrome', 'chromium'].includes(browserSelection),
+  'Browser must be chrome or chromium; Firefox requires separate deterministic worker-routing support');
 const review = args.includes('--review'), reviewArm = argument('arm', 'candidate');
 assert.ok(['5', '10', '15', 'All'].includes(depth), 'Depth must be 5, 10, 15 or All');
 assert.ok(['hidden', 'shown', 'deferred'].includes(reportMode), 'Report must be hidden, shown or deferred');
@@ -53,12 +62,13 @@ const summarize = values => {
   const sorted = [...values].sort((a, b) => a - b), n = sorted.length;
   return { count: n, median: n ? (sorted[Math.floor((n - 1) / 2)] + sorted[Math.floor(n / 2)]) / 2 : null, p95: sorted[Math.max(0, Math.ceil(n * .95) - 1)] ?? null, max: sorted.at(-1) ?? null };
 };
-const browser = await chromium.launch({ headless: !review, channel: 'chrome' });
+const browser = await chromium.launch({ headless: !review,
+  ...(browserSelection === 'chrome' ? { channel: 'chrome' } : {}) });
 const report = {
   schemaVersion: 1, measuredAt: new Date().toISOString(), passed: false, review, calibration,
-  harnessNodeVersion: process.version,
+  harnessNodeVersion: process.version, browserSelection,
   noiseReferenceSha256: noiseReference ? sha256(JSON.stringify(noiseReference)) : undefined,
-  inputXmlSha256: input.xmlHash, metric, depth, reportMode, scenario, roundsRequested: rounds, warmRequested: warm,
+  inputXmlSha256: input.xmlHash, metric, depth, reportMode, scenario, delegatedDepths, roundsRequested: rounds, warmRequested: warm,
   direct, noiseScope: argument('noise-floor') === 'none' ? 'No calibration for this rebuilt binary; no noise-floor claim' : 'Recorded A/A calibration',
   environment: { browser: browser.version(), cpu: cpus()[0]?.model, logicalCores: cpus().length, viewport: { width: 1600, height: 1000, dpr: 1 } },
   harnessSha256: sha256(await readFile(new URL(import.meta.url))), diagnosticsSha256: sha256(diagnostics),
@@ -108,6 +118,13 @@ async function runArm(name, round) {
     await page.evaluate(code => window.__DESKTOP_POB__.loadBuildFromCode(code), input.buildCode);
     const flush = () => page.evaluate(() => window.__DESKTOP_POB__.flushInput());
     const profile = (reset = false) => page.evaluate(reset => window.__DESKTOP_POB__.getRuntimeProfile(reset), reset);
+    const measuredProfile = afterFrame => page.evaluate(async afterFrame => {
+      const started = performance.now();
+      const profile = await window.__DESKTOP_POB__.getRuntimeProfile();
+      const rpcMs = performance.now() - started, frames = window.__DESKTOP_POB__.frames;
+      return { profile, rpcMs, frames,
+        frameSamples: frames > afterFrame ? window.__DESKTOP_POB__.frameSamples.slice(-(frames - afterFrame)) : [] };
+    }, afterFrame);
     const state = async () => (await profile()).samples.nodePower;
     const errors = async () => {
       assert.deepEqual(faults, [], 'No page errors');
@@ -163,9 +180,14 @@ async function runArm(name, round) {
     const waitRun = async (previous, start, target, sample, { requireReport = reportMode === 'shown', expectedDepth = depth, parityGroup = 'target', deferOpen = reportMode === 'deferred' && !!sample } = {}) => {
       let heatmapWallMs, reportWallMs, current, p, earlyHeatmap, openedAt;
       let peakLuaKiB = 0, peakWasmBytes = 0;
+      let lastObservedFrame = await page.evaluate(() => window.__DESKTOP_POB__.frames);
+      const responsiveness = createResponsivenessCollector(lastObservedFrame);
       do {
         await page.waitForTimeout(40);
-        p = await profile();
+        const observed = await measuredProfile(lastObservedFrame);
+        responsiveness.add(observed);
+        lastObservedFrame = observed.frames;
+        p = observed.profile;
         peakLuaKiB = Math.max(peakLuaKiB, p.samples.luaKiB);
         peakWasmBytes = Math.max(peakWasmBytes, p.wasmBytes);
         await errors();
@@ -212,13 +234,23 @@ async function runArm(name, round) {
       }
       const snapshotHashes = Object.fromEntries(Object.entries(snapshots).map(([key, text]) => [key, sha256(text)]));
       const result = { arm: name, round, sample, parityGroup, ...current, heatmapLuaMs: current.heatmapReadyAt - current.startedAt, reportLuaMs: current.reportReadyAt == null ? null : current.reportReadyAt - current.startedAt, heatmapWallMs, reportWallMs: reportWallMs ?? null, openedReportWallMs: openedAt == null ? null : Math.max(0, start + reportWallMs - openedAt), snapshots: snapshotHashes, runtimeHeatmap: captured.samples.summary.heatmap, luaKiB: captured.samples.luaKiB, wasmBytes: captured.wasmBytes, peakLuaKiB: Math.max(peakLuaKiB, captured.samples.luaKiB), peakWasmBytes: Math.max(peakWasmBytes, captured.wasmBytes), memoryScope: 'Peak observed during readiness polling; may miss transients within a coroutine resume', errors: [] };
+      result.responsiveness = responsiveness.summary();
       if (sample) {
         result.helpers = captured.helpers && { ...captured.helpers, errors: captured.helpers.errors.map(sha256) };
         result.delegation = captured.samples.nodePower.delegation;
         report.runs.push(result);
         if (new URLSearchParams(arm.query.replace(/^\?/, '')).get('nodePowerHelpers') === '1') {
-          assert.equal(result.delegation?.completed, true, 'Candidate actually completed helper delegation');
-          assert.ok(result.helpers?.ready > 0 && result.helpers.completed > 0, 'Helper work was performed');
+          const required = scenario !== 'restarts' || (target === 'Hit DPS' && delegatedDepths.includes(expectedDepth));
+          result.delegationExpectation = { mode: required ? 'required' : 'unsupported', metric: target, depth: expectedDepth,
+            reason: scenario !== 'restarts' ? 'Timing trials require the requested delegation'
+              : required ? 'Restart target belongs to the declared delegated metric/depth'
+              : 'Restart intentionally selected a metric/depth outside declared helper support' };
+          if (required) {
+            assert.equal(result.delegation?.completed, true, 'Candidate actually completed helper delegation');
+            assert.ok(result.helpers?.ready > 0 && result.helpers.completed > 0, 'Helper work was performed');
+          } else {
+            assert.ok(result.delegation == null, 'Unsupported restart target must remain serial with no delegation');
+          }
           assert.deepEqual(result.helpers.errors, [], 'No helper errors');
           assert.ok(result.helpers.bytes.every(bytes => bytes <= result.helpers.memory.helperMaximum), 'Per-helper memory budget');
         }

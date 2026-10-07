@@ -33,6 +33,7 @@ export class HelperPool {
   private completed = 0;
   private requested = 0;
   private recycled = 0;
+  private lastRetiredBytes: number[] = [];
   constructor(private createWorker: () => Worker,
     private attach: (id: number, port: MessagePort) => Promise<void>,
     private detach: (id: number) => Promise<void>,
@@ -44,7 +45,8 @@ export class HelperPool {
     armed: this.armed, booting: this.starting, starts: this.starts,
     startupMs: this.starting && this.bootStartedAt !== undefined
       ? performance.now() - this.bootStartedAt : this.startupMs,
-    bytes: this.members.map(m => m.bytes), errors: this.errors.slice(-5), completed: this.completed,
+    bytes: this.members.map(m => m.bytes), lastRetiredBytes: this.lastRetiredBytes.slice(),
+    errors: this.errors.slice(-5), completed: this.completed,
     recycled: this.recycled, gcPause: this.gcPause, memory: HELPER_MEMORY }; }
   // Declare eligible capacity without allocating interpreters. Lua may then
   // delegate the first actual sort request, which boots this pool on demand.
@@ -163,7 +165,10 @@ export class HelperPool {
   private retire() {
     this.generation++;
     this.armed = false;
-    if (this.members.length) this.recycled++;
+    if (this.members.length) {
+      this.recycled++;
+      this.lastRetiredBytes = this.members.map(member => member.bytes);
+    }
     this.availability(false);
     for (const member of this.members) {
       member.worker.terminate();

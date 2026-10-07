@@ -25,6 +25,7 @@ local loadedIdentity, operation, calc, calcBase, loadedKind
 local candidates = {}
 function helperCall(text)
     local job = assert(json.decode(text))
+    runtimeGCPolicy.applyWorkload(job.kind == 'nodePower' and 'nodePower' or 'unique')
     if job.xml then
         loadBuildFromXML(job.xml, 'Calculation helper')
         assert(not __mainObject__.promptMsg, 'Helper import failed')

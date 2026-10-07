@@ -434,8 +434,28 @@ progress toast to PoB's ordinary 16-unit control text. Other toast headings and
 control typography are unchanged. Exact source/result identities keep this
 browser-only presentation adjustment separate from the prepared checkout.
 
-Delegation is currently limited to Hit DPS at depth 5, at least 200 evaluation
-items, and builds without Timeless jewels. Other reports and unsupported,
-failed or unavailable helpers use serial calculation. Helpers require the
-existing desktop CPU/memory admission checks and retain build inputs only in
-memory. This is a browser-owned adaptation, not a desktop PoB contribution.
+Delegation supports Hit DPS at the standard depths 5, 10, 15 and All, with at
+least 200 evaluation items. The October 7 extension admits Glorious Vanity
+(`vaal`) jewels; other Timeless families, other depth values and other metrics remain
+serial. Failed or unavailable helpers also return to serial calculation. Helpers
+retain the existing desktop CPU/memory admission checks and keep build inputs
+only in memory. This is a browser-owned adaptation, not a desktop PoB contribution.
+
+Node-power helper jobs now select GC pause 100 before importing their build,
+avoiding transient heap growth that could retire an otherwise eligible helper.
+Unique-item work restores its configured pause (400 by default), including the
+original unwrapped collector at 400. Explicit collections and allocation-failure
+recovery are unchanged. `runtimeGCPolicy.pause` is the active policy;
+`configuredPause` and the pool's `gcPause` retain the configured startup setting.
+The UI's share of delegated work yields between complete evaluations after
+approximately 20 ms. The 2 GiB Wasm ceiling, per-helper retirement threshold and
+whole-browser admission budget have not increased. Pool diagnostics preserve the
+last retired workers' capacities so a fallback's memory cause remains inspectable.
+
+`../tools/profiles/profile-heatmap.mjs` checks exact heatmap and full-report
+snapshots and records report time, bounded worker-response samples, frame CPU
+time and completed-frame gaps. Response samples include worker/broker queueing;
+they are not input-to-paint measurements. Restart trials check superseded jobs
+against fresh imports, including intentional serial fallback for unsupported
+metrics. Firefox performance experiments require automation that leaves Wasm
+optimization enabled; a debugger that observes Wasm can distort the comparison.

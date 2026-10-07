@@ -14,10 +14,13 @@ return function(build)
         return buildPower(self, ...)
     end
     tab.nodePowerBatchAvailable = function(self)
+        local depth = self.nodePowerMaxDepth
         if NodePowerAvailable() < 1 or not self.powerStat or self.powerStat.label ~= 'Hit DPS'
-            or self.nodePowerMaxDepth ~= 5 then return false end
+            or (depth ~= nil and depth ~= 5 and depth ~= 10 and depth ~= 15) then return false end
         for _, item in pairs(build.itemsTab.items) do
-            if item.jewelData and item.jewelData.conqueredBy then return false end
+            local conquered = item.jewelData and item.jewelData.conqueredBy
+            if conquered and (type(conquered) ~= 'table' or type(conquered.conqueror) ~= 'table'
+                or conquered.conqueror.type ~= 'vaal') then return false end
         end
         return true
     end
@@ -75,7 +78,7 @@ return function(build)
                 end
                 remoteDone = true
             end
-            local deadline = GetTime() + 35
+            local deadline = GetTime() + 20
             while localIndex <= #localItems do
                 local index = localItems[localIndex]
                 values[index] = self:EvaluateNodePowerItem(items[index], calc, base)

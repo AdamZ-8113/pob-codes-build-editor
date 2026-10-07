@@ -107,6 +107,30 @@ Deno.test('unadmitted UI memory and teardown cannot keep a helper pool alive', a
   assertEquals(await h.pool.run(job()), null);
 });
 
+Deno.test('retirement preserves bounded memory diagnostics until the next populated pool retires', async () => {
+  const h = harness();
+  try {
+    assertEquals(h.pool.profile().lastRetiredBytes, []);
+    await h.pool.start(2);
+    const oversizedBytes = 768 * 2 ** 20;
+    h.setBehavior((worker, request) => worker.reply(request, undefined, oversizedBytes));
+    assertEquals(await h.pool.run(job()), null);
+    const retired = h.pool.profile();
+    assertEquals(retired.bytes, []);
+    assertEquals(retired.lastRetiredBytes, [oversizedBytes, oversizedBytes]);
+    retired.lastRetiredBytes[0] = 0;
+    assertEquals(h.pool.profile().lastRetiredBytes, [oversizedBytes, oversizedBytes]);
+
+    h.setBehavior((worker, request) => worker.reply(request));
+    await h.pool.start(1);
+    assertEquals(h.pool.profile().lastRetiredBytes, [oversizedBytes, oversizedBytes]);
+    assertEquals(await h.pool.run({...job(), uiBytes: 2 ** 31 + 65536}), null);
+    assertEquals(h.pool.profile().lastRetiredBytes, [256 * 2 ** 20]);
+    h.pool.close();
+    assertEquals(h.pool.profile().lastRetiredBytes, [256 * 2 ** 20]);
+  } finally { h.pool.close(); }
+});
+
 Deno.test('armed helper capacity allocates only on a sort request and reuses the ready pool', async () => {
   const h = harness();
   try {
