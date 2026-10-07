@@ -136,20 +136,60 @@ test("production transport adapts the existing guarded PoB Codes routes", async 
   const calls = [];
   const fetchImpl = async (url, init) => {
     calls.push({ url: String(url), init });
+    if (init.method === "GET") {
+      return Response.json({ tradeLeagues: [
+        { id: "Mirage", realm: "pc" },
+        { id: "Standard", realm: "pc" },
+      ] });
+    }
     const request = JSON.parse(init.body);
     return request.characterName
       ? Response.json({ itemsJson: '{"items":[],"character":{"name":"FixtureRanger"}}', passiveSkillsJson: '{"hashes":[1],"hashes_ex":[],"mastery_effects":{}}' })
       : Response.json({ accountName: request.accountName, characters: [{ name: "FixtureRanger" }], realm: { realmCode: request.realm } });
   };
   const transport = createPobCodesCharacterTransport({ origin: "https://pob.codes", fetchImpl });
+  const leagues = await transport.request({ method: "GET", path: "/api/poe/leagues" }, { signal: new AbortController().signal });
   const list = await transport.request({ method: "POST", path: "/api/poe/characters", body: { contractVersion: 1, realm: "pc", account: "Fixture#1234" } }, { signal: new AbortController().signal });
   const character = await transport.request({ method: "POST", path: "/api/poe/import-character", body: { contractVersion: 1, realm: "pc", account: "Fixture#1234", character: "FixtureRanger" } }, { signal: new AbortController().signal });
+  assert.deepEqual(leagues, { ok: true, data: { leagues: [{ id: "Mirage", realm: "pc" }, { id: "Standard", realm: "pc" }] } });
   assert.deepEqual(list, { ok: true, data: { characters: [{ name: "FixtureRanger" }] } });
   assert.deepEqual(character, { ok: true, data: { items: { items: [], character: { name: "FixtureRanger" } }, passiveSkills: { hashes: [1], hashes_ex: [], mastery_effects: {} } } });
-  assert.deepEqual(calls.map(call => call.url), ["https://pob.codes/api/poe/characters", "https://pob.codes/api/poe/import-character"]);
-  assert.deepEqual(JSON.parse(calls[0].init.body), { accountName: "Fixture#1234", realm: "pc" });
-  assert.deepEqual(JSON.parse(calls[1].init.body), { accountName: "Fixture#1234", characterName: "FixtureRanger", realm: "pc" });
+  assert.deepEqual(calls.map(call => call.url), ["https://pob.codes/api/poe/leagues", "https://pob.codes/api/poe/characters", "https://pob.codes/api/poe/import-character"]);
+  assert.equal(calls[0].init.body, undefined);
+  assert.deepEqual(JSON.parse(calls[1].init.body), { accountName: "Fixture#1234", realm: "pc" });
+  assert.deepEqual(JSON.parse(calls[2].init.body), { accountName: "Fixture#1234", characterName: "FixtureRanger", realm: "pc" });
   assert.ok(calls.every(call => call.init.credentials === "omit" && call.init.redirect === "error"));
+});
+test("serves PoB trade league requests from the same pob.codes league catalog", async () => {
+  const calls = [];
+  const host = createCharacterHostV1({ transport: createPobCodesCharacterTransport({
+    origin: "https://pob.codes",
+    fetchImpl: async (url, init) => {
+      calls.push({ url: String(url), init });
+      return Response.json({ tradeLeagues: [
+        { id: "Mirage", realm: "pc" },
+        { id: "Hardcore Mirage", realm: "pc" },
+        { id: "Standard", realm: "pc" },
+      ] });
+    },
+  }) });
+  const response = await host.onFetch("https://www.pathofexile.com/api/trade/data/leagues");
+  assert.equal(response.status, 200);
+  assert.deepEqual(JSON.parse(response.body), { result: [
+    { id: "Mirage", realm: "pc" },
+    { id: "Hardcore Mirage", realm: "pc" },
+    { id: "Standard", realm: "pc" },
+  ] });
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].url, "https://pob.codes/api/poe/leagues");
+  assert.equal(calls[0].init.method, "GET");
+});
+test("rejects malformed pob.codes trade league catalogs", async () => {
+  const host = createCharacterHostV1({ transport: createPobCodesCharacterTransport({
+    origin: "https://pob.codes",
+    fetchImpl: async () => Response.json({ tradeLeagues: [{ id: "Bad\nLeague", realm: "pc" }] }),
+  }) });
+  assert.match((await host.onFetch("https://www.pathofexile.com/api/trade/data/leagues")).error, /invalid trade league list/i);
 });
 test("production transport preserves guarded API errors", async () => {
   const transport = createPobCodesCharacterTransport({

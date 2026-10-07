@@ -4,14 +4,16 @@ type CreatePobCodesCharacterTransportOptions = { origin: string; fetchImpl?: typ
 
 export type RealmV1 = "pc" | "xbox" | "sony";
 export type CharacterOperationV1 = "get-characters" | "get-items" | "get-passive-skills";
-export type CoreRequestV1 = { method: "POST"; path: "/api/poe/characters" | "/api/poe/import-character"; body: { contractVersion: 1; realm: RealmV1; account: string; character?: string } };
+export type CoreRequestV1 =
+  | { method: "GET"; path: "/api/poe/leagues" }
+  | { method: "POST"; path: "/api/poe/characters" | "/api/poe/import-character"; body: { contractVersion: 1; realm: RealmV1; account: string; character?: string } };
 export type CoreEnvelopeV1<T> = { ok: true; data: T } | { ok: false; error: { code: string; message: string } };
 export type CharacterTransportV1 = { enabled: boolean; request(request: CoreRequestV1, options: { signal: AbortSignal; maxResponseBytes?: number; timeoutMs?: number }): Promise<CoreEnvelopeV1<unknown>> };
 
 import { fetchBoundedText } from "./bounded-response-v1.ts";
 
 // Transport data remains untrusted; the host checks these fields before use.
-type CharacterData = { characters?: unknown; items?: unknown; passiveSkills?: unknown };
+type CharacterData = { characters?: unknown; items?: unknown; passiveSkills?: unknown; leagues?: unknown };
 type CharacterPair = {
   used: Set<string>;
   created: number;
@@ -39,17 +41,19 @@ export function createPobCodesCharacterTransport({ origin, fetchImpl = fetch }: 
   return {
     enabled: true,
     async request(request, { signal, maxResponseBytes = CHARACTER_HOST_V1.maxResponseBytes, timeoutMs = CHARACTER_HOST_V1.timeoutMs }) {
-      if (!["/api/poe/characters", "/api/poe/import-character"].includes(request.path)) {
-        throw new Error("Blocked unsupported PoB Codes character operation.");
+      if (!["/api/poe/leagues", "/api/poe/characters", "/api/poe/import-character"].includes(request.path)) {
+        throw new Error("Blocked unsupported PoB Codes operation.");
       }
-      const accountName = request.body.account;
+      const accountName = request.method === "POST" ? request.body.account : undefined;
       const body = request.path === "/api/poe/characters"
         ? { accountName, realm: request.body.realm }
-        : { accountName, characterName: request.body.character, realm: request.body.realm };
+        : request.path === "/api/poe/import-character"
+        ? { accountName, characterName: request.body.character, realm: request.body.realm }
+        : undefined;
       const { response, text } = await fetchBoundedText(new URL(request.path, target), {
-        method: "POST",
-        headers: { accept: "application/json", "content-type": "application/json" },
-        body: JSON.stringify(body),
+        method: request.method,
+        headers: body ? { accept: "application/json", "content-type": "application/json" } : { accept: "application/json" },
+        body: body ? JSON.stringify(body) : undefined,
         credentials: "omit",
         redirect: "error",
         signal,
@@ -59,6 +63,20 @@ export function createPobCodesCharacterTransport({ origin, fetchImpl = fetch }: 
       catch { throw new Error("PoB Codes returned an invalid character-import response."); }
       if (!response.ok) {
         return { ok: false, error: { code: String(payload?.code ?? `HTTP_${response.status}`), message: String(payload?.error ?? "Character import failed.") } };
+      }
+      if (request.path === "/api/poe/leagues") {
+        if (!Array.isArray(payload?.tradeLeagues) || payload.tradeLeagues.length > 128) {
+          throw new Error("PoB Codes returned an invalid trade league list.");
+        }
+        const leagues = payload.tradeLeagues.map((league: unknown) => {
+          const candidate = league as { id?: unknown; realm?: unknown };
+          const realm = candidate?.realm ?? "pc";
+          if (typeof candidate?.id !== "string" || !/^[^\u0000-\u001f<>]{1,128}$/.test(candidate.id) || !REALMS.has(String(realm))) {
+            throw new Error("PoB Codes returned an invalid trade league list.");
+          }
+          return { id: candidate.id, realm: REALMS.get(String(realm))! };
+        });
+        return { ok: true, data: { leagues } };
       }
       if (request.path === "/api/poe/characters") {
         if (!Array.isArray(payload?.characters)) throw new Error("PoB Codes returned an invalid character list.");
@@ -115,6 +133,14 @@ export function createCharacterHostV1({ transport = createDisabledCharacterTrans
           throw new Error("Blocked account profile outside the active character import.");
         }
         return { body: `/view-profile/${encodeURIComponent(listedAccount)}/characters`, status: 200, headers: { "content-type": "text/plain" }, error: undefined };
+      }
+      if (parsed.pathname === "/api/trade/data/leagues") {
+        if (parsed.search || parsed.hash) throw new Error("Blocked unsupported Path of Exile operation.");
+        if (!transport.enabled) throw new Error(MANUAL_FALLBACK);
+        const envelope = await boundedRequest({ method: "GET", path: "/api/poe/leagues" }, epoch);
+        if (envelope?.ok !== true) throw new Error(envelope?.error?.message ?? "Trade league lookup failed.");
+        if (!Array.isArray(envelope.data?.leagues)) throw new Error("Invalid trade league-list envelope.");
+        return ok({ result: envelope.data.leagues });
       }
       const match = /^\/character-window\/(get-characters|get-items|get-passive-skills)$/.exec(parsed.pathname);
       if (!match || !OPERATIONS.has(match[1])) throw new Error("Blocked unsupported Path of Exile operation.");

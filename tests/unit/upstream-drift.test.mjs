@@ -107,7 +107,7 @@ test('pack-time inventory and actual chained transforms produce source and resul
   }
   // Jewel-spec contexts are disjoint from the item-comparison block, and the
   // preferred-export context is disjoint from host-capability context.
-  for (const name of ['calculationOnlyJewelSpecs', 'preferredExportSite']) {
+  for (const name of ['calculationOnlyJewelSpecs', 'preferredExportSite', 'compactStatusText']) {
     for (const section of parseDriftPatch(patches[pin.adapters[name].patchFile])) {
       raw[section.path] = (raw[section.path] ?? '') + '\nseparation\n' + section.blocks.map(block => block.before).join('\nseparation\n');
     }

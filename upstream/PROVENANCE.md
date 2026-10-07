@@ -426,6 +426,14 @@ existing bounded helper pool, preserving PoB calculation functions, cache
 keys and result merge order. Eligible release sessions enable it by default;
 `?nodePowerHelpers=0` forces serial calculation for diagnostics.
 
+The October 6 compact-status-text adapter is retained in
+`../patches/compact-status-text.patch` and checked by
+`../scripts/patches/status-text-patch.mjs`. It reduces only the Timeless Jewel
+league notice, the gem dropdown's sorting progress, and the power-report
+progress toast to PoB's ordinary 16-unit control text. Other toast headings and
+control typography are unchanged. Exact source/result identities keep this
+browser-only presentation adjustment separate from the prepared checkout.
+
 Delegation is currently limited to Hit DPS at depth 5, at least 200 evaluation
 items, and builds without Timeless jewels. Other reports and unsupported,
 failed or unavailable helpers use serial calculation. Helpers require the

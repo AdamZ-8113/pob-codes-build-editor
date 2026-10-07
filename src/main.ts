@@ -91,7 +91,9 @@ async function main() {
   const characterTransport: CharacterTransportV1 = contributorMock ? {
     enabled: true,
     async request(request: { path: string }) {
-      return request.path === "/api/poe/characters"
+      return request.path === "/api/poe/leagues"
+        ? { ok: true as const, data: { leagues: [{ id: "Fixture League", realm: "pc" }] } }
+        : request.path === "/api/poe/characters"
         ? { ok: true as const, data: { characters: [{ name: "FixtureRanger", class: "Ranger", level: 91, league: "Fixture League" }] } }
         : { ok: true as const, data: { items: { items: [], character: { name: "FixtureRanger" } }, passiveSkills: { hashes: [1, 2, 3], hashes_ex: [], mastery_effects: {} } } };
     },

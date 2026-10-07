@@ -84,6 +84,7 @@ const inputHash = sha256(Buffer.concat([
   await readFile(join(appDir, 'scripts/patches/preferred-export-site-patch.mjs')),
   await readFile(join(appDir, 'scripts/patches/unique-sort-patch.mjs')),
   await readFile(join(appDir, 'scripts/patches/node-power-patch.mjs')),
+  await readFile(join(appDir, 'scripts/patches/status-text-patch.mjs')),
   await readFile(join(appDir, 'scripts/build/drift-patch.mjs')),
   await readFile(join(appDir, pin.adapters.uniqueSortDelegation.patchFile)),
   await readFile(join(appDir, pin.adapters.gemDropdownHover.patchFile)),

@@ -116,6 +116,26 @@
       "resultBlobHashes": {
         "src/Classes/CalcsTab.lua": "10571b8d9cf79ab526e60bb865a7551372cec1ec"
       }
+    },
+    "compactStatusText": {
+      "version": 1,
+      "patchFile": "patches/compact-status-text.patch",
+      "patchSha256": "2f92e663de676fe184bc3211c7f8f22d03ca2d35ac07a4b28b7c86650af3d78f",
+      "preparedSourceBlobHashes": {
+        "src/Classes/GemSelectControl.lua": "e1a243fcca307e80188764d8fa91a5e675eaccfa",
+        "src/Classes/TreeTab.lua": "7dba225173246e145868275fa34856f5dcd54afb",
+        "src/Modules/ToastNotification.lua": "2c95af2cdaf4f75f1c4d9be79bd1c178f2a4c6ee"
+      },
+      "sourceBlobHashes": {
+        "src/Classes/GemSelectControl.lua": "850bd569f3d1ddbfe1e4c3b5a0a9bf1795c3a016",
+        "src/Classes/TreeTab.lua": "7dba225173246e145868275fa34856f5dcd54afb",
+        "src/Modules/ToastNotification.lua": "2c95af2cdaf4f75f1c4d9be79bd1c178f2a4c6ee"
+      },
+      "resultBlobHashes": {
+        "src/Classes/GemSelectControl.lua": "f615370179f418b79d2ab2dfbe48e2a28bd82c7d",
+        "src/Classes/TreeTab.lua": "4b1e7fc310c70bff0fe1b89595272f27d9fb2143",
+        "src/Modules/ToastNotification.lua": "4a466741e7dc3e0457b11f05814796c860b2cb01"
+      }
     }
   },
   "overlays": [
@@ -295,6 +315,21 @@
       "patchSha256": "6a013908eaae9b7826cb2ac029b10694a092596c18dfc22007fe113c1224f9b1",
       "files": [
         "src/Classes/CalcsTab.lua"
+      ],
+      "applicationStage": "pack-time",
+      "upstreamPr": null,
+      "lastObserved": "2026-10-06"
+    },
+    {
+      "kind": "local-patch",
+      "id": "compact-status-text",
+      "sourceBase": "a431f3a28823270acbdd6864c644f93678581f1e",
+      "patchFile": "patches/compact-status-text.patch",
+      "patchSha256": "2f92e663de676fe184bc3211c7f8f22d03ca2d35ac07a4b28b7c86650af3d78f",
+      "files": [
+        "src/Classes/GemSelectControl.lua",
+        "src/Classes/TreeTab.lua",
+        "src/Modules/ToastNotification.lua"
       ],
       "applicationStage": "pack-time",
       "upstreamPr": null,

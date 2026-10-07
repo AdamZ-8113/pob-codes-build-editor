@@ -19,7 +19,7 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
     throw new Error("Desktop PoB upstream overlay order changed");
   }
   const local = pin.overlays.filter((entry) => entry.kind === "local-patch");
-  if (JSON.stringify(local.map((overlay) => overlay.id)) !== JSON.stringify(["gem-dropdown-hover", "limited-unique-item-comparisons", "importtab-host-capabilities", "preferred-export-site", "calculation-only-jewel-specs", "node-power-delegation"]) ||
+  if (JSON.stringify(local.map((overlay) => overlay.id)) !== JSON.stringify(["gem-dropdown-hover", "limited-unique-item-comparisons", "importtab-host-capabilities", "preferred-export-site", "calculation-only-jewel-specs", "node-power-delegation", "compact-status-text"]) ||
       local.some((overlay) => overlay.applicationStage !== "pack-time")) {
     throw new Error("Desktop PoB local overlay ownership changed");
   }
@@ -93,6 +93,20 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
       !/^[a-f0-9]{40}$/.test(nodePower.resultBlobHashes?.[calcsPath] ?? '') ||
       Object.keys(nodePower.sourceBlobHashes).length !== 1 || Object.keys(nodePower.resultBlobHashes).length !== 1) {
     throw new Error("Node-power overlay identities differ");
+  }
+  const compactStatus = pin.adapters.compactStatusText;
+  const compactOverlay = local[6];
+  const compactPaths = ["src/Classes/GemSelectControl.lua", "src/Classes/TreeTab.lua", "src/Modules/ToastNotification.lua"];
+  if (compactStatus?.version !== 1 || compactStatus.patchFile !== compactOverlay.patchFile ||
+      compactStatus.patchSha256 !== compactOverlay.patchSha256 ||
+      JSON.stringify(Object.keys(compactStatus.preparedSourceBlobHashes ?? {}).sort()) !== JSON.stringify(compactPaths) ||
+      JSON.stringify(Object.keys(compactStatus.sourceBlobHashes ?? {}).sort()) !== JSON.stringify(compactPaths) ||
+      JSON.stringify(Object.keys(compactStatus.resultBlobHashes ?? {}).sort()) !== JSON.stringify(compactPaths) ||
+      compactStatus.preparedSourceBlobHashes[compactPaths[0]] !== pin.compositePatch.resultBlobHashes[compactPaths[0]] ||
+      compactStatus.sourceBlobHashes[compactPaths[0]] !== pin.adapters.gemDropdownHover.resultBlobHashes[compactPaths[0]] ||
+      compactStatus.sourceBlobHashes[compactPaths[1]] !== pin.compositePatch.resultBlobHashes[compactPaths[1]] ||
+      Object.values(compactStatus.resultBlobHashes).some((hash) => !/^[a-f0-9]{40}$/.test(hash))) {
+    throw new Error("Compact status-text overlay identities differ");
   }
   const compositeBytes = await readFile(join(appDir, pin.compositePatch.patchFile));
   if (sha256(compositeBytes) !== pin.compositePatch.patchSha256) throw new Error("PoB PR composite patch SHA-256 mismatch");

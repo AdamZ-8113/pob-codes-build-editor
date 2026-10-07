@@ -11,6 +11,7 @@ import { transformJewelSpecPatch } from '../patches/jewel-spec-patch.mjs';
 import { transformImportTabHostPatch } from '../patches/importtab-host-patch.mjs';
 import { transformPreferredExportSitePatch } from '../patches/preferred-export-site-patch.mjs';
 import { transformNodePowerPatch } from '../patches/node-power-patch.mjs';
+import { transformStatusTextPatch } from '../patches/status-text-patch.mjs';
 import { sha256, validateSourceLedger } from './source-ledger.mjs';
 import { classifyPatch, parseDriftPatch } from './drift-patch.mjs';
 
@@ -23,6 +24,7 @@ export const PACK_STAGES = [
   ['importTabHostCapabilities', transformImportTabHostPatch],
   ['preferredExportSite', transformPreferredExportSitePatch],
   ['nodePowerDelegation', transformNodePowerPatch],
+  ['compactStatusText', transformStatusTextPatch],
 ];
 const classes = ['untouched', 'touched-applies', 'conflict', 'absorbed', 'partial'];
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
