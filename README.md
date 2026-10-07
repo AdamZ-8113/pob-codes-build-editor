@@ -33,12 +33,16 @@ maintainer:
 - [PoB #10313](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10313)
   skips the Full DPS and eHP stages of power-report calculations whose selected
   metric never reads them, without changing any reported value.
+- [PoB #10381](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10381)
+  fixes power-report cache correctness for radius jewels, masteries, cluster
+  passives, tattoos, Timeless/conquered nodes, and structured modifiers.
 
 The fork also carries focused PoB optimizations for gem-hover tooltips,
 limited-unique comparisons, and radius-jewel comparisons (the calculation-only
 portion of [PoB #9863](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/9863)).
 These patches preserve PoB's calculation rules and are applied with exact source
-and result checks.
+and result checks. The complete maintained inventory is in
+[`docs/BUNDLED_POB_CHANGES.md`](docs/BUNDLED_POB_CHANGES.md).
 
 ### Improvements submitted to pob-web
 

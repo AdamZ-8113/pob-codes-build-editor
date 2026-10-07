@@ -2,9 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { transforms, identities, transformationEvidence } from '../../tools/experiments/node-power-delegation-experiment.mjs';
+import { validateSourceLedger } from '../../scripts/build/source-ledger.mjs';
 
-const source = await readFile(new URL('../../.runtime/source-c8935f99ee79/src/Classes/CalcsTab.lua', import.meta.url), 'utf8').catch(error => {
+const appDir = fileURLToPath(new URL('../..', import.meta.url));
+const { pin } = await validateSourceLedger(appDir);
+const source = await readFile(new URL(`../../.runtime/source-${pin.compositePatch.patchSha256.slice(0, 12)}/src/Classes/CalcsTab.lua`, import.meta.url), 'utf8').catch(error => {
   if (error.code === 'ENOENT') return null;
   throw error;
 });

@@ -1,0 +1,223 @@
+diff --git a/spec/System/TestPowerReport_spec.lua b/spec/System/TestPowerReport_spec.lua
+index a98126e57515376b3bbec11aa0d00920c955573b..d251ff17718b1845a6853a66cf385ae5c32a8ab0 100644
+--- a/spec/System/TestPowerReport_spec.lua
++++ b/spec/System/TestPowerReport_spec.lua
+@@ -36,3 +36,115 @@ describe("PowerReportListControl", function()
+ 		assert.are.equal("allocated", list[1].name)
+ 	end)
+ end)
++
++local function findPowerStat(stat)
++	for _, powerStat in ipairs(data.powerStatList) do
++		if powerStat.stat == stat then
++			return powerStat
++		end
++	end
++end
++
++describe("Power report candidate context", function()
++	before_each(function()
++		newBuild()
++	end)
++
++	it("distinguishes identical allocated modifiers inside and outside a jewel radius", function()
++		build.characterLevel = 100
++		build.characterLevelAutoMode = false
++		local spec = build.spec
++		for _, id in ipairs({ 60735, 3469, 12412 }) do
++			spec:AllocNode(assert(spec.nodes[id]))
++		end
++		local jewel = new("Item"):Item([[Rarity: UNIQUE
++The Light of Meaning
++Prismatic Jewel
++Radius: Large
++Implicits: 0
++Passive Skills in Radius also grant +5 to maximum Life
++]])
++		build.itemsTab:AddItem(jewel, true)
++		spec.jewels[60735] = jewel.id
++		build.itemsTab.sockets[60735].selItemId = jewel.id
++		build.modFlag = true
++		build.buildFlag = true
++		runCallback("OnFrame")
++
++		local outside, inside = spec.nodes[3469], spec.nodes[12412]
++		assert(outside.alloc and inside.alloc, "Both Dexterity nodes must be allocated")
++		assert(outside.modKey == inside.modKey, "The nodes must have identical modifiers")
++		local tab = build.calcsTab
++		tab.powerStat = findPowerStat("Life")
++		tab.nodePowerMaxDepth = 0
++		tab:PowerBuilder()
++
++		local calc, base = tab:GetMiscCalculator()
++		for _, node in ipairs({ outside, inside }) do
++			local output = calc({ removeNodes = { [node] = true } }, false)
++			local expected = tab:CalculatePowerStat(tab.powerStat, output, base)
++			assert(math.abs(expected - node.power.singleStat) < 10 ^ -9, "Removal must use this node's jewel context")
++		end
++		assert(outside.power.singleStat == 0, "Dexterity outside the radius must not grant Life")
++		assert(inside.power.singleStat < 0, "Removing Dexterity inside the radius must lose Life")
++
++		-- Rebuilding after removing the jewel must discard the previous radius context.
++		spec.jewels[60735] = nil
++		build.itemsTab.sockets[60735].selItemId = 0
++		build.buildFlag = true
++		runCallback("OnFrame")
++		tab:PowerBuilder()
++		assert.are.equal(0, outside.power.singleStat)
++		assert.are.equal(0, inside.power.singleStat)
++	end)
++
++	it("does not reuse a mastery bonus for an identical cluster notable", function()
++		build.skillsTab:PasteSocketGroup("Fireball 20/0  1")
++		build.configTab.input.customMods = "2% more Damage for each different type of Mastery you have Allocated"
++		build.configTab:BuildModList()
++		runCallback("OnFrame")
++
++		local mastery = assert(build.spec.nodes[60210])
++		assert(mastery.name == "Poison Mastery" and mastery.allMasteryOptions)
++		-- Limit traversal while retaining the real mastery effects and calculator.
++		mastery.pathDist = 0
++		local tab = build.calcsTab
++		tab.powerStat = findPowerStat("TotalDPS")
++		tab.nodePowerMaxDepth = 0
++		tab:PowerBuilder()
++
++		local cluster = assert(build.spec.tree.clusterNodeMap["Low Tolerance"])
++		local effect = assert(build.spec.tree.masteryEffects[34563])
++		local effectNode = { id = mastery.id, type = mastery.type, name = mastery.name, sd = effect.sd }
++		build.spec.tree:ProcessStats(effectNode)
++		assert(effectNode.modKey == cluster.modKey, "The mastery and notable must have identical modifiers")
++		assert(cluster.power.singleStat == 0, "Low Tolerance must not grant a mastery damage bonus")
++		assert(mastery.power.masteryEffects[effect.id].singleStat > 0, "Allocating a new mastery type must grant the damage bonus")
++	end)
++
++	it("includes passive effect added after modifier parsing", function()
++		local candidates = { }
++		for _, node in pairs(build.spec.nodes) do
++			if not node.alloc and node.type == "Normal" and #node.modList == 1 and node.modList[1].name == "Dex" and node.modList[1].value == 10 then
++				table.insert(candidates, node)
++			end
++		end
++		table.sort(candidates, function(a, b) return a.id < b.id end)
++		local plain, scaled = candidates[1], candidates[2]
++		assert(plain and scaled and plain.modKey == scaled.modKey)
++		-- Cluster small-passive effect is appended after ProcessStats creates modKey.
++		local modList = new("ModList"):ModList()
++		modList:AddList(scaled.modList)
++		scaled.modList = modList
++		scaled.modList:NewMod("PassiveSkillEffect", "INC", 100)
++		for _, node in ipairs({ plain, scaled }) do
++			node.pathDist = 0
++		end
++		local tab = build.calcsTab
++		tab.powerStat = findPowerStat("Dex")
++		tab.nodePowerMaxDepth = 0
++		tab:PowerBuilder()
++		assert.are.equal(10, plain.power.singleStat)
++		assert.are.equal(20, scaled.power.singleStat)
++	end)
++end)
+diff --git a/src/Classes/CalcsTab.lua b/src/Classes/CalcsTab.lua
+index 7d79e865d98a5e76e11c5604b3083f03cb86fa8d..e1e8d413259a386d84186b3ed470ac3d9194621c 100644
+--- a/src/Classes/CalcsTab.lua
++++ b/src/Classes/CalcsTab.lua
+@@ -492,12 +492,38 @@ function CalcsTabClass:BuildPower()
+ 	end
+ end
+ 
++-- Only share single-node results when both modifiers and allocation side effects match.
++local function nodePowerCacheKey(node, radiusNodes)
++	if radiusNodes[node.id] or node.conqueredBy or node.isTattoo or node.overrideType
++		or (node.type ~= "Normal" and node.type ~= "Notable" and node.type ~= "Mastery") then
++		return node
++	end
++	local key = { node.alloc and "remove" or "add", node.type, node.type == "Mastery" and node.name or "" }
++	for _, mod in ipairs(node.modList) do
++		-- Granted skills and other structured effects can depend on their source node.
++		if mod.type == "LIST" then
++			return node
++		end
++		-- modKey omits modifiers added later, such as cluster small-passive effect.
++		t_insert(key, "[" .. modLib.formatMod(mod) .. "]")
++	end
++	return table.concat(key, "|")
++end
++
+ -- Estimate the offensive and defensive power of all unallocated nodes
+ function CalcsTabClass:PowerBuilder()
+ 	-- local timer_start = GetTime()
+ 	local useFullDPS = self.powerStat and self.powerStat.stat == "FullDPS"
+ 	local calcFunc, calcBase = self:GetMiscCalculator()
+ 	local cache = { }
++	local radiusNodes = { }
++	for _, jewel in ipairs(self.mainEnv.radiusJewelList) do
++		for nodeId, node in pairs(jewel.nodes) do
++			if node.type ~= "Mastery" then
++				radiusNodes[nodeId] = true
++			end
++		end
++	end
+ 	local distanceMap = { }
+ 	local distanceList = { }
+ 	local masteryNodeList = { }
+@@ -610,10 +636,11 @@ function CalcsTabClass:PowerBuilder()
+ 		end
+ 		for nodeId, node in pairs(nodes) do
+ 			if not node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[nodeId] then
+-				if not cache[node.modKey] then
+-					cache[node.modKey] = calcFunc({ addNodes = { [node] = true } }, useFullDPS)
++				local key = nodePowerCacheKey(node, radiusNodes)
++				if not cache[key] then
++					cache[key] = calcFunc({ addNodes = { [node] = true } }, useFullDPS)
+ 				end
+-				local output = cache[node.modKey]
++				local output = cache[key]
+ 				calculateAddNodePower(node.power, distance, node, output, function()
+ 					local pathNodes = { }
+ 					for _, pathNode in pairs(node.path) do
+@@ -622,10 +649,11 @@ function CalcsTabClass:PowerBuilder()
+ 					return pathNodes
+ 				end)
+ 			elseif node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[nodeId] then
+-				if not cache[node.modKey.."_remove"] then
+-					cache[node.modKey.."_remove"] = calcFunc({ removeNodes = { [node] = true } }, useFullDPS)
++				local key = nodePowerCacheKey(node, radiusNodes)
++				if not cache[key] then
++					cache[key] = calcFunc({ removeNodes = { [node] = true } }, useFullDPS)
+ 				end
+-				local output = cache[node.modKey.."_remove"]
++				local output = cache[key]
+ 				if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
+ 					node.power.singleStat = self:CalculatePowerStat(self.powerStat, output, calcBase)
+ 					if node.depends and not node.ascendancyName then
+@@ -669,10 +697,11 @@ function CalcsTabClass:PowerBuilder()
+ 				if effect then
+ 					local effectNode = buildMasteryEffectNode(node, effect)
+ 					if effectNode.modKey ~= "" then
+-						if not cache[effectNode.modKey] then
+-							cache[effectNode.modKey] = calcFunc({ addNodes = { [effectNode] = true } }, useFullDPS)
++						local key = nodePowerCacheKey(effectNode, radiusNodes)
++						if not cache[key] then
++							cache[key] = calcFunc({ addNodes = { [effectNode] = true } }, useFullDPS)
+ 						end
+-						local output = cache[effectNode.modKey]
++						local output = cache[key]
+ 						node.power.masteryEffects[effect.id] = { }
+ 						local effectPower = node.power.masteryEffects[effect.id]
+ 						calculateAddNodePower(effectPower, node.pathDist, node, output, function()
+@@ -717,10 +746,11 @@ function CalcsTabClass:PowerBuilder()
+ 		end
+ 		wipeTable(node.power)
+ 		if not node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[node.id] then
+-			if not cache[node.modKey] then
+-				cache[node.modKey] = calcFunc({ addNodes = { [node] = true } }, useFullDPS)
++			local key = nodePowerCacheKey(node, radiusNodes)
++			if not cache[key] then
++				cache[key] = calcFunc({ addNodes = { [node] = true } }, useFullDPS)
+ 			end
+-			local output = cache[node.modKey]
++			local output = cache[key]
+ 			if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
+ 				node.power.singleStat = self:CalculatePowerStat(self.powerStat, output, calcBase)
+ 			end

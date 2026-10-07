@@ -15,7 +15,7 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
     throw new Error("Unsupported desktop PoB source-pin schema or composite base");
   }
   const prNumbers = pin.overlays.filter((entry) => entry.kind === "upstream-pr").map((entry) => entry.number);
-  if (JSON.stringify(prNumbers) !== JSON.stringify([10360, 10371, 10372, 10373, 10313])) {
+  if (JSON.stringify(prNumbers) !== JSON.stringify([10360, 10371, 10372, 10373, 10313, 10381])) {
     throw new Error("Desktop PoB upstream overlay order changed");
   }
   const local = pin.overlays.filter((entry) => entry.kind === "local-patch");

@@ -28,16 +28,19 @@ The ledger carries upstream PRs
 [#10371](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10371),
 [#10372](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10372),
 [#10373](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10373),
-and [#10313](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10313)
+[#10313](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10313),
+and [#10381](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10381)
 at their exact recorded heads. Their individual diffs and SHA-256 values are
 preserved under `../patches/upstream/`; `../patches/pob-pr-composite.patch`
 records the composition onto beta revision
 `a431f3a28823270acbdd6864c644f93678581f1e`, including the semantic resolution
 where #10371 and #10372 both change `ItemDBControl.lua`, and where #10313 is
-applied after #10373 (both change `CalcsTab.lua` and `TestPowerReport_spec.lua`; the
-resolution keeps #10373's `useClusterPower` gating and both specs). The composite
-SHA-256 is `c8935f99ee79448210d0e47d251e7242e6fec7854a95da38db2927166a8d9cd4`
-and its result tree is `c31ecf2001a19ea955c78dbcaefc19681457a53d`.
+applied after #10373, followed by #10381. Those three PRs overlap in
+`CalcsTab.lua` and `TestPowerReport_spec.lua`; the resolution keeps #10373's
+`useClusterPower` gating, #10313's stage options, #10381's context-aware cache
+keys, and all specs. The composite SHA-256 is
+`6e2cd05cd6d59d73d876b83f756e9ebd2c014837759557cc4d124312ca444d57`
+and its result tree is `541722082e47dd42809cc571793c52ca1fc1ef24`.
 
 The maintainer-supplied 2026-09-30 gem-dropdown hover patch is preserved in
 `../patches/gem-dropdown-hover-tooltip.patch` (SHA-256
@@ -307,7 +310,7 @@ virtual paths remain unchanged. Production packaging uses release-relative
 asset URLs so `/import2` never falls through to the main web Worker.
 
 The unique-sort worker integration uses PoB beta
-`a431f3a28823270acbdd6864c644f93678581f1e` after the four-PR composite and
+`a431f3a28823270acbdd6864c644f93678581f1e` after the six-PR composite and
 gem-hover patch. PR #10371 supplies the evaluator visibility boundary and PR
 #10372 supplies PoB's cache; the local delegation adapter only supplies the
 browser batch hook used by helper workers.
@@ -422,8 +425,8 @@ The October 6 browser node-power adapter is retained in
 `../scripts/patches/node-power-patch.mjs`. The pin records its patch and exact
 CalcsTab source/result identities. Every pack and release includes it; the
 prepared desktop checkout and composite remain unchanged. It shares the
-existing bounded helper pool, preserving PoB calculation functions, cache
-keys and result merge order. Eligible release sessions enable it by default;
+existing bounded helper pool, preserving PoB calculation functions, #10381's
+context-aware cache keys, and result merge order. Eligible release sessions enable it by default;
 `?nodePowerHelpers=0` forces serial calculation for diagnostics.
 
 The October 6 compact-status-text adapter is retained in

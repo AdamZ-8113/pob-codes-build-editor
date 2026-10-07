@@ -10,7 +10,7 @@
         "src/Modules/Build.lua": "b90a6525a96a355caafbc9e78c186e635ce59ebd",
         "src/Classes/ConfigTab.lua": "090985ab6ffb11215d12e81f24244ffc1c8a20f0",
         "src/Classes/EditControl.lua": "140a4ebc1ba88dcab684d63da38261b6cff513f2",
-        "src/Classes/CalcsTab.lua": "45ed8b7aa17bcdd151f990f8e201242b02971e4c",
+        "src/Classes/CalcsTab.lua": "fe46acdfe5f57129f2c41dab60881d7d7e9a68f8",
         "src/Classes/ItemsTab.lua": "7649e17228ab87a2a13bde8b8dc738ba9a9019b2",
         "src/Modules/Main.lua": "ba137678649df496950c11751ad609b8d8232f8f"
       }
@@ -109,12 +109,12 @@
     "nodePowerDelegation": {
       "version": 1,
       "patchFile": "patches/node-power-delegation.patch",
-      "patchSha256": "6a013908eaae9b7826cb2ac029b10694a092596c18dfc22007fe113c1224f9b1",
+      "patchSha256": "40e1aecced538be4145c7e5c5c96d8f2f9910bef633c9abd6f9e22d30e7c540f",
       "sourceBlobHashes": {
-        "src/Classes/CalcsTab.lua": "45ed8b7aa17bcdd151f990f8e201242b02971e4c"
+        "src/Classes/CalcsTab.lua": "fe46acdfe5f57129f2c41dab60881d7d7e9a68f8"
       },
       "resultBlobHashes": {
-        "src/Classes/CalcsTab.lua": "10571b8d9cf79ab526e60bb865a7551372cec1ec"
+        "src/Classes/CalcsTab.lua": "c4e539765dea04ffa79bf0a30a7a3cbde3b5b66b"
       }
     },
     "compactStatusText": {
@@ -237,6 +237,19 @@
       ]
     },
     {
+      "kind": "upstream-pr",
+      "number": 10381,
+      "url": "https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10381",
+      "base": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
+      "head": "0c27573c45507b32a0d4dd3dc63e3a543cb24d6c",
+      "patchFile": "patches/upstream/pr-10381.diff",
+      "patchSha256": "2d5ddcdc231b62f076a1b08a5cf97085bdb7f3ea5e0b2576f88f473e69534b39",
+      "files": [
+        "spec/System/TestPowerReport_spec.lua",
+        "src/Classes/CalcsTab.lua"
+      ]
+    },
+    {
       "kind": "local-patch",
       "id": "gem-dropdown-hover",
       "sourceBase": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
@@ -312,7 +325,7 @@
       "id": "node-power-delegation",
       "sourceBase": "a431f3a28823270acbdd6864c644f93678581f1e",
       "patchFile": "patches/node-power-delegation.patch",
-      "patchSha256": "6a013908eaae9b7826cb2ac029b10694a092596c18dfc22007fe113c1224f9b1",
+      "patchSha256": "40e1aecced538be4145c7e5c5c96d8f2f9910bef633c9abd6f9e22d30e7c540f",
       "files": [
         "src/Classes/CalcsTab.lua"
       ],
@@ -338,10 +351,10 @@
   ],
   "compositePatch": {
     "patchFile": "patches/pob-pr-composite.patch",
-    "patchSha256": "c8935f99ee79448210d0e47d251e7242e6fec7854a95da38db2927166a8d9cd4",
+    "patchSha256": "6e2cd05cd6d59d73d876b83f756e9ebd2c014837759557cc4d124312ca444d57",
     "baseRevision": "a431f3a28823270acbdd6864c644f93678581f1e",
     "upstreamBase": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
-    "resultTree": "c31ecf2001a19ea955c78dbcaefc19681457a53d",
+    "resultTree": "541722082e47dd42809cc571793c52ca1fc1ef24",
     "files": [
       "spec/System/TestGemSocketQuality_spec.lua",
       "spec/System/TestImport_spec.lua",
@@ -385,10 +398,10 @@
       "spec/System/TestItemDBControl_spec.lua": "9dbf1be931ea74fcc790f5f30a41eeca2244ffce",
       "spec/System/TestItemListControl_spec.lua": "0362a5f8645f928a0d08467e3663d07aef34ec7e",
       "spec/System/TestItemMods_spec.lua": "362ce3a1c80bad43b773bbec9ca78b0cb73bca04",
-      "spec/System/TestPowerReport_spec.lua": "343751a314c793818e3fd875fa7f55410835af66",
+      "spec/System/TestPowerReport_spec.lua": "d8eea8b4b72b73355978b336eeb877ad7552ed7a",
       "spec/System/TestSkills_spec.lua": "8e90b9f5b5359948f71a9e88e8dca44a7b803aa7",
       "src/Classes/CalcSectionControl.lua": "cbe1bd74b832ead2c16d1aa4cc6664d34c903e0d",
-      "src/Classes/CalcsTab.lua": "45ed8b7aa17bcdd151f990f8e201242b02971e4c",
+      "src/Classes/CalcsTab.lua": "fe46acdfe5f57129f2c41dab60881d7d7e9a68f8",
       "src/Classes/CheckBoxControl.lua": "e8b08226de2aaf098a13ca028eeedfbad53d982e",
       "src/Classes/ConfigTab.lua": "090985ab6ffb11215d12e81f24244ffc1c8a20f0",
       "src/Classes/DropDownControl.lua": "098783802834c16ea57886630a387b1d180adc93",

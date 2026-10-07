@@ -1,17 +1,8 @@
 diff --git a/src/Classes/CalcsTab.lua b/src/Classes/CalcsTab.lua
-index 45ed8b7aa17bcdd151f990f8e201242b02971e4c..10571b8d9cf79ab526e60bb865a7551372cec1ec 100644
+index fe46acdfe5f57129f2c41dab60881d7d7e9a68f8..c4e539765dea04ffa79bf0a30a7a3cbde3b5b66b 100644
 --- a/src/Classes/CalcsTab.lua
 +++ b/src/Classes/CalcsTab.lua
-@@ -511,93 +511,124 @@ function CalcsTabClass:BuildPower()
- 	if self.powerBuildFlag then
- 		self.powerBuildFlag = false
- 		self.powerMax = nil
- 		self.powerBuilder = coroutine.create(self.PowerBuilder)
- 	end
- 	if self.powerBuilder then
- 		local res, errMsg = coroutine.resume(self.powerBuilder, self)
- 		if launch.devMode and not res then
- 			error(errMsg)
+@@ -520,7 +520,7 @@ function CalcsTabClass:BuildPower()
  		end
  		if coroutine.status(self.powerBuilder) == "dead" then
  			self.powerBuilder = nil
@@ -20,7 +11,7 @@ index 45ed8b7aa17bcdd151f990f8e201242b02971e4c..10571b8d9cf79ab526e60bb865a75513
  				self.build.powerBuilderCallback()
  			end
  		end
- 	end
+@@ -545,18 +545,48 @@ local function nodePowerCacheKey(node, radiusNodes)
  end
  
  -- Estimate the offensive and defensive power of all unallocated nodes
@@ -75,23 +66,9 @@ index 45ed8b7aa17bcdd151f990f8e201242b02971e4c..10571b8d9cf79ab526e60bb865a75513
 +	-- local timer_start = GetTime()
 +	local useClusterPower = self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes
  	local cache = { }
- 	local distanceMap = { }
- 	local distanceList = { }
- 	local masteryNodeList = { }
- 	local newPowerMax = {
- 		singleStat = 0,
- 		offence = 0,
- 		offencePerPoint = 0,
- 		defence = 0,
- 		defencePerPoint = 0
- 	}
- 	if not self.powerMax then
- 		self.powerMax = newPowerMax
- 	end
- 	if coroutine.running() then
- 		coroutine.yield()
- 	end
- 
+ 	local radiusNodes = { }
+ 	for _, jewel in ipairs(self.mainEnv.radiusJewelList) do
+@@ -586,6 +616,7 @@ function CalcsTabClass:PowerBuilder()
  	local function buildMasteryEffectNode(node, effect)
  		local effectNode = {
  			id = node.id,
@@ -99,18 +76,7 @@ index 45ed8b7aa17bcdd151f990f8e201242b02971e4c..10571b8d9cf79ab526e60bb865a75513
  			type = node.type,
  			name = node.name,
  			sd = { },
- 		}
- 		for i, sd in ipairs(effect.sd or { }) do
- 			effectNode.sd[i] = sd
- 		end
- 		self.build.spec.tree:ProcessStats(effectNode)
- 		return effectNode
- 	end
- 
- 	local function masteryEffectCanBeAssignedToNode(node, masteryEffect)
- 		local assignedNodeId = isValueInTable(self.build.spec.masterySelections, masteryEffect.effect)
- 		return not assignedNodeId or assignedNodeId == node.id
- 	end
+@@ -604,16 +635,16 @@ function CalcsTabClass:PowerBuilder()
  
  	local function calculateAddNodePower(power, distance, node, output, buildPathNodes)
  		if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
@@ -130,34 +96,16 @@ index 45ed8b7aa17bcdd151f990f8e201242b02971e4c..10571b8d9cf79ab526e60bb865a75513
  			power.singleStat = power.offence
  			if node.path and not node.ascendancyName then
  				newPowerMax.offence = m_max(newPowerMax.offence, power.offence)
- 				newPowerMax.defence = m_max(newPowerMax.defence, power.defence)
- 				newPowerMax.offencePerPoint = m_max(newPowerMax.offencePerPoint, power.offence / distance)
- 				newPowerMax.defencePerPoint = m_max(newPowerMax.defencePerPoint, power.defence / distance)
- 			end
- 		end
- 	end
- 	
- 	local start = GetTime()
- 	local nodeIndex = 0
-@@ -663,51 +694,51 @@ function CalcsTabClass:PowerBuilder()
- 					local pathNodes = { }
- 					for _, pathNode in pairs(node.path) do
- 						pathNodes[pathNode] = true
- 					end
- 					return pathNodes
- 				end)
- 			elseif node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[nodeId] then
- 				if not cache[node.modKey.."_remove"] then
- 					cache[node.modKey.."_remove"] = calcPower({ removeNodes = { [node] = true } })
+@@ -699,7 +730,7 @@ function CalcsTabClass:PowerBuilder()
  				end
- 				local output = cache[node.modKey.."_remove"]
+ 				local output = cache[key]
  				if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
 -					node.power.singleStat = self:CalculatePowerStat(self.powerStat, output, calcBase)
 +					node.power.singleStat = output.singleStat
  					if node.depends and not node.ascendancyName then
  						node.power.pathPower = node.power.singleStat
  						local pathNodes = { }
- 						for _, node in pairs(node.depends) do
+@@ -707,7 +738,7 @@ function CalcsTabClass:PowerBuilder()
  							pathNodes[node] = true
  						end
  						if #node.depends > 1 then
@@ -166,17 +114,7 @@ index 45ed8b7aa17bcdd151f990f8e201242b02971e4c..10571b8d9cf79ab526e60bb865a75513
  						end
  					end
  				end
- 			end
- 			if node.type == "Mastery" then
- 				local selectedEffectId = self.build.spec.masterySelections[node.id]
- 				if selectedEffectId then
- 					node.power.masteryEffects[selectedEffectId] = {
- 						singleStat = node.power.singleStat,
- 						pathPower = node.power.pathPower,
- 						offence = node.power.offence,
- 						defence = node.power.defence,
- 					}
- 				end
+@@ -725,7 +756,7 @@ function CalcsTabClass:PowerBuilder()
  			end
  			nodeIndex = nodeIndex + 1
  			if coroutine.running() and GetTime() - start > 100 then
@@ -185,25 +123,7 @@ index 45ed8b7aa17bcdd151f990f8e201242b02971e4c..10571b8d9cf79ab526e60bb865a75513
  					self.build.powerBuilderProgressCallback(m_floor(nodeIndex/total*100))
  				end
  				coroutine.yield()
- 				start = GetTime()
- 			end
- 		end
- 	end
- 
- 	for _, node in ipairs(masteryNodeList) do
- 		for _, masteryEffect in ipairs(node.masteryEffects or { }) do
- 			if masteryEffectCanBeAssignedToNode(node, masteryEffect) then
- 				local effect = self.build.spec.tree.masteryEffects[masteryEffect.effect]
-@@ -734,60 +765,62 @@ function CalcsTabClass:PowerBuilder()
- 						if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
- 							effectPower.pathPower = effectPower.pathPower or effectPower.singleStat
- 							node.power.singleStat = m_max(node.power.singleStat or 0, effectPower.singleStat)
- 							node.power.pathPower = m_max(node.power.pathPower or 0, effectPower.pathPower)
- 						elseif not self.powerStat or not self.powerStat.ignoreForNodes then
- 							node.power.offence = m_max(node.power.offence or 0, effectPower.offence)
- 							node.power.defence = m_max(node.power.defence or 0, effectPower.defence)
- 							node.power.singleStat = m_max(node.power.singleStat or 0, effectPower.singleStat)
- 						end
+@@ -771,7 +802,7 @@ function CalcsTabClass:PowerBuilder()
  					end
  					nodeIndex = nodeIndex + 1
  					if coroutine.running() and GetTime() - start > 100 then
@@ -212,25 +132,10 @@ index 45ed8b7aa17bcdd151f990f8e201242b02971e4c..10571b8d9cf79ab526e60bb865a75513
  							self.build.powerBuilderProgressCallback(m_floor(nodeIndex/total*100))
  						end
  						coroutine.yield()
- 						start = GetTime()
- 					end
- 				end
+@@ -795,10 +826,10 @@ function CalcsTabClass:PowerBuilder()
+ 				cache[key] = calcPower({ addNodes = { [node] = true } })
  			end
- 		end
- 	end
- 
- 	-- Calculate the impact of every cluster notable
- 	-- used for the power report screen
- 	for nodeName, node in pairs(self.build.spec.tree.clusterNodeMap) do
- 		if not node.power then
- 			node.power = {}
- 		end
- 		wipeTable(node.power)
- 		if useClusterPower and not node.alloc and node.modKey ~= "" and not self.mainEnv.grantedPassives[node.id] then
- 			if not cache[node.modKey] then
- 				cache[node.modKey] = calcPower({ addNodes = { [node] = true } })
- 			end
- 			local output = cache[node.modKey]
+ 			local output = cache[key]
 -			node.power.singleStat = self:CalculatePowerStat(self.powerStat, output, calcBase)
 +			node.power.singleStat = output.singleStat
  			nodeIndex = nodeIndex + 1
@@ -240,7 +145,7 @@ index 45ed8b7aa17bcdd151f990f8e201242b02971e4c..10571b8d9cf79ab526e60bb865a75513
  					self.build.powerBuilderProgressCallback(m_floor(nodeIndex/total*100))
  				end
  				coroutine.yield()
- 				start = GetTime()
+@@ -806,8 +837,10 @@ function CalcsTabClass:PowerBuilder()
  			end
  		end
  	end
@@ -253,12 +158,3 @@ index 45ed8b7aa17bcdd151f990f8e201242b02971e4c..10571b8d9cf79ab526e60bb865a75513
  	-- ConPrintf("Power Build time: %d ms", GetTime() - timer_start)
  end
  
- function CalcsTabClass:CalculatePowerStat(selection, original, modified)
- 	local originalValue = data.powerStatList.GetFromOutput(original, selection)
- 	local modifiedValue = data.powerStatList.GetFromOutput(modified, selection)
- 	return originalValue - modifiedValue
- end
- 
- function CalcsTabClass:CalculateCombinedOffDefStat(original, modified)
- 	local defence = (original.LifeUnreserved - modified.LifeUnreserved) / m_max(3000, modified.Life) +
- 					(original.Armour - modified.Armour) / m_max(10000, modified.Armour) +
