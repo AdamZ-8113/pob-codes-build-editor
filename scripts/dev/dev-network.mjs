@@ -44,6 +44,12 @@ function findOpenSSL() {
   throw new Error("LAN HTTPS requires OpenSSL (included with Git for Windows), or POB_DESKTOP_OPENSSL pointing to it.");
 }
 
+// Devices trust this CA, so limit it to the addresses it serves: a leaked key
+// then cannot impersonate public sites. Older unconstrained CAs are replaced.
+const caNameConstraints = "nameConstraints=critical,permitted;DNS:localhost,permitted;IP:127.0.0.0/255.0.0.0," +
+  "permitted;IP:10.0.0.0/255.0.0.0,permitted;IP:172.16.0.0/255.240.0.0,permitted;IP:192.168.0.0/255.255.0.0";
+const nameConstraintsOid = Buffer.from([0x06, 0x03, 0x55, 0x1d, 0x1e]); // DER OID 2.5.29.30
+
 /** Persistent local development CA. Never install trust or expose its private key. */
 export function lanCertificate(directory, addresses) {
   if (!addresses.length || addresses.some(a => !privateIPv4(a))) throw new Error("LAN certificates require private IPv4 addresses.");
@@ -66,11 +72,11 @@ export function lanCertificate(directory, addresses) {
   const newKey = path => writeFileSync(path, generateKeyPairSync("rsa", {modulusLength:2048,
     privateKeyEncoding:{type:"pkcs8",format:"pem"}, publicKeyEncoding:{type:"spki",format:"pem"}}).privateKey, {mode:0o600});
   let root = valid(rootCert, rootKey);
-  if (!root || !root.ca || !root.verify(root.publicKey)) {
+  if (!root || !root.ca || !root.verify(root.publicKey) || !root.raw.includes(nameConstraintsOid)) {
     newKey(rootKey);
-    run(["req", "-new", "-x509", "-sha256", "-days", "3650", "-key", rootKey, "-out", rootCert,
+    run(["req", "-new", "-x509", "-sha256", "-days", "730", "-key", rootKey, "-out", rootCert,
       "-subj", "/CN=PoB Codes Local Development CA", "-addext", "basicConstraints=critical,CA:TRUE",
-      "-addext", "keyUsage=critical,keyCertSign,cRLSign"]);
+      "-addext", "keyUsage=critical,keyCertSign,cRLSign", "-addext", caNameConstraints]);
     root = new X509Certificate(readFileSync(rootCert));
   }
   const leaf = valid(cert, key);
@@ -124,7 +130,7 @@ export function lanSetupPlugin(addresses, certificate) {
       }
       const url = `https://${hostname}:3010/`;
       res.writeHead(200, {"Content-Type":"text/html; charset=utf-8", "Content-Security-Policy":"default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'"});
-      res.end(req.method === "HEAD" ? undefined : `<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PoB LAN setup</title><style>body{font:18px system-ui;max-width:42rem;margin:2rem auto;padding:1rem;line-height:1.5}a{display:inline-block;padding:.6rem 0;overflow-wrap:anywhere}code{overflow-wrap:anywhere}</style><h1>PoB build editor on your local network</h1><p>The browser worker needs trusted HTTPS. Install this PC's development certificate once, then open the editor.</p><p><a href="/lan-ca.cer">Download development CA certificate</a></p><p>Android: Settings → Security → Encryption &amp; credentials → Install a certificate → CA certificate (names vary by device).</p><p>iPhone/iPad: Settings → General → VPN &amp; Device Management → install the downloaded profile, then General → About → Certificate Trust Settings → enable full trust.</p><p>Certificate fingerprint: <code>${certificate.fingerprint}</code></p><p><a href="${url}">Open ${url}</a></p><p>This local development certificate is for your own PC. Account OAuth is available from the PC's localhost editor; paste an exported build code to test on other devices.</p></html>`);
+      res.end(req.method === "HEAD" ? undefined : `<!doctype html><html lang="en"><meta name="viewport" content="width=device-width,initial-scale=1"><title>PoB LAN setup</title><style>body{font:18px system-ui;max-width:42rem;margin:2rem auto;padding:1rem;line-height:1.5}a{display:inline-block;padding:.6rem 0;overflow-wrap:anywhere}code{overflow-wrap:anywhere}</style><h1>PoB build editor on your local network</h1><p>The browser worker needs trusted HTTPS. Install this PC's development certificate once, then open the editor.</p><p><a href="/lan-ca.cer">Download development CA certificate</a></p><p>Android: Settings → Security → Encryption &amp; credentials → Install a certificate → CA certificate (names vary by device).</p><p>iPhone/iPad: Settings → General → VPN &amp; Device Management → install the downloaded profile, then General → About → Certificate Trust Settings → enable full trust.</p><p>Certificate fingerprint: <code>${certificate.fingerprint}</code></p><p><a href="${url}">Open ${url}</a></p><p>This development certificate only covers private network addresses and is for your own PC. Account OAuth is available from the PC's localhost editor; paste an exported build code to test on other devices.</p></html>`);
     });
   }};
 }

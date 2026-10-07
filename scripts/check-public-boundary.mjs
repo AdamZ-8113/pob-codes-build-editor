@@ -6,10 +6,10 @@ import { publicFileInventory } from "./lib/public-files.mjs";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const forbidden = [
-  /apps[\\/]desktop-pob/u,
-  /\.\.[\\/]\.\.[\\/](?:test_builds|apps)[\\/]/u,
-  /Vibe Code Projects/u,
-  /MercenaryApiCapture/u,
+  // Absolute paths into a personal home directory expose a contributor's machine
+  // layout: C:\Users\..., C:/Users/..., /c/Users/..., /Users/..., /home/...
+  /\b[a-z]:[\\/]+users[\\/]+[^\\/\s"'`]+/iu,
+  /(?<![\w.-])(?:\/[A-Za-z])?\/(?:Users|home)\/[^/\s"'`]+\//u,
   /(?:BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY|CLOUDFLARE_API_TOKEN\s*=)/u,
 ];
 const identifyingFixtureField = /\b(?:last)?(?:AccountHash|CharacterHash)\s*=/iu;

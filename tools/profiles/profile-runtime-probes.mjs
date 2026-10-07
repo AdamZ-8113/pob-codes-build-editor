@@ -13,7 +13,7 @@ const mode = process.argv[2] ?? 'headless';
 if (!['headless', 'bytecode'].includes(mode)) throw new Error('Use headless or bytecode');
 const allocator = process.argv.includes('--dlmalloc') ? 'dlmalloc' : 'mimalloc';
 const initialBytes = process.argv.includes('--initial-256m') ? 256 * 1024 * 1024 : undefined;
-const scratch = await mkdtemp(join(tmpdir(), 'codex-desktop-probe-'));
+const scratch = await mkdtemp(join(tmpdir(), 'pob-runtime-probe-'));
 const image = 'emscripten/emsdk:6.0.6@sha256:be96eff5810e42c632f3f8b795388a6b596e4fb21ec28b9e1fb1bc49bb3b1eef';
 function docker(args) {
   const result = spawnSync('docker', ['run','--rm',...(args[0]==='node'?['--network=none']:[]),'--mount',`type=bind,source=${app},target=/app,readonly`,
@@ -66,6 +66,6 @@ try {
   if(process.argv[3]&&!process.argv[3].startsWith('--')) await writeFile(resolve(process.argv[3]),JSON.stringify(report,null,2)+'\n');
   console.log(JSON.stringify(report));
 } finally {
-  if(dirname(scratch)!==tmpdir() || !scratch.startsWith(join(tmpdir(),'codex-desktop-probe-'))) throw new Error('Unexpected scratch cleanup path');
+  if(dirname(scratch)!==tmpdir() || !scratch.startsWith(join(tmpdir(),'pob-runtime-probe-'))) throw new Error('Unexpected scratch cleanup path');
   await rm(scratch,{recursive:true,force:true});
 }

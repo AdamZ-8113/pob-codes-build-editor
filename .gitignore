@@ -19,23 +19,10 @@ test-results/
 reports/
 tmp/
 
-# Local agent workflows and planning
+# Local agent instructions copied from AGENTS.example.md
 AGENTS.md
-.agents/
-.codex/
-.claude/
-.local/
-CLAUDE.md
-CONTEXT_HANDOFF.md
-SKILL_LIST.MD
-to_do/
-audit/
-draft_docs/
-writeup_notes/
-codex-implementation/
-implementation-plan/
 
-# Local configuration, credentials, and private inputs
+# Local configuration and credentials
 .env
 .env.*
 !.env.example
@@ -44,5 +31,3 @@ implementation-plan/
 *.pfx
 *.pid
 *.log
-private-builds/
-captures/

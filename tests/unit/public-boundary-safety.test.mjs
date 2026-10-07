@@ -21,6 +21,19 @@ test("public boundary scan decodes build fixtures and rejects identifying hash f
   assert.deepEqual(scanPublicBoundary(root), []);
 });
 
+test("public boundary scan rejects personal home-directory paths without flagging URLs", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "build-editor-home-path-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const notes = join(root, "notes.md");
+  // Assemble paths at runtime so this public test file holds no literal home path.
+  for (const path of [["C:", "Users", "someone", "repo"].join("\\"), ["", "c", "Users", "someone", "repo"].join("/"), ["", "home", "someone", "repo"].join("/")]) {
+    await writeFile(notes, `Built from ${path}\n`);
+    assert.match(scanPublicBoundary(root).join("\n"), /^notes\.md: /u, path);
+  }
+  await writeFile(notes, "See https://example.com/home/page/ and https://api.github.com/users/someone/repos\n");
+  assert.deepEqual(scanPublicBoundary(root), []);
+});
+
 test("Git boundary excludes local state, scans new public inputs, and rejects force-added local files", async (t) => {
   const root = await mkdtemp(join(tmpdir(), "build-editor-git-boundary-"));
   t.after(() => rm(root, { recursive: true, force: true }));

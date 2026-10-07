@@ -33,6 +33,7 @@ test("local CA reuse, HTTPS gateway and same-origin LAN bridge retain their boun
   const certificate=lanCertificate(scratch,[host]);
   const root=new X509Certificate(certificate.ca),leaf=new X509Certificate(certificate.cert);
   assert.ok(root.ca); assert.ok(leaf.verify(root.publicKey)); assert.equal(leaf.checkIP(host),host);
+  assert.ok(root.raw.includes(Buffer.from([0x06,0x03,0x55,0x1d,0x1e])),"Trusted dev CA is name-constrained to private addresses");
   assert.equal(lanCertificate(scratch,[host]).fingerprint,certificate.fingerprint,"Restarts preserve installed CA trust");
   assert.deepEqual(lanCertificate(scratch,[host]).cert,certificate.cert,"Unexpired server certificate reused");
   const renewed=lanCertificate(scratch,[host,"192.168.253.1"]);
