@@ -170,5 +170,7 @@ opt-in and is appropriate only for release verification.
 
 Follow `docs/RELEASING.md` for the exact-SHA CI gate and candidate artifact
 contract. Deployment credentials, predecessor recovery, the deployment lock
-and rollback belong to the separate private operator. This public repository
-must remain free of production credentials.
+and rollback belong to the separate private operator. Its deploy-authorized
+handoff reuses the durable private recovery Release rather than creating a
+private Actions artifact. This public repository must remain free of production
+credentials.

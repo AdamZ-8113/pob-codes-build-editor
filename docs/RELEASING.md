@@ -41,6 +41,10 @@ Production deployment belongs to a separate private operator workflow. It must:
 - Recover the complete exact live predecessor without rebuilding it. Retain
   its immutable generation alongside the candidate, and archive the exact
   deployable bytes privately before changing the live pointer.
+- For an authorized deploy, publish that digest-pinned recovery archive as the
+  durable private GitHub Release before entering the credentialed upload job,
+  then restore the same Release there. Verification-only runs persist nothing
+  privately, and private Actions artifacts are not used as a handoff.
 - Recheck the live predecessor under a non-cancelling deployment lock and upload
   only the verified static directory to the dedicated scriptless deployment.
 - Verify the live generation and isolation headers, then run committed headless
@@ -54,10 +58,13 @@ publishing that route or changing the main application.
 
 Actions artifacts are short-lived candidate transfer, not production recovery.
 The private operator retains complete recovery archives and their exact hashes
-as durable private GitHub Release assets. Each includes every deployed static
-file and a complete inventory. Restore exact bytes rather than rebuilding an
-old source revision. Retain the interrupted live generation during rollback so
-its already-open sessions keep their immutable assets.
+as durable private GitHub Release assets. For deploy-authorized runs, that
+already-required Release also transfers the verified bytes between the private
+preparation and credentialed upload runners, avoiding a second billed Actions
+artifact. Each Release includes every deployed static file and a complete
+inventory. Restore exact bytes rather than rebuilding an old source revision.
+Retain the interrupted live generation during rollback so its already-open
+sessions keep their immutable assets.
 
 For the first handoff, recover and verify the exact current deployed static
 tree. A locally rebuilt tree, matching generation name alone, or retained
