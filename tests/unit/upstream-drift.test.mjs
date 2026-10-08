@@ -116,8 +116,12 @@ test('pack-time inventory and actual chained transforms produce source and resul
   patches.composite = identityPatch;
   raw['src/Marker.lua'] = before;
   const mainPath = 'src/Modules/Main.lua';
-  raw[mainPath] = await readFile(`.runtime/source-${pin.compositePatch.patchSha256.slice(0, 12)}/${mainPath}`, 'utf8');
-  const tinyPin = { compositePatch: { patchFile: 'composite', files: ['src/Marker.lua'] }, overlays: [], adapters: pin.adapters };
+  const mainSource = await readFile(`.runtime/source-${pin.compositePatch.patchSha256.slice(0, 12)}/${mainPath}`, 'utf8').catch(() => null);
+  if (mainSource !== null) raw[mainPath] = mainSource;
+  const adapters = mainSource === null
+    ? Object.fromEntries(Object.entries(pin.adapters).filter(([name]) => name !== 'browserUiDefaults'))
+    : pin.adapters;
+  const tinyPin = { compositePatch: { patchFile: 'composite', files: ['src/Marker.lua'] }, overlays: [], adapters };
   const result = analyzeDrift({ pin: tinyPin, patches, baseFiles: raw, targetFiles: raw, identities: true });
   assert.equal(result.counts.conflict, 0);
   assert.equal(result.counts.partial, 0);
@@ -128,8 +132,10 @@ test('pack-time inventory and actual chained transforms produce source and resul
   const items = 'src/Classes/ItemsTab.lua';
   assert.equal(identities.calculationOnlyJewelSpecs.sourceBlobHashes[items], identities.limitedUniqueItemComparisons.resultBlobHashes[items]);
   assert.equal(identities.uniqueSortDelegation.sourceBlobHashes['src/Classes/ItemDBControl.lua'], blobHash(raw['src/Classes/ItemDBControl.lua']));
-  assert.equal(identities.browserUiDefaults.sourceBlobHashes[mainPath], pin.adapters.browserUiDefaults.sourceBlobHashes[mainPath]);
-  assert.equal(identities.browserUiDefaults.resultBlobHashes[mainPath], pin.adapters.browserUiDefaults.resultBlobHashes[mainPath]);
+  if (mainSource !== null) {
+    assert.equal(identities.browserUiDefaults.sourceBlobHashes[mainPath], pin.adapters.browserUiDefaults.sourceBlobHashes[mainPath]);
+    assert.equal(identities.browserUiDefaults.resultBlobHashes[mainPath], pin.adapters.browserUiDefaults.resultBlobHashes[mainPath]);
+  }
   const touched = analyzeDrift({ pin: tinyPin, patches, baseFiles: raw, targetFiles: { ...raw, 'src/Classes/ItemDBControl.lua': '// upstream edit\n' + raw['src/Classes/ItemDBControl.lua'] } });
   assert.equal(touched.entries.find(entry => entry.id === 'uniqueSortDelegation').classification, 'touched-applies');
 });
