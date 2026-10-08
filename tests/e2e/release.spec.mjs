@@ -50,6 +50,7 @@ test("failure diagnostics capture and resume a busy worker", async ({ page, cont
     workers = await watchWorkerStacks(context, page);
     const stacks = await workers.capture();
     expect(stacks.some(worker => worker.stack?.some(frame => frame.function === "diagnosticBusyWorker"))).toBe(true);
+    expect(stacks.some(worker => worker.heap?.usedSize > 0)).toBe(true);
     await page.waitForFunction(() => window.__STACK_WORKER_FINISHED__, null, { timeout: 5_000 });
   } finally {
     await page.evaluate(() => window.__STACK_WORKER__?.terminate()).catch(() => {});
@@ -364,6 +365,9 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
       pendingRequests: [...pendingRequests].slice(-20).map(request => request.url()),
       startup: await page.evaluate(() => ({ ready: window.__DESKTOP_POB__?.ready,
         frames: window.__DESKTOP_POB__?.frames, errors: window.__DESKTOP_POB__?.errors,
+        visibility: document.visibilityState, focused: document.hasFocus(),
+        deviceMemory: navigator.deviceMemory, cpus: navigator.hardwareConcurrency,
+        heapLimit: performance.memory?.jsHeapSizeLimit,
         status: document.querySelector("#status")?.textContent })).catch(() => null) }));
     throw error;
   } finally {

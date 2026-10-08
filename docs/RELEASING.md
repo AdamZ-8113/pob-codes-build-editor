@@ -56,6 +56,12 @@ The failure capture also requests a bounded Chromium worker stack snapshot and
 immediately resumes paused workers. A headless regression checks that a busy
 worker is captured and continues running; candidate bytes and phase budgets are
 unchanged by this diagnostic.
+Diagnostics include worker heap sizes, document visibility and device memory.
+On browser failure a separate `failed-native-interpreter` artifact retains the
+generated native interpreter glue and WebAssembly bytes, with failed-run input
+hashes in the job log, for exact local reproduction.
+These diagnostic files remain subject to the successful-candidate eligibility
+requirements above and do not confer release eligibility on a failed run.
 
 Each main push retains one CI candidate for seven days, and each promoted SHA
 retains a second transport copy for seven days. With the current roughly

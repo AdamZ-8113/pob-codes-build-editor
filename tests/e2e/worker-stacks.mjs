@@ -3,10 +3,15 @@
 export async function watchWorkerStacks(context, page) {
   const connection = await context.newCDPSession(page);
   const sessions = new Map();
+  const commands = new Map();
   let sequence = 0;
-  const send = (sessionId, method) => connection.send("Target.sendMessageToTarget", {
-    sessionId, message: JSON.stringify({ id: ++sequence, method }),
-  }).catch(() => {});
+  const send = (sessionId, method) => {
+    const id = ++sequence;
+    commands.set(id, method);
+    return connection.send("Target.sendMessageToTarget", {
+      sessionId, message: JSON.stringify({ id, method }),
+    }).catch(() => { commands.delete(id); });
+  };
   connection.on("Target.attachedToTarget", ({ sessionId, targetInfo }) => {
     sessions.set(sessionId, { url: targetInfo.url, type: targetInfo.type, stack: null });
     void send(sessionId, "Runtime.runIfWaitingForDebugger");
@@ -14,6 +19,17 @@ export async function watchWorkerStacks(context, page) {
   connection.on("Target.detachedFromTarget", ({ sessionId }) => sessions.delete(sessionId));
   connection.on("Target.receivedMessageFromTarget", ({ sessionId, message }) => {
     const event = JSON.parse(message);
+    if (event.id) {
+      const method = commands.get(event.id);
+      commands.delete(event.id);
+      if (method === "Runtime.getHeapUsage" && sessions.has(sessionId)) {
+        sessions.get(sessionId).heap = Object.fromEntries(
+          ["usedSize", "totalSize", "embedderHeapUsedSize", "backingStorageSize"]
+            .filter(key => Number.isFinite(event.result?.[key]))
+            .map(key => [key, event.result[key]]),
+        );
+      }
+    }
     if (event.method !== "Debugger.paused") return;
     const session = sessions.get(sessionId);
     if (session) session.stack = event.params.callFrames.slice(0, 12).map(frame => ({
@@ -30,6 +46,7 @@ export async function watchWorkerStacks(context, page) {
     async capture() {
       for (const [id, session] of [...sessions].slice(0, 8)) {
         session.stack = null;
+        void send(id, "Runtime.getHeapUsage");
         // Enabling the debugger deoptimizes WebAssembly. Do that only after
         // acceptance fails, so normal runtime execution retains its real speed.
         void send(id, "Debugger.enable").then(() => send(id, "Debugger.pause"));

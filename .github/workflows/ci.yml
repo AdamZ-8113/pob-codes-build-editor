@@ -61,6 +61,9 @@ jobs:
       - name: Summarize release-browser attempts and phase budgets
         if: always()
         run: node scripts/release/summarize-release-browser.mjs
+      - name: Record failed interpreter identities for local reproduction
+        if: failure() && steps.release-browser.outcome == 'failure'
+        run: sha256sum upstream/packages/driver/dist/release/driver.mjs upstream/packages/driver/dist/release/driver.wasm upstream/packages/driver/build/release/boot.c upstream/packages/driver/build/release/helper_boot.c
       - name: Retain bounded public-fixture browser diagnostics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
@@ -71,6 +74,16 @@ jobs:
             test-results/**/error-context.md
             test-results/**/release-phase-timings.json
             test-results/release-browser-summary.json
+          if-no-files-found: error
+          retention-days: 7
+      - name: Retain failed interpreter bytes for local reproduction
+        if: failure() && steps.release-browser.outcome == 'failure'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: failed-native-interpreter-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            upstream/packages/driver/dist/release/driver.mjs
+            upstream/packages/driver/dist/release/driver.wasm
           if-no-files-found: error
           retention-days: 7
       - name: Reverify that browser acceptance did not mutate candidate bytes
