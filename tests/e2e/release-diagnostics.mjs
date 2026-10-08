@@ -8,6 +8,7 @@ export function createReleaseDiagnostics(testInfo) {
     async phase(name, budgetMs, body) {
       const phaseStarted = Date.now();
       let outcome = "passed";
+      console.log(`[release run ${testInfo.repeatEachIndex + 1}] Starting: ${name} (budget ${budgetMs}ms)`);
       try {
         return await test.step(name, body, { timeout: budgetMs });
       } catch (error) {
@@ -16,6 +17,7 @@ export function createReleaseDiagnostics(testInfo) {
       } finally {
         const elapsedMs = Date.now() - phaseStarted;
         phases.push({ name, outcome, budgetMs, elapsedMs, remainingMs: Math.max(0, budgetMs - elapsedMs), utilization: elapsedMs / budgetMs });
+        console.log(`[release run ${testInfo.repeatEachIndex + 1}] ${outcome}: ${name} (${elapsedMs}/${budgetMs}ms)`);
       }
     },
     async finish() {
@@ -23,6 +25,7 @@ export function createReleaseDiagnostics(testInfo) {
       const report = {
         schemaVersion: 1,
         title: testInfo.title,
+        repeatEachIndex: testInfo.repeatEachIndex,
         retry: testInfo.retry,
         testBudgetMs: testInfo.timeout,
         elapsedMs,

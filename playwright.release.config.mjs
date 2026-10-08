@@ -6,10 +6,9 @@ export default defineConfig({
   testMatch: "release.spec.mjs",
   fullyParallel: false,
   workers: 1,
-  // Existing Linux runs legitimately take 2.8-2.9 minutes; 240 seconds keeps
-  // a finite deadline while restoring the measured 20% release headroom.
+  // Keep the established outer deadline and the smaller per-phase budgets.
   timeout: 240_000,
-  retries: process.env.CI ? 1 : 0,
+  retries: 0,
   reporter: [
     ["line"],
     ["./scripts/release/release-browser-reporter.mjs", { outputFile: "test-results/release-browser-summary.json" }],

@@ -10,7 +10,8 @@ other production secrets. Source ownership and deployment authority are separate
    run must pass `fast-gates`, `native-and-browser` and `browser-harnesses`.
 2. On push/main, `native-and-browser` builds the release tree, inventory, record,
    and tar before running the release-browser suite. It verifies the tree and
-   archive both before and after browser acceptance, then publishes the
+   archive both before and after two consecutive browser acceptance runs with
+   retries disabled, then publishes the
    seven-day `ci-candidate-<sha>-<run-id>-<attempt>` artifact. Pull request,
    fork, manual, failed, cancelled, and incomplete CI runs cannot publish an
    eligible source candidate.
@@ -45,10 +46,11 @@ Cloudflare secrets. Forks can build their own copies without production access.
 
 Workflow summaries distinguish build provenance (source CI run, attempt,
 artifact ID and digest) from promotion transport provenance (destination run,
-artifact ID and digest). Release-browser summaries report first-attempt and
-retry outcomes plus measured test/phase budget utilization. Their bounded,
-synthetic-fixture diagnostics are retained for seven days even after a flaky
-success.
+artifact ID and digest). Release-browser summaries identify each test,
+repetition and attempt, with individual phase durations and budget utilization.
+CI requires both repetitions to pass without retries before uploading a candidate.
+Bounded synthetic-fixture diagnostics are retained for seven days on success or
+failure; older or manually retried reports still identify flaky successes.
 Failed browser acceptance also prints the last 100 console messages, truncated
 to 1,000 characters each, pending fixture requests, and startup state so stalls
 can be diagnosed from the job log before Playwright finalizes the test status.
@@ -63,6 +65,15 @@ hashes in the job log, for exact local reproduction.
 These diagnostic files remain subject to the successful-candidate eligibility
 requirements above and do not confer release eligibility on a failed run.
 
+Release acceptance enters long native text fields through the browser clipboard
+and Ctrl+V, then drains native input before using dependent controls. The level
+edit still uses individual keystrokes and verifies recalculation. Zero-delay
+typing of entire notes, filenames and account fields forces many native input
+frames; software WebGL rendering on Linux can keep those draws queued across
+navigation and delay the new interpreter. Native save/reopen, padded export,
+sharing and character-import assertions retain their existing phase deadlines
+and fail-closed external request routing.
+
 Each main push retains one CI candidate for seven days, and each promoted SHA
 retains a second transport copy for seven days. With the current roughly
 0.57-GiB inner archive, that is about 4 GiB-days per CI candidate and another
@@ -70,6 +81,32 @@ retains a second transport copy for seven days. With the current roughly
 artifact bytes and verified download time; Actions step timing records upload
 and total promotion duration. These repository measurements do not establish
 an account-wide billing balance.
+
+### Investigating a browser acceptance stall
+
+Phase start/end messages appear immediately in the job log. The reload phase
+also records separate document-navigation and native-readiness steps. Check
+which operation stalled before changing the runtime or its deadlines.
+
+1. Replay the exact failed interpreter and candidate locally with the pinned
+   Playwright browser. Preserve the retained bytes before rebuilding. Keep
+   fixture routing fail-closed and use the existing phase budgets.
+2. Inspect process and thread CPU use as well as worker state. Software WebGL
+   can compete with Lua startup even when worker snapshots show parsing,
+   decompression or filesystem waits. Debugger attachment deoptimizes Wasm;
+   failure-only stacks are diagnostic clues, not performance measurements.
+3. Use real paste for long native text fields and retain focused keystroke
+   assertions for keyboard behavior. Do not make an acceptance scenario an
+   accidental zero-delay typing stress test. Await native input consumption
+   before clicking dependent controls.
+4. Compare the old and fixed behavior under the same CPU/memory limits, then
+   run the unchanged assertions repeatedly without retries. Build and push only
+   after local evidence supports the fix; repeated remote rebuilds are not a
+   substitute for a controlled reproduction.
+
+The repeated CI suite adds one acceptance run without rebuilding the candidate.
+Do not increase phase deadlines, remove assertions, or promote failed or flaky
+candidates to resolve a timeout. Fresh exact-SHA CI and promotion remain required.
 
 ## Deployment boundary
 

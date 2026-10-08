@@ -90,6 +90,17 @@ test("pagehide releases runtime workers when graceful shutdown cannot reply", as
 });
 
 test("candidate imports, edits, recalculates, shares and persists the displayed native build", async ({ page, context }, testInfo) => {
+  await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin });
+  // Use the real browser paste path for text fields. Zero-delay keydown/up
+  // floods force a native frame per input boundary and queue expensive software
+  // WebGL draws, starving the next interpreter during reload on Linux runners.
+  // The level edit below still exercises individual keystrokes and recalculation.
+  const pasteNativeText = async text => {
+    await page.evaluate(text => navigator.clipboard.writeText(text), text);
+    await page.keyboard.press("Control+v");
+    // DOM paste dispatch precedes consumption of the native input queue.
+    await page.evaluate(() => window.__DESKTOP_POB__.flushInput());
+  };
   const faults = [], blocked = [], assetPaths = [], uploads = [], resolutions = [], characterRequests = [];
   const browserConsole = [];
   const pendingRequests = new Set();
@@ -200,8 +211,7 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
     await page.keyboard.press("Control+6");
     await canvas.click({ position: { x: 400, y: 200 } });
     for (let attempt = 0; attempt < 20 && !exported.endsWith("="); attempt++) {
-      await page.keyboard.type(` release-${attempt}`);
-      await page.evaluate(() => window.__DESKTOP_POB__.flushInput());
+      await pasteNativeText(` release-${attempt}`);
       exported = await exportCode();
     }
   }
@@ -223,7 +233,7 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
   await canvas.click({ position: { x: 120, y: 16 } });
   await page.evaluate(() => window.__DESKTOP_POB__.flushInput());
   await page.keyboard.press("Control+a");
-  await page.keyboard.type("Release browser acceptance");
+  await pasteNativeText("Release browser acceptance");
   const bounds = await canvas.boundingBox();
   await canvas.click({ position: { x: bounds.width / 2 - 45, y: (bounds.height - 555) / 2 + 535 } });
   await page.evaluate(() => window.__DESKTOP_POB__.flushInput());
@@ -236,8 +246,8 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
     return (await (await builds.getFileHandle("Release browser acceptance.xml")).getFile()).text();
   });
   await expect.poll(async () => buildTag(await savedXml().catch(() => "")), { timeout: 15_000 }).toMatch(/level="73"/);
-  await page.reload();
-  await ready(page);
+  await test.step("reload saved editor document", () => page.reload());
+  await test.step("wait for reloaded native runtime", () => ready(page));
   expect(buildTag(await savedXml())).toMatch(/level="73"/);
   // Reopen the persisted document through the same native driver's importer.
   const persisted = await savedXml();
@@ -262,10 +272,7 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
   expect(buildTag(decode(await exportCode()))).toMatch(/viewMode="IMPORT"/);
   await canvas.click({ position: { x: 508, y: 124 } });
   await page.evaluate(() => window.__DESKTOP_POB__.flushInput());
-  await page.keyboard.type("FixtureAccount#1234");
-  // DOM dispatch completes before the worker consumes the native input queue.
-  // Drain it before clicking a control whose enabled state depends on that text.
-  await page.evaluate(() => window.__DESKTOP_POB__.flushInput());
+  await pasteNativeText("FixtureAccount#1234");
   await canvas.click({ position: { x: 646, y: 124 } });
   await page.evaluate(() => window.__DESKTOP_POB__.flushInput());
   await expect.poll(() => characterRequests.length).toBe(1);
@@ -292,8 +299,7 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
     await clickNative(508, 124);
     await page.keyboard.press("Control+a");
     await flushInput();
-    await page.keyboard.type(accountName);
-    await flushInput();
+    await pasteNativeText(accountName);
     await clickNative(646, 124);
     await expect.poll(() => requestsFor("characters").length).toBe(expectedLists);
     // A distinct synthetic discriminator changes the saved hash only when

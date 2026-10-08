@@ -55,9 +55,9 @@ jobs:
       - name: Verify candidate tree and archive before browser acceptance
         run: npm run verify:release
       - run: npx playwright install --with-deps chromium
-      - name: Exercise the exact candidate tree in a headless browser
+      - name: Exercise the exact candidate twice without retries in a headless browser
         id: release-browser
-        run: npm run test:e2e:release
+        run: npm run test:e2e:release -- --repeat-each=2 --retries=0
       - name: Summarize release-browser attempts and phase budgets
         if: always()
         run: node scripts/release/summarize-release-browser.mjs

@@ -135,10 +135,11 @@ tuple before acceptance, reverifies it afterward, and publishes it only for
 successful push/main producers. `fast-gates`, `native-and-browser`, and
 `browser-harnesses` must all pass in the selected run attempt for exact-SHA
 release eligibility.
-The curated subset checks input latency, payload integrity, startup paths and
-unique databases. Native editing/save/reload and
-render reuse remain manual while Linux reload and pixel-parity failures are
-investigated; their assertions remain intact.
+The curated development subset checks input latency, payload integrity, startup
+paths and unique databases. Native editing/save/reload is covered by the release
+suite. The older development editing harness remains manual pending conversion
+of its burst typing; renderer pixel-parity harnesses retain their separate manual
+investigations and unchanged assertions.
 
 Use `npm run test:browser -- --only test-mouse-release` to select one registered
 harness, including a manual entry, or `npm run test:browser -- --all` to include
@@ -159,12 +160,17 @@ isolation/cache headers.
 External requests are mocked or blocked. The suite ignores development origin
 overrides and refuses to reuse an existing server. Run `build:release` again after
 source changes before using the candidate suite.
+CI runs the complete suite twice with `--repeat-each=2 --retries=0`, using the
+same candidate bytes. Long native text uses real clipboard paste; the level
+edit retains individual keystrokes and recalculation checks. See the
+[browser stall procedure](RELEASING.md#investigating-a-browser-acceptance-stall)
+before changing timeouts or repeatedly rebuilding in CI.
 CI retains bounded screenshots, error contexts, phase timings, and a suite
 summary from these public fixtures as attempt-qualified
 `candidate-browser-diagnostics-<sha>-<run>-<attempt>` artifacts for seven days,
-including after a flaky success. The test has a 240-second finite budget,
-justified by measured 2.8-2.9-minute Linux runs; startup and each functional
-phase have their own smaller deadline.
+on success or failure. Logs report phase start/end immediately; summaries bind
+timings to the correct repetition. The test retains its 240-second finite budget;
+startup and each functional phase have their own smaller deadline.
 
 The host keeps `PoB Codes Import2 Preview v1` as its configured `userDirectory`
 for settings/cloud lookup. Native PoB currently writes browser saves under the

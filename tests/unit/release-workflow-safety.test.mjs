@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import test from "node:test";
 import {
   ciCandidateArtifactName,
@@ -9,7 +11,7 @@ import {
 } from "../../scripts/release/verify-ci-eligibility.mjs";
 import { validateArtifactZipEntries } from "../../scripts/release/download-ci-candidate.mjs";
 import { formatReleaseBrowserSummary } from "../../scripts/release/summarize-release-browser.mjs";
-import { compactSteps } from "../../scripts/release/release-browser-reporter.mjs";
+import ReleaseBrowserReporter, { compactSteps } from "../../scripts/release/release-browser-reporter.mjs";
 import { bindPredecessorAssets } from "../../scripts/release/verify-release-assets.mjs";
 
 const sha = "a".repeat(40);
@@ -120,6 +122,41 @@ test("two release tests passing first try are not a flaky success", () => {
   assert.match(markdown, /passed on the first attempt/);
 });
 
+test("release reports bind repeated runs to their own phase timings", async t => {
+  const directory = await mkdtemp(join(tmpdir(), "editor-release-reporter-"));
+  t.after(() => rm(directory, { recursive: true, force: true }));
+  const outputFile = join(directory, "summary.json");
+  const reporter = new ReleaseBrowserReporter({ outputFile });
+  const title = "native acceptance";
+  for (const repeatEachIndex of [0, 1]) {
+    reporter.onTestEnd({ title, timeout: 240_000, repeatEachIndex }, {
+      retry: 0, status: "passed", duration: 60_000, errors: [], steps: [],
+    });
+  }
+  reporter.onEnd({ status: "passed" });
+  const summary = JSON.parse(await readFile(outputFile, "utf8"));
+  assert.deepEqual(summary.attempts.map(attempt => attempt.repeatEachIndex), [0, 1]);
+  const timings = [0, 1].map(repeatEachIndex => ({
+    title, retry: 0, repeatEachIndex, testBudgetMs: 240_000,
+    phases: [{ name: "reload", outcome: "passed", budgetMs: 90_000,
+      elapsedMs: (repeatEachIndex + 1) * 20_000, utilization: (repeatEachIndex + 1) * 20_000 / 90_000 }],
+  }));
+  const markdown = formatReleaseBrowserSummary(summary, timings);
+  assert.match(markdown, /native acceptance \| 1 \| 1 \| passed \| 60\.0s \| 25\.0% \| 22\.2%/);
+  assert.match(markdown, /native acceptance \| 2 \| 1 \| passed \| 60\.0s \| 25\.0% \| 44\.4%/);
+  assert.match(markdown, /native acceptance \| 2 \| 1 \| reload \| passed \| 40\.0s \/ 90\.0s/);
+  assert.doesNotMatch(markdown, /flaky success/);
+});
+
+test("a passing diagnostic test cannot hide a later acceptance failure", () => {
+  const markdown = formatReleaseBrowserSummary({ schemaVersion: 1, status: "failed", attempts: [
+    { title: "diagnostics", retry: 0, status: "passed", durationMs: 2_000 },
+    { title: "native acceptance", retry: 0, status: "timedOut", durationMs: 90_000 },
+  ] }, []);
+  assert.match(markdown, /Result: failed; release acceptance did not pass/);
+  assert.doesNotMatch(markdown, /Result: .*passed on the first attempt/);
+});
+
 test("predecessor archive and inventory IDs must name assets of the selected release", () => {
   const release = { tag_name: "build-editor-abc", assets: [
     { id: 11, name: "pob-codes-build-editor-abc.tar.gz" },
@@ -148,6 +185,7 @@ test("push/main CI builds, verifies, tests, reverifies and publishes one canonic
   const workflow = await readFile(".github/workflows/ci.yml", "utf8");
   for (const command of ["materialize-import2.mjs", "create-release-record.mjs", "archive-release.mjs", "npm run test:e2e:release"]) assert.match(workflow, new RegExp(command.replaceAll(".", "\\.")));
   assert.ok(workflow.indexOf("archive-release.mjs") < workflow.indexOf("npm run test:e2e:release"));
+  assert.match(workflow, /npm run test:e2e:release -- --repeat-each=2 --retries=0/);
   assert.equal([...workflow.matchAll(/npm run verify:release/g)].length, 2);
   const scripts = JSON.parse(await readFile("package.json", "utf8")).scripts;
   assert.match(scripts["verify:release"], /verify-release-candidate\.mjs/);
@@ -159,7 +197,7 @@ test("push/main CI builds, verifies, tests, reverifies and publishes one canonic
   assert.match(workflow, /release-browser-summary\.json/);
   const config = (await import("../../playwright.release.config.mjs")).default;
   assert.equal(config.timeout, 240_000);
-  assert.equal(config.retries, process.env.CI ? 1 : 0);
+  assert.equal(config.retries, 0);
   assert.equal(config.use.baseURL, "http://127.0.0.1:3011");
   assert.equal(config.use.channel, undefined);
   assert.equal(config.use.headless, true);

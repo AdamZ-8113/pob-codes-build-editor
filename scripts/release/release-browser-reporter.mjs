@@ -20,6 +20,7 @@ export default class ReleaseBrowserReporter {
   onTestEnd(test, result) {
     this.attempts.push({
       title: test.title,
+      repeatEachIndex: test.repeatEachIndex,
       timeoutMs: test.timeout,
       retry: result.retry,
       status: result.status,
