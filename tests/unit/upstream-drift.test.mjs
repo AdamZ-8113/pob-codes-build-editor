@@ -144,3 +144,13 @@ test('a two-PR composite with one absorbed PR remains partial and blocks depende
   assert.equal(result.identities.compositePatch, null);
   assert.deepEqual(result.identities.adapters, {});
 });
+
+test('source-local overlays remain visible in drift and report upstream absorption', () => {
+  const pin = { compositePatch: { files: [path], patchFile: 'composite' },
+    overlays: [{ kind: 'local-patch', id: 'local-relevance', applicationStage: 'source-composite', files: [path], patchFile: 'local' }],
+    adapters: Object.fromEntries(PACK_STAGES.map(([name]) => [name, { patchFile: 'local', sourceBlobHashes: { [path]: 'unused' } }])) };
+  for (const [target, expected] of [[before, 'untouched'], [after, 'absorbed'], ['broken\n', 'conflict']]) {
+    const result = analyzeDrift({ pin, patches: { composite: patch, local: patch }, baseFiles: { [path]: before }, targetFiles: { [path]: target } });
+    assert.equal(result.entries.find(entry => entry.id === 'local-relevance').classification, expected);
+  }
+});

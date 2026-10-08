@@ -1,8 +1,8 @@
 diff --git a/src/Classes/CalcsTab.lua b/src/Classes/CalcsTab.lua
-index fe46acdfe5f57129f2c41dab60881d7d7e9a68f8..c4e539765dea04ffa79bf0a30a7a3cbde3b5b66b 100644
+index 8a0e2bf19b38ae560ce6274e49bc4b64a3449abb..06212ce23c8301bb6898f42b4d37e5388bd21a7f 100644
 --- a/src/Classes/CalcsTab.lua
 +++ b/src/Classes/CalcsTab.lua
-@@ -520,7 +520,7 @@ function CalcsTabClass:BuildPower()
+@@ -520,7 +520,7 @@
  		end
  		if coroutine.status(self.powerBuilder) == "dead" then
  			self.powerBuilder = nil
@@ -11,37 +11,69 @@ index fe46acdfe5f57129f2c41dab60881d7d7e9a68f8..c4e539765dea04ffa79bf0a30a7a3cbd
  				self.build.powerBuilderCallback()
  			end
  		end
-@@ -545,18 +545,48 @@ local function nodePowerCacheKey(node, radiusNodes)
+@@ -545,23 +545,77 @@
  end
  
  -- Estimate the offensive and defensive power of all unallocated nodes
--function CalcsTabClass:PowerBuilder()
+----@param disableRelevance boolean? Private validation opt-out; never persisted.
+-function CalcsTabClass:PowerBuilder(disableRelevance)
 -	-- local timer_start = GetTime()
 +-- The evaluator is shared by the serial path and optional browser helpers.
 +function CalcsTabClass:EvaluateNodePowerItem(item, calcFunc, calcBase)
  	local useFullDPS = self.powerStat and self.powerStat.requiresFullDPS or false
 -	local useClusterPower = self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes
--	local calcOptions = {
 +	local output = calcFunc(item, useFullDPS, {
- 		skipEHP = not (self.powerStat and self.powerStat.requiresEHP),
- 		skipFullDPS = not useFullDPS,
--	}
--	local calcFunc, calcBase = self:GetMiscCalculator()
--	local function calcPower(override)
--		return calcFunc(override, useFullDPS, calcOptions)
++		skipEHP = not (self.powerStat and self.powerStat.requiresEHP),
++		skipFullDPS = not useFullDPS,
 +	})
 +	if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
 +		return { singleStat = self:CalculatePowerStat(self.powerStat, output, calcBase) }
- 	end
++	end
 +	local offence, defence = self:CalculateCombinedOffDefStat(output, calcBase)
 +	return { offence = offence, defence = defence, singleStat = offence }
 +end
 +
-+function CalcsTabClass:PowerBuilder()
-+	local calcFunc, calcBase = self:GetMiscCalculator()
++-- Each report (and each helper operation) owns its observer and relevance memo.
++function CalcsTabClass:CreateNodePowerCalculator(calcFunc, disableRelevance)
++	local useFullDPS = self.powerStat and self.powerStat.requiresFullDPS or false
+ 	local calcOptions = {
+ 		skipEHP = not (self.powerStat and self.powerStat.requiresEHP),
+ 		skipFullDPS = not useFullDPS,
+ 	}
++	local initialized = disableRelevance
++	local relevance
++	return function(override)
++		-- Defer the recording pass until after the traversal's initial yield.
++		-- The UI fallback does no recording when helpers finish all candidates.
++		if not initialized then
++			initialized = true
++			local observation = self.calcs.newQueryObserver()
++			calcOptions.queryObserver = observation
++			local ok, nullOutput = pcall(calcFunc, { }, useFullDPS, calcOptions)
++			observation:Seal()
++			calcOptions.queryObserver = nil
++			if not ok then error(nullOutput, 0) end
++			relevance = self.calcs.newNodeRelevance(self.mainEnv, observation, nullOutput)
++		end
++		if relevance and relevance:CanSkip(override) then return relevance.output end
++		return calcFunc(override, useFullDPS, calcOptions)
++	end
++end
++
++---@param disableRelevance boolean? Private validation opt-out; never persisted.
++function CalcsTabClass:PowerBuilder(disableRelevance)
+ 	local calcFunc, calcBase = self:GetMiscCalculator()
+-	local relevance
+-	local function calcPower(override)
+-		if relevance and relevance:CanSkip(override) then
+-			return relevance.output
+-		end
+-		return calcFunc(override, useFullDPS, calcOptions)
+-	end
++	calcFunc = self:CreateNodePowerCalculator(calcFunc, disableRelevance)
 +	self.nodePowerDelegation = nil
 +	local results
-+	if self.evaluateNodePowerBatch and self.nodePowerBatchAvailable and self:nodePowerBatchAvailable() then
++	if not disableRelevance and self.evaluateNodePowerBatch and self.nodePowerBatchAvailable and self:nodePowerBatchAvailable() then
 +		-- Enumerate the existing walk without calculations or ready/progress publication.
 +		-- Replaying that walk preserves its cache keys and exact UI merge order.
 +		local items = { }
@@ -68,7 +100,22 @@ index fe46acdfe5f57129f2c41dab60881d7d7e9a68f8..c4e539765dea04ffa79bf0a30a7a3cbd
  	local cache = { }
  	local radiusNodes = { }
  	for _, jewel in ipairs(self.mainEnv.radiusJewelList) do
-@@ -586,6 +616,7 @@ function CalcsTabClass:PowerBuilder()
+@@ -588,21 +642,10 @@
+ 		coroutine.yield()
+ 	end
+ 
+-	if not disableRelevance then
+-		local observation = self.calcs.newQueryObserver()
+-		calcOptions.queryObserver = observation
+-		local ok, nullOutput = pcall(calcPower, { })
+-		observation:Seal()
+-		calcOptions.queryObserver = nil
+-		if not ok then
+-			error(nullOutput, 0)
+-		end
+-		relevance = self.calcs.newNodeRelevance(self.mainEnv, observation, nullOutput)
+-	end
+-
  	local function buildMasteryEffectNode(node, effect)
  		local effectNode = {
  			id = node.id,
@@ -76,7 +123,7 @@ index fe46acdfe5f57129f2c41dab60881d7d7e9a68f8..c4e539765dea04ffa79bf0a30a7a3cbd
  			type = node.type,
  			name = node.name,
  			sd = { },
-@@ -604,16 +635,16 @@ function CalcsTabClass:PowerBuilder()
+@@ -621,16 +664,16 @@
  
  	local function calculateAddNodePower(power, distance, node, output, buildPathNodes)
  		if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
@@ -96,7 +143,7 @@ index fe46acdfe5f57129f2c41dab60881d7d7e9a68f8..c4e539765dea04ffa79bf0a30a7a3cbd
  			power.singleStat = power.offence
  			if node.path and not node.ascendancyName then
  				newPowerMax.offence = m_max(newPowerMax.offence, power.offence)
-@@ -699,7 +730,7 @@ function CalcsTabClass:PowerBuilder()
+@@ -716,7 +759,7 @@
  				end
  				local output = cache[key]
  				if self.powerStat and self.powerStat.stat and not self.powerStat.ignoreForNodes then
@@ -105,7 +152,7 @@ index fe46acdfe5f57129f2c41dab60881d7d7e9a68f8..c4e539765dea04ffa79bf0a30a7a3cbd
  					if node.depends and not node.ascendancyName then
  						node.power.pathPower = node.power.singleStat
  						local pathNodes = { }
-@@ -707,7 +738,7 @@ function CalcsTabClass:PowerBuilder()
+@@ -724,7 +767,7 @@
  							pathNodes[node] = true
  						end
  						if #node.depends > 1 then
@@ -114,7 +161,7 @@ index fe46acdfe5f57129f2c41dab60881d7d7e9a68f8..c4e539765dea04ffa79bf0a30a7a3cbd
  						end
  					end
  				end
-@@ -725,7 +756,7 @@ function CalcsTabClass:PowerBuilder()
+@@ -742,7 +785,7 @@
  			end
  			nodeIndex = nodeIndex + 1
  			if coroutine.running() and GetTime() - start > 100 then
@@ -123,7 +170,7 @@ index fe46acdfe5f57129f2c41dab60881d7d7e9a68f8..c4e539765dea04ffa79bf0a30a7a3cbd
  					self.build.powerBuilderProgressCallback(m_floor(nodeIndex/total*100))
  				end
  				coroutine.yield()
-@@ -771,7 +802,7 @@ function CalcsTabClass:PowerBuilder()
+@@ -788,7 +831,7 @@
  					end
  					nodeIndex = nodeIndex + 1
  					if coroutine.running() and GetTime() - start > 100 then
@@ -132,7 +179,7 @@ index fe46acdfe5f57129f2c41dab60881d7d7e9a68f8..c4e539765dea04ffa79bf0a30a7a3cbd
  							self.build.powerBuilderProgressCallback(m_floor(nodeIndex/total*100))
  						end
  						coroutine.yield()
-@@ -795,10 +826,10 @@ function CalcsTabClass:PowerBuilder()
+@@ -812,10 +855,10 @@
  				cache[key] = calcPower({ addNodes = { [node] = true } })
  			end
  			local output = cache[key]
@@ -145,7 +192,7 @@ index fe46acdfe5f57129f2c41dab60881d7d7e9a68f8..c4e539765dea04ffa79bf0a30a7a3cbd
  					self.build.powerBuilderProgressCallback(m_floor(nodeIndex/total*100))
  				end
  				coroutine.yield()
-@@ -806,8 +837,10 @@ function CalcsTabClass:PowerBuilder()
+@@ -823,8 +866,10 @@
  			end
  		end
  	end

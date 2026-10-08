@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdir, readFile, writeFile, access } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { sha256, validateSourceLedger } from './source-ledger.mjs';
+import { sha256, validateSourceLedger, validatePreparedRelevance } from './source-ledger.mjs';
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const runtimeDir = join(appDir, '.runtime');
@@ -58,6 +58,7 @@ if (JSON.stringify(changed) !== JSON.stringify(expected)) {
 for (const [path, hash] of Object.entries(pin.compositePatch.resultBlobHashes)) {
   if (run('git', ['hash-object', '--no-filters', path], sourceDir) !== hash) throw new Error(`Patched source differs from the pinned PR composite: ${path}`);
 }
+await validatePreparedRelevance(appDir, sourceDir, pin);
 for (const [adapter, compatibility] of Object.entries(pin.adapters)) {
   // Chained pack-time overlays verify their untouched checkout separately from
   // the previous overlay's in-memory result, which their own adapter checks.

@@ -38,9 +38,10 @@ where #10371 and #10372 both change `ItemDBControl.lua`, and where #10313 is
 applied after #10373, followed by #10381. Those three PRs overlap in
 `CalcsTab.lua` and `TestPowerReport_spec.lua`; the resolution keeps #10373's
 `useClusterPower` gating, #10313's stage options, #10381's context-aware cache
-keys, and all specs. The composite SHA-256 is
-`6e2cd05cd6d59d73d876b83f756e9ebd2c014837759557cc4d124312ca444d57`
-and its result tree is `541722082e47dd42809cc571793c52ca1fc1ef24`.
+keys, and all specs. The composite also includes the required local relevance
+patch described below. Its SHA-256 is
+`a17b2cb828eee3483e7b89c720653447733f8053752c7b5ca494853eb7891cea`
+and its result tree is `adb0454235cd52bd22b83c14d4c7153e4017daa6`.
 
 The maintainer-supplied 2026-09-30 gem-dropdown hover patch is preserved in
 `../patches/gem-dropdown-hover-tooltip.patch` (SHA-256
@@ -426,7 +427,8 @@ The October 6 browser node-power adapter is retained in
 `../patches/node-power-delegation.patch` and checked by
 `../scripts/patches/node-power-patch.mjs`. The pin records its patch and exact
 CalcsTab source/result identities. Every pack and release includes it; the
-prepared desktop checkout and composite remain unchanged. It shares the
+adapter itself leaves the prepared desktop checkout unchanged. The source
+composite also carries the relevance patch documented below. It shares the
 existing bounded helper pool, preserving PoB calculation functions, #10381's
 context-aware cache keys, and result merge order. Eligible release sessions enable it by default;
 `?nodePowerHelpers=0` forces serial calculation for diagnostics.
@@ -490,3 +492,22 @@ both Juggler Runtime and WorkerMain and rejects automation without the upstream
 explicit `--firefox-executable` may select a separate test installation; no
 installed browser or user profile is patched by the profiler. Browser and
 harness identities remain in the report.
+
+### Power Report relevance pruning (October 8)
+
+The source composite now includes the separate local
+`../patches/power-report-relevance-pruning.patch` after the six upstream PRs.
+Its SHA-256 is
+`03d98724df698353df471904ae528c9dfd450cbb05d4ac934f79d33db1c843e6`.
+The 13-file source/spec patch records calculation reads and conservatively
+reuses the unchanged output for irrelevant pure node additions. Uncertain
+cases and unsafe cached calculations retain the normal calculation path.
+It is pending upstream submission and is required in future bundles.
+
+The checked node-power delegation patch is rebased on that source. It shares
+`CreateNodePowerCalculator` between the serial fallback and helper operations;
+observers and node memos last for one operation only. Helpers construct it
+after selecting the report metric and obtaining a fresh calculator. The
+private unpruned validation path also bypasses delegation. This integration
+does not change report traversal, cache keys or merge order. See
+`../docs/BUNDLED_POB_CHANGES.md` for retention and upstream absorption rules.

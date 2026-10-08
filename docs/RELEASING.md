@@ -110,3 +110,18 @@ authority. Production credentials stay exclusively with the private operator.
 
 Every generation carries the pinned Path of Building license and provenance.
 Keep those bytes and their identities in the complete release inventory.
+
+### Required Power Report optimization in release artifacts
+
+All future candidates must include the `power-report-relevance-pruning`
+source overlay and its browser helper integration. Before building, run the
+source-ledger/unit checks and follow the affected validation route in
+[DEVELOPMENT.md](DEVELOPMENT.md#retained-power-report-relevance-pruning).
+`npm run pack` validates the retained patch and composed source identities;
+the resulting payload provenance records the overlay. Confirm the candidate's
+provenance includes it when reviewing a release or an upstream pin refresh.
+
+Promote the verified exact-SHA artifact through the existing private operator
+handoff. Do not apply a patch during deployment or rebuild the artifact there.
+Keep carrying this optimization until equivalent upstream behavior is verified
+and its removal is recorded in the source ledger and bundled inventory.

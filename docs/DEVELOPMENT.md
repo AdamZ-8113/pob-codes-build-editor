@@ -54,7 +54,9 @@ retained change blocks already in the target tree (`absorbed`), and mixed
 absorption (`partial`). PR state is informational; a merged flag never proves
 absorption. Individual PRs are diagnosed independently because their recorded
 composite includes an overlap resolution. That composite prepares the candidate
-source, followed by the six authoritative pack-time transforms in packer order.
+source, including the required local relevance patch, followed by the
+authoritative pack-time transforms in packer order. Source-local patches have
+separate absorption entries; prerequisite resolution follows the composite.
 Failure blocks dependent stages. Result-only adapters report locked-path drift.
 The report's `touchedPaths` remain separate from patch applicability.
 
@@ -173,6 +175,29 @@ migration of users' saved files.
 All automated browser runs are headless. Ordinary local tests must not be aimed
 at production. `npm run test:e2e:production-smoke` is the explicit live-site
 opt-in and is appropriate only for release verification.
+
+### Retained Power Report relevance pruning
+
+Every source refresh must retain `power-report-relevance-pruning` from
+`source-pin.json`, after the six PR overlays and before pack-time adapters.
+The independent patch is `patches/power-report-relevance-pruning.patch`; its
+13 source/spec files are also included in `patches/pob-pr-composite.patch`.
+Regenerate the composite and the `nodePowerDelegation` source/result identities
+from the actual patch chain. Do not copy hashes from an edited prepared tree.
+The source ledger rejects omission of this required source layer.
+
+Changes to this integration require the retained Power Report LuaJIT/Busted
+regressions, the source-ledger and node-power adapter unit tests,
+`npm run test:browser -- --only test-power-report-relevance`, and browser
+helper coverage. Check serial and parallel results, Full DPS/minions, defensive
+metrics, transformed nodes, and report/build changes. Each helper operation
+must create its relevance calculator after selecting the metric; do not reuse
+its observer across operations. The private `PowerBuilder(true)` validation
+path disables both pruning and delegation for an unpruned serial reference.
+Native LuaJIT benchmark improvements are not browser timing guarantees.
+
+See [the bundled inventory](BUNDLED_POB_CHANGES.md#required-local-source-patch)
+for removal criteria and [release requirements](RELEASING.md).
 
 ## Calculation optimization coverage
 

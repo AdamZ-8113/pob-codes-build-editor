@@ -22,6 +22,7 @@
     "test-runtime-memory.mjs": "Manual Windows private-commit memory budgets and saved baseline binaries.",
     "test-selected-item-images.mjs": "Linux shadow runs fail the selected-item idle-frame assertion; manual until the platform/frame behavior is investigated.",
     "test-text-width-cache.mjs": "Exact tooltip pixel parity fails in Linux Chrome and bundled Chromium; manual visual acceptance with unchanged equality assertions.",
-    "test-unique-comparison-delay.mjs": "Linux shadow runners observe two deferred frames where the harness requires five; manual machine-sensitive timing acceptance with unchanged thresholds."
+    "test-unique-comparison-delay.mjs": "Linux shadow runners observe two deferred frames where the harness requires five; manual machine-sensitive timing acceptance with unchanged thresholds.",
+    "test-power-report-relevance.mjs": "Exact unpruned/pruned browser report parity for scalar, defensive and minion Full DPS; requires a built and packed runtime, outside the curated fast harness subset."
   }
 }

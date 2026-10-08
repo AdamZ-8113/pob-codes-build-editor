@@ -34,9 +34,33 @@ The composite resolves overlapping files semantically. In particular, the
 power-report result keeps #10373's cluster gating, #10313's calculation-stage
 options, and #10381's context-aware cache keys and regression coverage.
 
+## Required local source patch
+
+`power-report-relevance-pruning` is retained in
+[`power-report-relevance-pruning.patch`](../patches/power-report-relevance-pruning.patch).
+It is composed **after all six PRs and before the browser adapters**, using the
+`source-composite` stage. It has not yet been submitted as a PoB PR.
+
+For each Power Report, a recording calculation identifies which modifiers the
+selected metric reads. Simple node additions that provably cannot affect those
+reads reuse the unchanged result. A zero result alone never makes a node safe
+to skip. Removals, mixed changes and uncertain interactions use normal
+calculations; unsafe cached calculations disable pruning for that report.
+
+The browser's serial path and each helper operation create their own observer
+and relevance memo. Importing a build or starting another report creates fresh
+state. The retained patch includes the desktop regression tests; the browser
+adapter preserves traversal, cache keys, result order and fallback behavior.
+
+**Carry this patch in every future bundle and deployment.** Source-ledger
+validation rejects its absence or a broken composition. On an upstream pin
+refresh, review the retained patch alongside the six PRs. Remove it only after
+verifying equivalent upstream behavior and updating the ledger, regressions and
+this inventory together. An upstream merge by itself does not update a bundle.
+
 ## Pack-time PoB patches
 
-These patches are applied after the upstream composite, in this order.
+These patches are applied after the upstream-plus-local source composite, in this order.
 
 | Ledger identity | Change carried by the build |
 | --- | --- |

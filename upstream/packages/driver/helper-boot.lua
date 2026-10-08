@@ -51,6 +51,7 @@ function helperCall(text)
         build.calcsTab.powerStat = selected
         if operation ~= job.operation then
             calc, calcBase = build.calcsTab:GetMiscCalculator()
+            calc = build.calcsTab:CreateNodePowerCalculator(calc)
             operation = job.operation
         end
         local function resolveNode(ref)

@@ -47,6 +47,14 @@ export function analyzeDrift({ pin, patches, baseFiles, targetFiles, prStates = 
     const outcome = classifyPatch({ rawFiles: targetFiles, sections: parseDriftPatch(patches[overlay.patchFile]), touchedPaths: overlay.files.filter(path => changed.has(path)) });
     entries.push(entry(`pr-${overlay.number}`, overlay.files, outcome, prStates[`pob:${overlay.number}`] ?? 'unknown'));
   }
+  // Source-local patches are already in the composite. Classify their own
+  // hunks against upstream, but use the composite to resolve prerequisite PRs.
+  for (const overlay of pin.overlays.filter(item => item.applicationStage === 'source-composite')) {
+    const outcome = classifyPatch({ rawFiles: targetFiles, sections: parseDriftPatch(patches[overlay.patchFile]),
+      touchedPaths: overlay.files.filter(path => changed.has(path)) });
+    entries.push(entry(overlay.id, overlay.files, outcome.classification === 'absorbed' || outcome.classification === 'partial'
+      ? outcome : composite, overlay.upstreamPr ? prStates[`pob:${overlay.upstreamPr.number}`] ?? 'unknown' : null));
+  }
   const prepared = composite.output;
   if (prepared) identityOutput.compositePatch = { resultBlobHashes: hashes(prepared, pin.compositePatch.files) };
   let current = prepared ? { ...prepared } : { ...targetFiles };
