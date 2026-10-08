@@ -52,6 +52,10 @@ success.
 Failed browser acceptance also prints the last 100 console messages, truncated
 to 1,000 characters each, pending fixture requests, and startup state so stalls
 can be diagnosed from the job log before Playwright finalizes the test status.
+The failure capture also requests a bounded Chromium worker stack snapshot and
+immediately resumes paused workers. A headless regression checks that a busy
+worker is captured and continues running; candidate bytes and phase budgets are
+unchanged by this diagnostic.
 
 Each main push retains one CI candidate for seven days, and each promoted SHA
 retains a second transport copy for seven days. With the current roughly

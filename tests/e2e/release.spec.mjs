@@ -3,6 +3,7 @@ import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { deflateSync, inflateSync } from "node:zlib";
 import { createReleaseDiagnostics } from "./release-diagnostics.mjs";
+import { watchWorkerStacks } from "./worker-stacks.mjs";
 
 const origin = "http://127.0.0.1:3011";
 const fixture = (await readFile(new URL("../../fixtures/guided import parity desktop 329.txt", import.meta.url), "utf8")).trim();
@@ -27,6 +28,34 @@ async function ready(page) {
   expect(await page.evaluate(() => window.__DESKTOP_POB__.errors)).toEqual([]);
   expect(await page.evaluate(() => window.__DESKTOP_POB__.ready)).toBe(true);
 }
+
+test("failure diagnostics capture and resume a busy worker", async ({ page, context }) => {
+  test.setTimeout(15_000);
+  await context.route("**/*", route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort("blockedbyclient"));
+  let workers;
+  try {
+    await page.goto("/404.html");
+    await page.evaluate(() => {
+      const blob = new Blob(["onmessage = function diagnosticBusyWorker() { postMessage('running'); const end = performance.now() + 3500; while (performance.now() < end) Math.sqrt(Math.random()); postMessage('finished'); };"], { type: "text/javascript" });
+      window.__STACK_WORKER__ = new Worker(URL.createObjectURL(blob));
+    });
+    await new Promise(resolve => setTimeout(resolve, 200));
+    await page.evaluate(() => new Promise(resolve => {
+      window.__STACK_WORKER__.onmessage = ({ data }) => {
+        if (data === "running") resolve();
+        if (data === "finished") window.__STACK_WORKER_FINISHED__ = true;
+      };
+      window.__STACK_WORKER__.postMessage("start");
+    }));
+    workers = await watchWorkerStacks(context, page);
+    const stacks = await workers.capture();
+    expect(stacks.some(worker => worker.stack?.some(frame => frame.function === "diagnosticBusyWorker"))).toBe(true);
+    await page.waitForFunction(() => window.__STACK_WORKER_FINISHED__, null, { timeout: 5_000 });
+  } finally {
+    await page.evaluate(() => window.__STACK_WORKER__?.terminate()).catch(() => {});
+    await workers?.close();
+  }
+});
 
 test("pagehide releases runtime workers when graceful shutdown cannot reply", async ({ page, context }) => {
   await context.route("**/*", route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort("blockedbyclient"));
@@ -325,7 +354,13 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
   expect(blocked).toEqual([]);
   });
   } catch (error) {
+    let workerStacks;
+    try {
+      const workers = await watchWorkerStacks(context, page);
+      try { workerStacks = await workers.capture(); } finally { await workers.close(); }
+    } catch (diagnosticError) { workerStacks = { error: String(diagnosticError).slice(0, 500) }; }
     console.error("Release browser diagnostics:", JSON.stringify({ console: browserConsole,
+      workers: workerStacks,
       pendingRequests: [...pendingRequests].slice(-20).map(request => request.url()),
       startup: await page.evaluate(() => ({ ready: window.__DESKTOP_POB__?.ready,
         frames: window.__DESKTOP_POB__?.frames, errors: window.__DESKTOP_POB__?.errors,
