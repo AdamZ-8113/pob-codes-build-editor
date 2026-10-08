@@ -4,6 +4,8 @@ import { gzipSync } from "node:zlib";
 import { mkdtemp, mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 import { discoverCandidateBundle, verifyReleaseCandidate } from "../../scripts/release/verify-release-candidate.mjs";
 
@@ -111,4 +113,33 @@ test("candidate bundle discovery rejects missing or extra transport files", asyn
   t.after(() => rm(candidate.root, { recursive: true, force: true }));
   await writeFile(join(candidate.bundle, "extra.txt"), "not allowed");
   await assert.rejects(discoverCandidateBundle(candidate.bundle), /must contain only/);
+});
+
+test("release archiver produces verifiable long-path archives with the platform tar", async t => {
+  const root = await mkdtemp(join(tmpdir(), "editor-tar-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const runtime = join(root, ".runtime");
+  const generation = "a".repeat(24);
+  const path = `import2/releases/${generation}/payload/packages/${"c".repeat(64)}.zip`;
+  const payload = Buffer.from("long-path archive regression\n");
+  const target = join(runtime, "import2-release", path);
+  await mkdir(join(target, ".."), { recursive: true });
+  await writeFile(target, payload);
+  const inventoryBytes = Buffer.from(JSON.stringify({ schemaVersion: 1, generation,
+    files: [{ path, bytes: payload.length, sha256: digest(payload) }],
+    totals: { files: 1, bytes: payload.length } }));
+  const record = { schemaVersion: 1, contractVersion: 2, generation, predecessor: null,
+    publicCommit: "b".repeat(40), inventorySha256: digest(inventoryBytes) };
+  await writeFile(join(runtime, "release-inventory.json"), inventoryBytes);
+  const recordFile = join(runtime, "release-record.json");
+  await writeFile(recordFile, JSON.stringify(record));
+  const result = spawnSync(process.execPath,
+    [fileURLToPath(new URL("../../scripts/release/archive-release.mjs", import.meta.url))],
+    { cwd: root, encoding: "utf8", windowsHide: true });
+  assert.equal(result.status, 0, result.stderr);
+  const verified = await verifyReleaseCandidate({ recordFile,
+    inventoryFile: join(runtime, "release-inventory.json"),
+    archiveFile: join(runtime, "release-assets", `pob-codes-build-editor-${generation}.tar.gz`),
+    targetSha: record.publicCommit });
+  assert.equal(verified.files, 1);
 });

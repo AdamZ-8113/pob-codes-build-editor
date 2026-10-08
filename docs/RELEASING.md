@@ -14,6 +14,8 @@ other production secrets. Source ownership and deployment authority are separate
    seven-day `ci-candidate-<sha>-<run-id>-<attempt>` artifact. Pull request,
    fork, manual, failed, cancelled, and incomplete CI runs cannot publish an
    eligible source candidate.
+   Archives explicitly use POSIX PAX format on every platform so long asset
+   paths pass the strict streaming verifier without GNU long-link headers.
 3. Dispatch the **Build Editor Release Artifact** workflow
    (`.github/workflows/deploy-import2.yml`, retained filename for continuity)
    from `main`, supplying `commit_sha`.
