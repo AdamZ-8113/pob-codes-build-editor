@@ -89,7 +89,7 @@ function DebugReportActions({ onDebugReport }: { onDebugReport: (action: DebugRe
           type="button"
           disabled={state === "working"}
           onClick={() => void run("copy")}
-          className="pw:rounded pw:border pw:border-base-300 pw:bg-base-200 pw:px-2 pw:py-1 pw:text-xs pw:hover:bg-base-300 pw:disabled:opacity-50"
+          className="btn"
         >
           Copy debug report
         </button>
@@ -97,7 +97,7 @@ function DebugReportActions({ onDebugReport }: { onDebugReport: (action: DebugRe
           type="button"
           disabled={state === "working"}
           onClick={() => void run("download")}
-          className="pw:rounded pw:border pw:border-base-300 pw:bg-base-200 pw:px-2 pw:py-1 pw:text-xs pw:hover:bg-base-300 pw:disabled:opacity-50"
+          className="btn"
         >
           Download JSON
         </button>
