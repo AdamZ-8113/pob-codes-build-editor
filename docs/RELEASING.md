@@ -49,6 +49,8 @@ artifact ID and digest). Release-browser summaries report first-attempt and
 retry outcomes plus measured test/phase budget utilization. Their bounded,
 synthetic-fixture diagnostics are retained for seven days even after a flaky
 success.
+Failed browser acceptance also prints the last 100 console messages, truncated
+to 1,000 characters each, so startup stalls can be diagnosed from the job log.
 
 Each main push retains one CI candidate for seven days, and each promoted SHA
 retains a second transport copy for seven days. With the current roughly

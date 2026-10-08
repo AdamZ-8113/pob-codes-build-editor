@@ -30,6 +30,11 @@ async function ready(page) {
 
 test("candidate imports, edits, recalculates, shares and persists the displayed native build", async ({ page, context }, testInfo) => {
   const faults = [], blocked = [], assetPaths = [], uploads = [], resolutions = [], characterRequests = [];
+  const browserConsole = [];
+  page.on("console", message => {
+    browserConsole.push(message.text().slice(0, 1000));
+    if (browserConsole.length > 100) browserConsole.shift();
+  });
   let importMode = "empty", releaseImport;
   let prefix, exported;
   const diagnostics = createReleaseDiagnostics(testInfo);
@@ -253,6 +258,7 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
     expect(typeof releaseImport).toBe("function");
     expect(decode(await exportCode())).toBe(beforeFailure);
   } finally {
+    if (testInfo.status !== testInfo.expectedStatus) console.error("Release browser diagnostics:", JSON.stringify(browserConsole));
     // Also release on assertion failure so route cleanup cannot hang the suite.
     releaseImport?.();
   }
