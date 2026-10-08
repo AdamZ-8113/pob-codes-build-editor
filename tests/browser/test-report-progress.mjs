@@ -19,8 +19,10 @@ const diagnostics = 'local observedToastIds = {}\n' + (await readFile(new URL('.
                     state.toastMessage = toast and toast.message
                     state.toastMode = toast and toast.mode
                     state.reportToasts = 0
+                    state.retainedReportToasts = 0
                     for seen in pairs(observedToastIds) do
                         local entry = ToastNotification:Get(seen)
+                        if entry then state.retainedReportToasts = state.retainedReportToasts + 1 end
                         if entry and entry.mode ~= 'HIDING' then state.reportToasts = state.reportToasts + 1 end
                     end
                     state.toastShown =`);
@@ -102,6 +104,9 @@ try {
       assert.equal(completed.runs.at(-1).reportCallbacks,1);
       assert.equal(completed.toastShown,false);
       assert.equal(completed.reportToasts,0);
+      assert.equal(completed.retainedReportToasts,0,'Completion removes the notification without waiting for animation frames');
+      await page.waitForTimeout(200);
+      assert.equal((await state()).retainedReportToasts,0,'The idle completed report has no stale percentage notification');
       assert.equal(completed.runs.find(r => r.id === pending.runs.at(-1).id).reportCallbacks,0);
       await select('metric','Hit DPS');
       await until(s => s.toastMode === 'SHOWN', 'Next report starts');

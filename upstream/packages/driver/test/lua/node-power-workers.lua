@@ -59,6 +59,34 @@ return function(install)
         assert(build.treeTab.powerBuilderToastId==nil)
         ToastNotification=originalToast
     end
+    -- A completed report must not leave an unreferenced HIDING toast on an idle
+    -- canvas. PoB's completion callback clears the ID before returning.
+    do
+        local originalToast = ToastNotification
+        local toasts, ready = {}, false
+        ToastNotification = {
+            ClearDismissed=function() end,
+            Remove=function(_,id,immediate)
+                if immediate then assert(ready); toasts[id]=nil
+                elseif toasts[id] then toasts[id].mode='HIDING' end
+            end,
+        }
+        local build = {treeTab={}, calcsTab={EvaluateNodePowerItem=function() end, BuildPower=function() end}}
+        build.powerBuilderCallback = function(value)
+            ready=true
+            ToastNotification:Remove(build.treeTab.powerBuilderToastId)
+            build.treeTab.powerBuilderToastId=nil
+            return value, nil, 'complete'
+        end
+        install(build)
+        build.treeTab.powerBuilderToastId='report'; toasts.report={mode='SHOWN'}
+        local a,b,c=build.powerBuilderCallback('published')
+        assert(a=='published' and b==nil and c=='complete')
+        assert(not toasts.report, 'Completion removes the actual toast, not just its ID')
+        assert(build.treeTab.powerBuilderToastId==nil)
+        build.powerBuilderCallback('no toast') -- Dismissed/absent indicators also complete.
+        ToastNotification=originalToast
+    end
     local function completeReply()
         if reply then return end
         reply={}

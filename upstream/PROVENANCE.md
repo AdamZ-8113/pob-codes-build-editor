@@ -498,7 +498,9 @@ chunk finishes, instead of waiting for the whole helper batch. Counts are scoped
 to the current request; cancelled/replaced requests and late updates cannot
 advance a new report. Final replies and tail handoffs count each item once,
 preserving the original total. Progress stays monotonic through the final
-merge and is capped at 99% until the completion callback removes the toast. It
+merge and is capped at 99% until the completion callback removes the toast
+immediately after publishing the report. Immediate removal avoids leaving a
+99% toast on an idle canvas before PoB's timed hide animation can finish. It
 respects dismissal, restores the indicator when reopening a pending heatmap,
 and removes stale report toasts on build replacement/shutdown. This changes no
 calculation scheduling or helper policy; PoB's existing toast throttle applies.

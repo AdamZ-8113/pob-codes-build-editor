@@ -25,6 +25,18 @@ return function(build)
     local currentEpoch = epoch
     local tab = build.calcsTab
     if not tab or type(tab.EvaluateNodePowerItem) ~= 'function' then return end
+    local complete = build.powerBuilderCallback
+    if complete then
+        build.powerBuilderCallback = function(...)
+            -- PoB clears the ID while starting a timed hide animation. The
+            -- browser may go idle before that animation gets another frame.
+            local tree = build.treeTab
+            local toastId = tree and tree.powerBuilderToastId
+            local result = table.pack(complete(...))
+            if toastId and ToastNotification then ToastNotification:Remove(toastId, true) end
+            return table.unpack(result, 1, result.n)
+        end
+    end
     local progress = build.powerBuilderProgressCallback
     local reportPercent = 0
     if progress then
