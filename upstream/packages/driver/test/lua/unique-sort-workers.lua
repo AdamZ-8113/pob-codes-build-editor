@@ -39,6 +39,9 @@ return function(install)
     local co, result = start(); assert(coroutine.status(co)=='dead' and result==nil)
     enabled = true
     co = start(); assert(coroutine.status(co)=='suspended')
+    assert(db.defaultText=='^7Sorting... (24%)', 'Show the completed UI share while helpers wait')
+    local waitingOk = coroutine.resume(co); assert(waitingOk)
+    assert(db.defaultText=='^7Sorting... (24%)', 'Waiting does not invent helper progress')
     assert(sent.xml=='complete build XML' and sent.sortMode=='Life' and #sent.items==19)
     assert(sent.items[1].key=='key-1' and sent.items[1].raw=='raw-1')
     reply = {}; for i,item in ipairs(sent.items) do reply[i]=item.key:match('%d+') end; reply[1],reply[2]='0','-inf'

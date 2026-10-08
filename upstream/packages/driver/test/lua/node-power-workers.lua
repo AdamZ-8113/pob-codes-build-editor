@@ -31,7 +31,7 @@ return function(install)
         end
         build.calcsTab=tab()
         build.powerBuilderProgressCallback=function(percent)
-            assert(percent == nil, 'Start is indeterminate, not a fabricated percentage')
+            assert(percent == 0, 'New reports show zero before evaluations complete')
             local now = GetTime()
             if now-build.treeTab.lastProgressToastUpdate < 100 then return end
             build.treeTab.lastProgressToastUpdate=now
@@ -69,7 +69,10 @@ return function(install)
     end
     local function setup()
         sent, reply = nil, nil
+        local percentages = {}
         local build = {outputRevision=1, itemsTab={items={}}, spec={nodes={}, tree={clusterNodeMap={}}},
+            percentages=percentages,
+            powerBuilderProgressCallback=function(percent) percentages[#percentages+1]=percent end,
             SaveDB=function() return 'public fixture XML' end}
         local tab = {powerStat=data.powerStatList[2], nodePowerMaxDepth=5, BuildPower=function() return 'serial control' end}
         build.calcsTab = tab
@@ -156,6 +159,19 @@ return function(install)
     assert(combined.nodePowerStatus.remoteCompleted + combined.nodePowerStatus.localCompleted == 200)
     assert(combined.nodePowerStatus.remoteCompleted == combined.nodePowerDelegation.remote)
     assert(combined.nodePowerStatus.localCompleted == combined.nodePowerDelegation.localCount)
+    -- Waiting helpers still show measured local work; the merge cannot regress.
+    local progressBuild, progressTab, beginProgress=setup()
+    pending=beginProgress()
+    assert(progressBuild.percentages[1] > 0 and progressBuild.percentages[1] < 25)
+    for _=1,20 do local success,result=coroutine.resume(pending); assert(success and result==nil) end
+    assert(progressBuild.percentages[#progressBuild.percentages]==25, 'Only the completed UI quarter is counted while helpers wait')
+    repeat completeReply(); local success; success,values=coroutine.resume(pending); assert(success,values) until coroutine.status(pending)=='dead'
+    assert(progressBuild.percentages[#progressBuild.percentages]==99, 'Reserve completion for the report callback')
+    progressBuild.powerBuilderProgressCallback(10)
+    assert(progressBuild.percentages[#progressBuild.percentages]==99, 'Merge progress never regresses')
+    for i=2,#progressBuild.percentages do assert(progressBuild.percentages[i]>=progressBuild.percentages[i-1]) end
+    progressTab.powerBuildFlag=true; progressTab:BuildPower()
+    assert(progressBuild.percentages[#progressBuild.percentages]==0, 'Replacement resets progress')
     -- Expensive valid work must not be discarded merely because total time exceeds 60s.
     local _, slow, beginSlow=setup(); pending=beginSlow(); clock=clock+61000
     reply={}; for i,item in ipairs(sent.items) do reply[i]={singleStat='1'} end

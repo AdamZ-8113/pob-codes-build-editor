@@ -486,10 +486,15 @@ Offence/Defence replies preserve all three numeric fields. Each pool import and
 chunk retains its bounded deadline; total report time no longer discards healthy
 long-running work after 60 seconds and repeats it serially.
 The node-power adapter announces each report through PoB's existing
-indeterminate progress callback before planning or helper calculation. It
+progress callback at 0% before planning or helper calculation. It publishes the
+fraction of evaluated items from UI work and validated helper replies, preserving
+the original total across handoffs. Progress stays monotonic through the final
+merge and is capped at 99% until the completion callback removes the toast. It
 respects dismissal, restores the indicator when reopening a pending heatmap,
 and removes stale report toasts on build replacement/shutdown. This changes no
-calculation scheduling or helper policy and sends no per-frame progress updates.
+calculation scheduling or helper policy; PoB's existing toast throttle applies.
+The unique-item sorting adapter likewise displays the percentage of evaluated
+items while waiting, counting UI evaluations and validated helper replies.
 
 If helpers finish before the UI share, one handoff moves at least 25 remaining
 serializable evaluations to the idle pool. Completed evaluations keep their

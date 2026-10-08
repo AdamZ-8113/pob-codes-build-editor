@@ -7,7 +7,7 @@
     "test-unique-database.mjs"
   ],
   "localOnly": {
-    "test-report-progress.mjs": "Power-report toast lifecycle with real admitted/disabled helpers and delayed replies; requires a built dev runtime and desktop helper admission.",
+    "test-report-progress.mjs": "Power-report toast lifecycle and item-sort percentages with real helpers and delayed replies; requires a built dev runtime and desktop helper admission.",
     "test-browser.mjs": "Linux shadow runs time out reloading after the native OPFS save despite passing the editing/save checks; manual until reload lifecycle synchronization is repaired.",
     "test-calculation-scheduling.mjs": "Four-fixture profiling took 4.8–10 minutes on Linux shadow runners, close to the harness deadline; manual until a bounded functional subset is separated.",
     "test-header.mjs": "Existing 320px layout overflow (fullscreen button extends beyond the viewport); manual until the responsive layout is repaired. Also asserts platform font coordinates.",

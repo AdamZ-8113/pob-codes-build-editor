@@ -25,6 +25,16 @@ return function(build)
     local currentEpoch = epoch
     local tab = build.calcsTab
     if not tab or type(tab.EvaluateNodePowerItem) ~= 'function' then return end
+    local progress = build.powerBuilderProgressCallback
+    local reportPercent = 0
+    if progress then
+        build.powerBuilderProgressCallback = function(percent)
+            -- The final merge replays PoB's node walk. Keep its percentages
+            -- from moving backwards after delegated evaluations complete.
+            reportPercent = math.max(reportPercent, math.min(99, percent or 0))
+            progress(reportPercent)
+        end
+    end
     local json = require('dkjson')
     local evaluate = tab.EvaluateNodePowerItem
     tab.EvaluateNodePowerItem = function(self, ...)
@@ -37,15 +47,17 @@ return function(build)
     local buildPower = tab.BuildPower
     tab.BuildPower = function(self, ...)
         local tree = build.treeTab
-        -- Helpers do not publish percentages while calculating. Announce the
-        -- report before planning/waiting, using PoB's indeterminate message.
+        -- Announce 0% before planning, then retain measured progress on reopen.
         -- Reopening a hidden heatmap resumes its indicator; manual dismissal
         -- remains respected until a new report starts.
         local resumeProgress = self.powerBuilder and tree and ToastNotification
             and not ToastNotification:Exists(tree.powerBuilderToastId)
             and not ToastNotification:WasDismissed(tree.powerBuilderToastId)
         if build.powerBuilderProgressCallback and (self.powerBuildFlag or resumeProgress) then
-            if self.powerBuildFlag then clearProgress(tree) end
+            if self.powerBuildFlag then
+                reportPercent = 0
+                clearProgress(tree)
+            end
             if tree then tree.lastProgressToastUpdate = -math.huge end
             build.powerBuilderProgressCallback()
         end
@@ -186,6 +198,12 @@ return function(build)
                 values[index] = self:EvaluateNodePowerItem(items[index], calc, base)
                 localIndex = localIndex + 1
                 if GetTime() >= deadline then break end
+            end
+            if build.powerBuilderProgressCallback then
+                -- Count evaluated items, including validated helper replies.
+                -- Handoffs preserve the original total and never double count.
+                build.powerBuilderProgressCallback(math.floor(
+                    (status.localCompleted + status.remoteCompleted) / #items * 100))
             end
             if remoteDone and localIndex > #localItems then
                 self.nodePowerDelegation.completed = true

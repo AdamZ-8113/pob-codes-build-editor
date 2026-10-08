@@ -65,7 +65,8 @@ return function(build)
                 if GetTime() >= deadline then break end
             end
             if remoteDone and localIndex > #localItems then return result end
-            self.defaultText = '^7Sorting...'
+            local completed = localIndex - 1 + (remoteDone and #remoteItems or 0)
+            self.defaultText = string.format('^7Sorting... (%d%%)', math.floor(completed / #list * 100))
             coroutine.yield()
         end
     end
