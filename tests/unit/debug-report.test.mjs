@@ -30,7 +30,9 @@ test("debug report keeps useful aggregate evidence and excludes private strings"
     configuration: { calculationScheduling: "scheduled", renderReuse: true, payloadPrefetch: false },
     runtimeProfile: {
       wasmBytes: 200,
-      samples: { luaKiB: 12, summary: { MAIN: { count: 2, totalMs: 4, maxMs: 3 } }, privateBuild: secret },
+      samples: { luaKiB: 12, summary: { MAIN: { count: 2, totalMs: 4, maxMs: 3 } }, privateBuild: secret,
+        powerReport: {mode:'parallel', metric:'Full DPS', depth:10, helpers:3, remoteCompleted:150,
+          localCompleted:50, completed:true, privateBuild:secret} },
       helpers: {
         ready: 0,
         errors: [`Error: ${secret}`, "Helper timeout"],
@@ -56,6 +58,9 @@ test("debug report keeps useful aggregate evidence and excludes private strings"
   assert.doesNotMatch(serialized, /PrivateCharacter|secret\.xml|example\.test|\/user\/Adam/);
   assert.equal(report.schemaVersion, 1);
   assert.equal(report.memory.wasmBytes, 200);
+  assert.equal(report.runtime.calculations.powerReport.metric, 'Full DPS');
+  assert.equal(report.runtime.calculations.powerReport.remoteCompleted, 150);
+  assert.equal(report.runtime.calculations.powerReport.completed, true);
   assert.deepEqual(report.runtime.helpers.recentErrorKinds, ["other", "timeout"]);
   assert.deepEqual(report.runtime.filesystem.operations, { read: 9 });
   assert.equal(report.runtime.filesystem.payload.loadedPackageCount, 1);

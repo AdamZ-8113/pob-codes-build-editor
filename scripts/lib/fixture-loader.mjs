@@ -22,7 +22,7 @@ export function loadInput(file) {
   const fixture = JSON.parse(raw);
   if (fixture.schemaVersion !== 1 || !fixture.baseFixture || !Number.isInteger(fixture.itemId) ||
       !Number.isInteger(fixture.jewelTypeId)) {
-    throw new Error("Unsupported JSON fixture schema; expected the public Abyss fixture definition");
+    throw new Error("Unsupported JSON fixture schema; expected a public composite jewel fixture");
   }
   const base = path.resolve(path.dirname(absolute), fixture.baseFixture);
   if (path.dirname(base) !== path.dirname(absolute) || base.endsWith(".json")) {
@@ -31,7 +31,11 @@ export function loadInput(file) {
   let xml = loadInput(base).xml;
   const item = new RegExp(`<Item\\b[^>]*\\bid="${fixture.itemId}"[^>]*>[\\s\\S]*?</Item>`, "u");
   if (!item.test(xml) || !/<TimelessData\b[^>]*\/>/u.test(xml)) throw new Error("Fixture targets are missing");
-  xml = xml.replace(item, () => `<Item id="${fixture.itemId}">\nRarity: UNIQUE\n${fixture.itemName}\n${fixture.baseName}\nLimited to: 1 Historic\nImplicits: 0\n${fixture.seedLine}\nPassives affected are Conquered by the Abyssal\nHistoric\n</Item>`)
+  const families = {vaal:'Vaal', maraketh:'Maraketh', templar:'Templars', kalguur:'Kalguur'};
+  if (fixture.conqueror !== undefined && !Object.hasOwn(families, fixture.conqueror)) throw new Error('Unknown composite fixture conqueror');
+  const conquest = fixture.conqueror ? `Passives in radius are Conquered by the ${families[fixture.conqueror]}` : 'Passives affected are Conquered by the Abyssal';
+  const radius = fixture.conqueror ? 'Radius: Large\n' : '';
+  xml = xml.replace(item, () => `<Item id="${fixture.itemId}">\nRarity: UNIQUE\n${fixture.itemName}\n${fixture.baseName}\nLimited to: 1 Historic\n${radius}Implicits: 0\n${fixture.seedLine}\n${conquest}\nHistoric\n</Item>`)
     .replace(/<TimelessData\b[^>]*\/>/u, `<TimelessData jewelTypeId="${fixture.jewelTypeId}" jewelSocketId="${fixture.socketId}" devotionVariant1="1" devotionVariant2="1" searchList="" searchListFallback=""/>`);
   return { xml, hash: sha256(xml), fixtureRevision: fixture.sourceRevision };
 }

@@ -6,29 +6,53 @@ return function(build)
     local tab = build.calcsTab
     if not tab or type(tab.EvaluateNodePowerItem) ~= 'function' then return end
     local json = require('dkjson')
+    local evaluate = tab.EvaluateNodePowerItem
+    tab.EvaluateNodePowerItem = function(self, ...)
+        local result = evaluate(self, ...)
+        if self.nodePowerStatus then
+            self.nodePowerStatus.localCompleted = (self.nodePowerStatus.localCompleted or 0) + 1
+        end
+        return result
+    end
     local buildPower = tab.BuildPower
     tab.BuildPower = function(self, ...)
         if self.powerBuildFlag and self.nodePowerDelegation and not self.nodePowerDelegation.completed then
             CancelUniqueSort()
         end
-        return buildPower(self, ...)
+        if self.powerBuildFlag then
+            local eligible, reason = self:nodePowerBatchAvailable()
+            self.nodePowerStatus = {mode='serial', reason=reason or 'small-workload',
+                metric=(self.powerStat or data.powerStatList[1]).label,
+                depth=self.nodePowerMaxDepth or 'All', eligible=eligible,
+                localCompleted=0, remoteCompleted=0, completed=false}
+        end
+        local result = table.pack(buildPower(self, ...))
+        if self.nodePowerStatus and not self.powerBuildFlag and not self.powerBuilder then
+            self.nodePowerStatus.completed = true
+        end
+        return table.unpack(result, 1, result.n)
     end
     tab.nodePowerBatchAvailable = function(self)
         local depth = self.nodePowerMaxDepth
-        if NodePowerAvailable() < 1 or not self.powerStat or self.powerStat.label ~= 'Hit DPS'
-            or (depth ~= nil and depth ~= 5 and depth ~= 10 and depth ~= 15) then return false end
-        for _, item in pairs(build.itemsTab.items) do
-            local conquered = item.jewelData and item.jewelData.conqueredBy
-            if conquered and (type(conquered) ~= 'table' or type(conquered.conqueror) ~= 'table'
-                or conquered.conqueror.type ~= 'vaal') then return false end
+        if NodePowerAvailable() < 1 then return false, 'helpers-unavailable' end
+        if depth ~= nil and (type(depth) ~= 'number' or depth < 0 or depth == math.huge or depth ~= math.floor(depth)) then
+            return false, 'invalid-depth'
         end
-        return true
+        local selected = self.powerStat or data.powerStatList[1]
+        for _, stat in ipairs(data.powerStatList) do
+            if stat == selected then
+                if stat.ignoreForNodes then return false, 'metric-ignores-nodes' end
+                return true
+            end
+        end
+        return false, 'unknown-metric'
     end
     tab.evaluateNodePowerBatch = function(self, items, calc, base)
         if #items < 200 or not self:nodePowerBatchAvailable() then return end
         CancelUniqueSort()
-        local helpers, revision, metric, depth = NodePowerAvailable(), build.outputRevision, self.powerStat.label, self.nodePowerMaxDepth
-        local clusters, remote, localItems, remoteIndices = {}, {}, {}, {}
+        local helpers, revision, metric, depth = NodePowerAvailable(), build.outputRevision,
+            (self.powerStat or data.powerStatList[1]).label, self.nodePowerMaxDepth
+        local clusters, remote, localItems, remoteIndices, descriptions = {}, {}, {}, {}, {}
         for name, node in pairs(build.spec.tree.clusterNodeMap) do clusters[node] = name end
         local function describe(node)
             if clusters[node] then return {cluster=clusters[node]} end
@@ -47,36 +71,81 @@ return function(build)
                     end
                 end
             end
+            if valid then descriptions[index] = encoded end
             if not valid or index % (helpers + 1) == 0 then
                 localItems[#localItems+1] = index
             else
                 remote[#remote+1], remoteIndices[#remoteIndices+1] = encoded, index
             end
         end
-        if #remote == 0 then return end
+        if #remote == 0 then
+            if self.nodePowerStatus then self.nodePowerStatus.reason = 'unresolvable-nodes' end
+            return
+        end
         local xml = build:SaveDB('code')
-        if not xml then return end
+        if not xml then
+            if self.nodePowerStatus then self.nodePowerStatus.reason = 'snapshot-unavailable' end
+            return
+        end
         local id = BeginUniqueSort(json.encode({kind='nodePower', identity=currentEpoch..':'..revision,
             xml=xml, metric=metric, items=remote}))
-        local values, localIndex, remoteDone, started = {}, 1, false, GetTime()
+        local values, localIndex, remoteDone, handedOff = {}, 1, false, false
         self.nodePowerDelegation = {remote=#remote, localCount=#localItems, helpers=helpers, completed=false}
+        local status = self.nodePowerStatus or {}
+        self.nodePowerStatus = status
+        status.mode, status.reason = 'parallel', nil
+        status.remote, status.localCount, status.helpers = #remote, #localItems, helpers
+        status.localCompleted, status.remoteCompleted = 0, 0
+        local function fallback(reason)
+            status.mode, status.reason = 'serial', reason
+            CancelUniqueSort()
+        end
         while true do
             if epoch ~= currentEpoch or self.powerBuildFlag or build.outputRevision ~= revision
-                or self.powerStat.label ~= metric or self.nodePowerMaxDepth ~= depth then
-                CancelUniqueSort(); return
+                or (self.powerStat or data.powerStatList[1]).label ~= metric or self.nodePowerMaxDepth ~= depth then
+                fallback('superseded'); return
             end
-            if GetTime() - started > 60000 then CancelUniqueSort(); return end
+            -- The pool bounds every import/chunk request. A total report deadline
+            -- would discard healthy progress on expensive metrics and repeat it serially.
             local reply = not remoteDone and PollUniqueSort(id)
             if reply then
                 local results = json.decode(reply)
-                if type(results) ~= 'table' or #results ~= #remote then return end
+                if type(results) ~= 'table' or #results ~= #remote then fallback('helper-failed'); return end
                 for i, result in ipairs(results) do
-                    if type(result) ~= 'table' or type(result.singleStat) ~= 'string' then return end
-                    local value = tonumber(result.singleStat)
-                    if not value or value ~= value or math.abs(value) == math.huge then return end
-                    values[remoteIndices[i]] = {singleStat=value}
+                    local keys = (not self.powerStat or not self.powerStat.stat)
+                        and {'singleStat', 'offence', 'defence'} or {'singleStat'}
+                    local decoded = {}
+                    for _, key in ipairs(keys) do
+                        local value = type(result) == 'table' and type(result[key]) == 'string' and tonumber(result[key])
+                        if not value or value ~= value or math.abs(value) == math.huge then fallback('invalid-result'); return end
+                        decoded[key] = value
+                    end
+                    values[remoteIndices[i]] = decoded
                 end
                 remoteDone = true
+                status.remoteCompleted = status.remoteCompleted + #remote
+            end
+            -- A frame-bound UI share can lag behind the helpers. Hand its
+            -- serializable tail to the now-idle pool once, without duplicating
+            -- completed work or changing result indices/calculation semantics.
+            if remoteDone and not handedOff and #localItems - localIndex + 1 >= 25 then
+                local tail, indices, retained = {}, {}, {}
+                for i = localIndex, #localItems do
+                    local index = localItems[i]
+                    if descriptions[index] then
+                        tail[#tail+1], indices[#indices+1] = descriptions[index], index
+                    else retained[#retained+1] = index end
+                end
+                handedOff = true
+                if #tail >= 25 then
+                    remote, remoteIndices, localItems, localIndex = tail, indices, retained, 1
+                    status.remote, status.localCount, status.handedOff = status.remote + #tail, status.localCount - #tail, #tail
+                    self.nodePowerDelegation.remote, self.nodePowerDelegation.localCount = status.remote, status.localCount
+                    self.nodePowerDelegation.handedOff = #tail
+                    remoteDone = false
+                    id = BeginUniqueSort(json.encode({kind='nodePower', identity=currentEpoch..':'..revision,
+                        xml=xml, metric=metric, items=remote}))
+                end
             end
             local deadline = GetTime() + 20
             while localIndex <= #localItems do

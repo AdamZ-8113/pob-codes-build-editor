@@ -166,6 +166,50 @@ All automated browser runs are headless. Ordinary local tests must not be aimed
 at production. `npm run test:e2e:production-smoke` is the explicit live-site
 opt-in and is appropriate only for release verification.
 
+## Calculation optimization coverage
+
+After preparing, building the native runtime and materializing a candidate,
+serve it with `node scripts/release/serve-test-release.mjs`. Run
+`node tools/profiles/profile-helper-coverage.mjs --browser=chromium` for the
+finite public-fixture matrix: scalar and composite reports, Full DPS/minions,
+defensive/transformed metrics, custom/15/All depths, and Timeless/Abyss jewels.
+Each case requires exact serial/parallel heatmap and complete report snapshots,
+successful helper completion and memory admission. `--case=<name,...>` selects
+individual cases; `--out=<directory>` retains the bounded review evidence.
+
+For a specific private input use `profile-heatmap.mjs --build-file=<path>` or
+`--build-url=<pob.codes link>`; input text remains in memory and reports contain
+hashes. For Firefox use `--browser=firefox` and, if necessary,
+`--firefox-executable=<isolated test installation>`. The profiler rejects Juggler
+automation that observes Wasm and disables its optimizing compiler. It does not
+patch an installed browser. Firefox uses a loopback proxy for deterministic
+worker packages; Chromium uses request routing. All runs are headless.
+
+`getRuntimeProfile().samples.powerReport` distinguishes this report's execution
+from cumulative helper readiness/work. The sanitized debug export includes the
+same mode, reason, metric, depth, counts and handoff evidence. Serial execution
+remains expected for small workloads, unavailable/disabled helpers, invalid
+contracts and a failed admission or worker request. Never remove those guards
+to make a performance trial pass.
+
+The coverage audit keeps optimizations at their owning boundaries:
+
+| Optimization | Applicable work and invariant | Regression evidence |
+| --- | --- | --- |
+| Node helpers and tail handoff | All native node metrics; exact shared evaluator, immutable snapshot and original merge indices | Coverage matrix; native delegation/cancellation tests |
+| Calculation stage skipping | Node evaluator passes each metric's Full DPS/EHP requirements; minion definitions inherit those flags | Stage-skip specs and source contracts; defensive/minion parity |
+| Node cache correctness | PoB's context-aware keys retain radius-jewel and cluster modifier distinctions in both execution paths | Pinned PR specs; complete report snapshots |
+| Unique-sort helpers and score cache | Uncached candidates for numerical sorts, active weapon set and output revision; item filtering/ranking stays PoB-owned | Helper pool, Lua sort adapter and source-ledger tests; manual helper acceptance |
+| GC, compact values and memory admission | Both boot paths use the compact interpreter; node helpers apply pause 100, unique sorts restore their configured policy; per-helper and aggregate limits remain enforced | Native numeric/GC tests and pool memory/failure tests |
+| Timeless loading | Sparse seed and inflate adapters apply to packaged jewel data, shared by UI and helpers | Native sparse/inflate tests; Timeless fixture parity |
+| Item comparison and calculation-only jewel specs | Exact slot/limit eligibility; skip UI-only paths while preserving calculator distances | Checked adapters, native tooltip tests and jewel comparison harness |
+| Numeric edit coalescing and tooltip reuse | Flush exact rebuilds before calculations/exports; invalidate reuse on relevant revisions/context | Native scheduler/tooltip tests and calculation scheduling harness |
+| Mouse input coalescing | Keep one motion request in flight and deliver the final cursor position to the completed Lua frame | Input latency harness with `--expect-coalesced`; native input scheduling tests |
+
+This matrix is a coverage contract, not a claim that every browser/build
+combination is exhaustively benchmarked. Retained experimental transforms are
+not production optimizations unless the source ledger and packer adopt them.
+
 ## Release boundary
 
 Follow `docs/RELEASING.md` for the exact-SHA CI gate and candidate artifact

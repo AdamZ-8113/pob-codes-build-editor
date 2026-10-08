@@ -439,10 +439,13 @@ progress toast to PoB's ordinary 16-unit control text. Other toast headings and
 control typography are unchanged. Exact source/result identities keep this
 browser-only presentation adjustment separate from the prepared checkout.
 
-Delegation supports Hit DPS at the standard depths 5, 10, 15 and All, with at
-least 200 evaluation items. The October 7 extension admits Glorious Vanity
-(`vaal`) jewels; other Timeless families, other depth values and other metrics remain
-serial. Failed or unavailable helpers also return to serial calculation. Helpers
+Delegation uses the authoritative `data.powerStatList` entries for every node
+metric, including Full DPS, Offence/Defence, defensive and minion metrics.
+Standard, All and nonnegative integer custom depths are eligible, with at least
+200 evaluation items. Timeless families use the same immutable XML import and
+node resolution as the serial evaluator; there is no family allowlist. Small
+workloads, item-only metrics, unknown definitions and invalid depths stay serial.
+Failed or unavailable helpers also return to serial calculation. Helpers
 retain the existing desktop CPU/memory admission checks and keep build inputs
 only in memory. This is a browser-owned adaptation, not a desktop PoB contribution.
 
@@ -463,6 +466,21 @@ last retired workers' capacities so a fallback's memory cause remains inspectabl
 snapshots and records report time, bounded worker-response samples, frame CPU
 time and completed-frame gaps. Response samples include worker/broker queueing;
 they are not input-to-paint measurements. Restart trials check superseded jobs
-against fresh imports, including intentional serial fallback for unsupported
-metrics. Firefox performance experiments require automation that leaves Wasm
-optimization enabled; a debugger that observes Wasm can distort the comparison.
+against fresh imports. Report diagnostics expose per-report mode, fallback reason,
+metric, depth, completion and local/remote counts separately from cumulative pool
+counters; sanitized debug exports retain these aggregate fields. Composite
+Offence/Defence replies preserve all three numeric fields. Each pool import and
+chunk retains its bounded deadline; total report time no longer discards healthy
+long-running work after 60 seconds and repeats it serially.
+If helpers finish before the UI share, one handoff moves at least 25 remaining
+serializable evaluations to the idle pool. Completed evaluations keep their
+original indices, unresolvable nodes remain local, and revision/metric/depth
+cancellation checks also cover the handoff. Diagnostics count this transfer.
+
+Firefox profiling uses an isolated loopback proxy so worker requests receive the
+same verified diagnostic package and Lua seed as the UI. The profiler inspects
+both Juggler Runtime and WorkerMain and rejects automation without the upstream
+`allowUnobservedWasm` fix, which otherwise disables the optimizing tier. An
+explicit `--firefox-executable` may select a separate test installation; no
+installed browser or user profile is patched by the profiler. Browser and
+harness identities remain in the report.

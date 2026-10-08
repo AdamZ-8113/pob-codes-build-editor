@@ -43,10 +43,12 @@ function helperCall(text)
     assert(loadedIdentity == job.identity, 'Stale helper build')
     if job.kind == 'nodePower' then
         assert(loadedKind == job.kind and build.calcsTab.EvaluateNodePowerItem, 'Missing node-power seam')
-        assert(job.metric == 'Hit DPS', 'Prototype supports Hit DPS only')
+        local selected
         for _, stat in ipairs(data.powerStatList) do
-            if stat.label == job.metric then build.calcsTab.powerStat = stat; break end
+            if stat.label == job.metric then selected = stat; break end
         end
+        assert(selected and not selected.ignoreForNodes, 'Unsupported node-power metric')
+        build.calcsTab.powerStat = selected
         if operation ~= job.operation then
             calc, calcBase = build.calcsTab:GetMiscCalculator()
             operation = job.operation

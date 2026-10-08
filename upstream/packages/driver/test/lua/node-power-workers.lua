@@ -1,16 +1,28 @@
 return function(install)
+    data = {powerStatList={{label='Offence/Defence'}, {label='Hit DPS', stat='TotalDPS'},
+        {label='Full DPS', stat='FullDPS', requiresFullDPS=true}, {label='Life', stat='Life'},
+        {label='Effective Hit Pool', stat='TotalEHP', requiresEHP=true},
+        {label='Item quantity', stat='Quantity', ignoreForNodes=true}}}
     local enabled, sent, reply, cancelled, clock = true, nil, nil, 0, 0
     NodePowerAvailable = function() return enabled and 3 or 0 end
     CancelUniqueSort = function() cancelled = cancelled + 1 end
     GetTime = function() clock = clock + 5; return clock end
-    BeginUniqueSort = function() return 1 end
+    BeginUniqueSort = function() reply=nil; return 1 end
     PollUniqueSort = function() return reply and 'reply' end
     package.loaded.dkjson = {encode=function(value) sent=value; return 'job' end, decode=function() return reply end}
+    local function completeReply()
+        if reply then return end
+        reply={}
+        for i,item in ipairs(sent.items) do
+            reply[i]={singleStat=string.format('%.17g',item.addNodes[1].id+0.125)}
+            if sent.metric=='Offence/Defence' then reply[i].offence,reply[i].defence='1.25','-0.5' end
+        end
+    end
     local function setup()
         sent, reply = nil, nil
         local build = {outputRevision=1, itemsTab={items={}}, spec={nodes={}, tree={clusterNodeMap={}}},
             SaveDB=function() return 'public fixture XML' end}
-        local tab = {powerStat={label='Hit DPS'}, nodePowerMaxDepth=5, BuildPower=function() return 'serial control' end}
+        local tab = {powerStat=data.powerStatList[2], nodePowerMaxDepth=5, BuildPower=function() return 'serial control' end}
         build.calcsTab = tab
         tab.EvaluateNodePowerItem = function(_, item)
             for node in pairs(item.addNodes) do return {singleStat=node.id+0.125} end
@@ -34,7 +46,7 @@ return function(install)
     enabled=true
     co=start(); assert(coroutine.status(co)=='suspended' and #sent.items==150 and sent.kind=='nodePower')
     reply={}; for i,item in ipairs(sent.items) do reply[i]={singleStat=string.format('%.17g',item.addNodes[1].id+0.125)} end
-    repeat local ok; ok,value=coroutine.resume(co); assert(ok,value) until coroutine.status(co)=='dead'
+    repeat completeReply(); local ok; ok,value=coroutine.resume(co); assert(ok,value) until coroutine.status(co)=='dead'
     for i=1,200 do assert(value[i].singleStat==i+0.125) end
     assert(tab.nodePowerDelegation.completed)
     for _, mutate in ipairs({
@@ -66,25 +78,44 @@ return function(install)
     for i,item in ipairs(sent.items) do reply[i]={singleStat=string.format('%.17g',item.addNodes[1].id+0.125)} end
     reply[1].singleStat,reply[2].singleStat,reply[3].singleStat='1.0000000000000002','-0.125','-0'
     local precise
-    repeat local success; success,precise=coroutine.resume(precisePending); assert(success,precise) until coroutine.status(precisePending)=='dead'
+    repeat completeReply(); local success; success,precise=coroutine.resume(precisePending); assert(success,precise) until coroutine.status(precisePending)=='dead'
     assert(precise[1].singleStat==1.0000000000000002 and precise[2].singleStat==-0.125)
     assert(precise[3].singleStat==0 and 1/precise[3].singleStat==-math.huge and preciseTab.nodePowerDelegation.completed)
     local before=cancelled; t.powerBuildFlag=true
     assert(t:BuildPower()=='serial control' and cancelled==before+1)
     local b, t=setup()
-    b.itemsTab.items[1]={jewelData={conqueredBy={conqueror={type='vaal'}}}}
-    assert(t:nodePowerBatchAvailable())
-    for _, conquered in ipairs({true, {}, {conqueror=true}, {conqueror={}}, {conqueror={type='karui'}}, {conqueror={type='eternal'}},
-        {conqueror={type='maraketh'}}, {conqueror={type='templar'}}, {conqueror={type='kalguur'}},
-        {conqueror={type='abyss_murderous'}}}) do
-        b.itemsTab.items[2]={jewelData={conqueredBy=conquered}}
-        assert(not t:nodePowerBatchAvailable())
+    for _, kind in ipairs({'vaal','karui','eternal','maraketh','templar','kalguur','abyss_murderous'}) do
+        b.itemsTab.items[1]={jewelData={conqueredBy={conqueror={type=kind}}}}
+        assert(t:nodePowerBatchAvailable())
     end
-    b.itemsTab.items[2]=nil
-    for _, depth in ipairs({5,10,15}) do t.nodePowerMaxDepth=depth; assert(t:nodePowerBatchAvailable()) end
+    for _, depth in ipairs({0,1,5,7,10,15,100}) do t.nodePowerMaxDepth=depth; assert(t:nodePowerBatchAvailable()) end
     t.nodePowerMaxDepth=nil; assert(t:nodePowerBatchAvailable())
-    for _, depth in ipairs({0,1,7,'All'}) do t.nodePowerMaxDepth=depth; assert(not t:nodePowerBatchAvailable()) end
-    t.nodePowerMaxDepth=5; t.powerStat={label='Life'}; assert(not t:nodePowerBatchAvailable())
-    t.powerStat={label='Offence/Defence'}; assert(not t:nodePowerBatchAvailable())
-    t.powerStat=nil; assert(not t:nodePowerBatchAvailable())
+    for _, depth in ipairs({-1,1.5,'All',math.huge}) do t.nodePowerMaxDepth=depth; assert(not t:nodePowerBatchAvailable()) end
+    t.nodePowerMaxDepth=5
+    for i=1,5 do t.powerStat=data.powerStatList[i]; assert(t:nodePowerBatchAvailable()) end
+    t.powerStat=data.powerStatList[6]; assert(not t:nodePowerBatchAvailable())
+    t.powerStat={label='unknown'}; assert(not t:nodePowerBatchAvailable())
+    t.powerStat=nil; assert(t:nodePowerBatchAvailable())
+    -- Composite offence/defence values survive the remote merge, including signs.
+    local _, combined, begin=setup(); combined.powerStat=nil
+    local pending=begin(); reply={}
+    for i,item in ipairs(sent.items) do reply[i]={singleStat='1.25',offence='1.25',defence='-0.5'} end
+    local values
+    repeat completeReply(); local ok; ok,values=coroutine.resume(pending); assert(ok,values) until coroutine.status(pending)=='dead'
+    assert(values[1].offence==1.25 and values[1].defence==-0.5)
+    assert(combined.nodePowerStatus.handedOff > 0)
+    assert(combined.nodePowerStatus.remoteCompleted + combined.nodePowerStatus.localCompleted == 200)
+    assert(combined.nodePowerStatus.remoteCompleted == combined.nodePowerDelegation.remote)
+    assert(combined.nodePowerStatus.localCompleted == combined.nodePowerDelegation.localCount)
+    -- Expensive valid work must not be discarded merely because total time exceeds 60s.
+    local _, slow, beginSlow=setup(); pending=beginSlow(); clock=clock+61000
+    reply={}; for i,item in ipairs(sent.items) do reply[i]={singleStat='1'} end
+    repeat completeReply(); local ok; ok,values=coroutine.resume(pending); assert(ok,values) until coroutine.status(pending)=='dead'
+    assert(slow.nodePowerDelegation.completed)
+    local staleBuild, staleTab, beginStale=setup(); pending=beginStale(); completeReply()
+    local ok, result=coroutine.resume(pending); assert(ok and not result and staleTab.nodePowerStatus.handedOff)
+    staleBuild.outputRevision=staleBuild.outputRevision+1; completeReply()
+    ok,result=coroutine.resume(pending)
+    assert(ok and result==nil and staleTab.nodePowerStatus.reason=='superseded' and not staleTab.nodePowerDelegation.completed)
+
 end

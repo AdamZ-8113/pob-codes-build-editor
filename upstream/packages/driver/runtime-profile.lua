@@ -31,6 +31,9 @@ function getRuntimeProfile(reset)
     if getCalculationSchedulingProfile then result = result:sub(1,-2) .. ',"scheduler":' .. getCalculationSchedulingProfile() .. '}' end
     if getUniqueComparisonProfile then result = result:sub(1,-2) .. ',"uniqueComparisons":' .. getUniqueComparisonProfile() .. '}' end
     if getItemTooltipCacheProfile then result = result:sub(1,-2) .. ',"itemTooltipCache":' .. getItemTooltipCacheProfile() .. '}' end
+    if activeTab and activeTab.nodePowerStatus then
+        result = result:sub(1,-2) .. ',"powerReport":' .. require('dkjson').encode(activeTab.nodePowerStatus) .. '}'
+    end
     local loaded = 0
     for family = 1, 11 do
         local lut = data and data.timelessJewelLUTs and data.timelessJewelLUTs[family]

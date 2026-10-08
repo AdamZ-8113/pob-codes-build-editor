@@ -179,10 +179,11 @@ do
                 local result = profile(reset)
                 local state = {runs = runs, controls = {}}
                 if active then
-                    for key, name in pairs({heatmap = 'treeHeatMap', depth = 'nodePowerMaxDepthSelect', metric = 'treeHeatMapStatSelect', report = 'powerReport'}) do
+                    for key, name in pairs({heatmap = 'treeHeatMap', depth = 'nodePowerMaxDepthSelect', depthCustom = 'nodePowerMaxDepthCustom', metric = 'treeHeatMapStatSelect', report = 'powerReport'}) do
                         state.controls[key] = controlState(active.controls[name])
                     end
                     state.enabled = active.viewer.showHeatMap or false
+                    state.configuredDepth = active.build.calcsTab.nodePowerMaxDepth or 'All'
                     state.reportShown = active.controls.powerReportList.shown or false
                     state.reportRows = #(active.controls.powerReportList.originalList or {})
                     state.toastShown = active.powerBuilderToastId ~= nil and ToastNotification:Exists(active.powerBuilderToastId) or false

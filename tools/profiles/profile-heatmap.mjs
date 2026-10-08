@@ -1,4 +1,6 @@
-import { chromium } from '@playwright/test';
+import { chromium, firefox } from '@playwright/test';
+import { startProfileProxy } from './loopback-profile-proxy.mjs';
+import { firefoxProfileEvidence } from './firefox-profile.mjs';
 import assert from 'node:assert/strict';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { resolve, dirname } from 'node:path';
@@ -17,19 +19,17 @@ const origin = argument('origin', 'http://127.0.0.1:3010/');
 assert.ok(['127.0.0.1', 'localhost'].includes(new URL(origin).hostname), 'Heatmap experiments require a loopback server');
 const metric = argument('metric', 'Hit DPS'), depth = argument('depth', '5');
 const scenario = argument('scenario', 'timing');
-// Restart cases deliberately switch to unsupported metrics/depths. Declare the
-// candidate's admitted depths; ordinary timing runs always require delegation.
-const delegatedDepths = argument('delegated-depths', '5').split(',');
-assert.ok(delegatedDepths.length > 0 && new Set(delegatedDepths).size === delegatedDepths.length
-  && delegatedDepths.every(value => ['5', '10', '15', 'All'].includes(value)), 'Delegated depths must be unique choices from 5,10,15,All');
+const delegationExpectation = argument('expect-delegation', 'required');
+assert.ok(['required', 'serial'].includes(delegationExpectation), 'Explicit delegation expectation');
 const reportMode = argument('report', scenario === 'restarts' ? 'shown' : 'hidden');
 const rounds = Number(argument('rounds', '5')), warm = Number(argument('warm', '3'));
+const deadlineMs = Number(argument('deadline-ms', '240000'));
+assert.ok(Number.isFinite(deadlineMs) && deadlineMs >= 1000 && deadlineMs <= 900000, 'Bounded report deadline');
 const direct = args.includes('--direct');
 const browserSelection = argument('browser', 'chrome');
-assert.ok(['chrome', 'chromium'].includes(browserSelection),
-  'Browser must be chrome or chromium; Firefox requires separate deterministic worker-routing support');
+assert.ok(['chrome', 'chromium', 'firefox'].includes(browserSelection), 'Unknown browser');
 const review = args.includes('--review'), reviewArm = argument('arm', 'candidate');
-assert.ok(['5', '10', '15', 'All'].includes(depth), 'Depth must be 5, 10, 15 or All');
+assert.ok(depth === 'All' || /^\d{1,3}$/.test(depth), 'Depth must be All or a nonnegative integer below 1000');
 assert.ok(['hidden', 'shown', 'deferred'].includes(reportMode), 'Report must be hidden, shown or deferred');
 assert.ok(['timing', 'restarts'].includes(scenario), 'Unknown scenario');
 assert.ok(scenario !== 'restarts' || (reportMode === 'shown' && !review), 'Restart scenario requires an automated shown-report run');
@@ -62,13 +62,19 @@ const summarize = values => {
   const sorted = [...values].sort((a, b) => a - b), n = sorted.length;
   return { count: n, median: n ? (sorted[Math.floor((n - 1) / 2)] + sorted[Math.floor(n / 2)]) / 2 : null, p95: sorted[Math.max(0, Math.ceil(n * .95) - 1)] ?? null, max: sorted.at(-1) ?? null };
 };
-const browser = await chromium.launch({ headless: !review,
+assert.ok(!review, 'Automated profiling is headless');
+const firefoxExecutable = argument('firefox-executable', firefox.executablePath());
+const firefoxAutomation = browserSelection === 'firefox' ? await firefoxProfileEvidence(firefoxExecutable) : undefined;
+assert.ok(browserSelection !== 'firefox' || !args.includes('--memory'), 'Firefox memory requires separate process sampling; CDP is Chromium-only');
+const browser = await (browserSelection === 'firefox' ? firefox : chromium).launch({ headless: true,
+  ...(browserSelection === 'firefox' ? {executablePath:firefoxExecutable} : {}),
   ...(browserSelection === 'chrome' ? { channel: 'chrome' } : {}) });
 const report = {
   schemaVersion: 1, measuredAt: new Date().toISOString(), passed: false, review, calibration,
   harnessNodeVersion: process.version, browserSelection,
+  firefoxAutomation,
   noiseReferenceSha256: noiseReference ? sha256(JSON.stringify(noiseReference)) : undefined,
-  inputXmlSha256: input.xmlHash, metric, depth, reportMode, scenario, delegatedDepths, roundsRequested: rounds, warmRequested: warm,
+  inputXmlSha256: input.xmlHash, metric, depth, reportMode, scenario, delegationExpectation, roundsRequested: rounds, warmRequested: warm,
   direct, noiseScope: argument('noise-floor') === 'none' ? 'No calibration for this rebuilt binary; no noise-floor claim' : 'Recorded A/A calibration',
   environment: { browser: browser.version(), cpu: cpus()[0]?.model, logicalCores: cpus().length, viewport: { width: 1600, height: 1000, dpr: 1 } },
   harnessSha256: sha256(await readFile(new URL(import.meta.url))), diagnosticsSha256: sha256(diagnostics),
@@ -85,32 +91,33 @@ async function runArm(name, round) {
   const context = await browser.newContext({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
   const faults = [], nativeResponses = [];
   let seededRuntimeRequests = 0;
+  const proxy = browserSelection === 'firefox' ? await startProfileProxy(origin, arm.overlay) : undefined;
   // Also bounds pending browser RPCs, which Playwright's ordinary action timeout does not cover.
   const watchdog = setTimeout(() => void context.close().catch(() => {}), 20 * 60 * 1000);
   try {
-    await context.routeWebSocket('**', socket => socket.close());
+    if (!proxy) await context.routeWebSocket('**', socket => socket.close());
     // Lua table iteration must be reproducible for exact floating-point snapshot parity.
-    await context.route(/\/driver(?:-[\w-]+)?\.mjs(?:\?|$)/, async route => {
+    await context.route(/\/driver(?:-[\w-]+)?\.(?:mjs|js)(?:\?|$)/, async route => {
       const body = await (await route.fetch()).text();
       seededRuntimeRequests++;
       await route.fulfill({ contentType: 'text/javascript', body: 'Date.now = () => 1790812800000;\n' + body });
     });
-    await routeCorePackage(context, arm.overlay);
+    if (!proxy) await routeCorePackage(context, arm.overlay);
     const page = await context.newPage();
     page.on('pageerror', () => faults.push('pageerror'));
     page.on('response', response => {
       if (/\/driver(?:-[\w-]+)?\.wasm(?:\?|$)/.test(response.url())) nativeResponses.push(response.body().then(sha256));
     });
-    const url = new URL(origin);
+    const url = new URL(proxy?.origin ?? origin);
     for (const [key, value] of new URLSearchParams(arm.query.replace(/^\?/, ''))) url.searchParams.set(key, value);
     stage = `${name}:${round}:boot`;
     console.log(stage);
     await page.goto(url.href);
     await page.waitForFunction(() => window.__DESKTOP_POB__?.ready || window.__DESKTOP_POB__?.errors.length, null, { timeout: 120000 });
     assert.equal(await page.evaluate(() => window.__DESKTOP_POB__.errors.length), 0, 'No startup Lua errors');
-    const wasmHashes = [...new Set(await Promise.all(nativeResponses))];
+    const wasmHashes = proxy ? [...proxy.evidence.wasmHashes] : [...new Set(await Promise.all(nativeResponses))];
     assert.equal(wasmHashes.length, 1, 'Actual Wasm identity recorded');
-    assert.ok(seededRuntimeRequests > 0, 'Deterministic Lua seed installed');
+    assert.ok((proxy?.evidence.seededRequests ?? seededRuntimeRequests) > 0, 'Deterministic Lua seed installed');
     arm.wasmSha256 ??= wasmHashes[0];
     assert.equal(wasmHashes[0], arm.wasmSha256, 'Stable Wasm identity');
     report.arms[name].wasmSha256 = arm.wasmSha256;
@@ -179,6 +186,7 @@ async function runArm(name, round) {
     };
     const waitRun = async (previous, start, target, sample, { requireReport = reportMode === 'shown', expectedDepth = depth, parityGroup = 'target', deferOpen = reportMode === 'deferred' && !!sample } = {}) => {
       let heatmapWallMs, reportWallMs, current, p, earlyHeatmap, openedAt;
+      let lastProgress = start;
       let peakLuaKiB = 0, peakWasmBytes = 0;
       let lastObservedFrame = await page.evaluate(() => window.__DESKTOP_POB__.frames);
       const responsiveness = createResponsivenessCollector(lastObservedFrame);
@@ -192,6 +200,11 @@ async function runArm(name, round) {
         peakWasmBytes = Math.max(peakWasmBytes, p.wasmBytes);
         await errors();
         current = p.samples.nodePower.runs.at(-1);
+        if (performance.now() - lastProgress > 15000) {
+          lastProgress = performance.now();
+          console.log(JSON.stringify({stage, metric:current?.metric, elapsedMs:Math.round(lastProgress-start),
+            calculators:current?.calculators, powerReport:p.samples.powerReport}));
+        }
         if (current?.id > previous) {
           const observedAt = performance.now() - start;
           if (current.reportReadyAt != null) reportWallMs ??= observedAt;
@@ -211,7 +224,10 @@ async function runArm(name, round) {
           }
           if (heatmapWallMs != null && (!(requireReport || deferOpen) || reportWallMs != null)) break;
         }
-        assert.ok(performance.now() - start < 240000, 'Builder readiness deadline');
+        if (performance.now() - start >= deadlineMs) {
+          report.incomplete = { current, powerReport: p.samples.powerReport, helpers: p.helpers && {...p.helpers, errors:p.helpers.errors.map(sha256)} };
+          assert.fail('Builder readiness deadline');
+        }
       } while (true);
       assert.equal(current.metric, target, 'Measured intended metric');
       assert.equal(String(current.depth), expectedDepth, 'Measured intended depth');
@@ -240,11 +256,10 @@ async function runArm(name, round) {
         result.delegation = captured.samples.nodePower.delegation;
         report.runs.push(result);
         if (new URLSearchParams(arm.query.replace(/^\?/, '')).get('nodePowerHelpers') === '1') {
-          const required = scenario !== 'restarts' || (target === 'Hit DPS' && delegatedDepths.includes(expectedDepth));
+          const required = delegationExpectation === 'required';
           result.delegationExpectation = { mode: required ? 'required' : 'unsupported', metric: target, depth: expectedDepth,
-            reason: scenario !== 'restarts' ? 'Timing trials require the requested delegation'
-              : required ? 'Restart target belongs to the declared delegated metric/depth'
-              : 'Restart intentionally selected a metric/depth outside declared helper support' };
+            reason: required ? 'Trial requires actual delegation for this metric/depth'
+              : 'Trial explicitly requires serial execution for a small or ineligible workload' };
           if (required) {
             assert.equal(result.delegation?.completed, true, 'Candidate actually completed helper delegation');
             assert.ok(result.helpers?.ready > 0 && result.helpers.completed > 0, 'Helper work was performed');
@@ -274,7 +289,18 @@ async function runArm(name, round) {
     stage = `${name}:${round}:warmup`;
     let initial = await state();
     if (initial.enabled) await clickControl('heatmap');
-    await select('depth', depth);
+    if (['5', '10', '15', 'All'].includes(depth)) await select('depth', depth);
+    else {
+      await select('depth', 'Custom');
+      // The right half contains the numeric +/- buttons, not the text field.
+      const [x, y, , h] = (await state()).controls.depthCustom.bounds;
+      await clickPoint(x + 8, y + h / 2);
+      await page.keyboard.press('Control+a'); await flush();
+      await page.keyboard.press('Backspace'); await flush();
+      await page.keyboard.type(depth); await flush();
+      await page.keyboard.press('Enter'); await flush();
+    }
+    assert.equal(String((await state()).configuredDepth), depth, 'Native depth control applied requested depth');
     if (direct) {
       if (new URLSearchParams(arm.query.replace(/^\?/, '')).get('nodePowerHelpers') === '1') {
         const deadline = performance.now() + 30000;
@@ -336,7 +362,7 @@ async function runArm(name, round) {
     }
     if (memory) await memory.mark(`${name}-${round}-complete`);
     await errors();
-  } finally { clearTimeout(watchdog); await context.close().catch(() => {}); }
+  } finally { clearTimeout(watchdog); await context.close().catch(() => {}); await proxy?.close(); }
 }
 
 try {

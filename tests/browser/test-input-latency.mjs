@@ -14,10 +14,10 @@ try {
   await context.route(/\/src\/js\/worker\.ts\?worker_file/, async route => {
     const response = await route.fetch();
     const source = await response.text();
-    const marker = "const stats = this.renderer?.getStats();";
+    const marker = "this.hostCallbacks?.onFrame(start, time, stats);";
     assert.ok(source.includes(marker));
     instrumented = true;
-    await route.fulfill({response,body:source.replace(marker, marker + " if (stats) stats.inputMouse = { ...this.mouseState };")});
+    await route.fulfill({response,body:source.replace(marker, "if (stats) stats.inputMouse = { ...this.mouseState }; " + marker)});
   });
   await context.addInitScript(() => {
     const NativeWorker = Worker;

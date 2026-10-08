@@ -96,6 +96,7 @@ export function sanitizeDiagnosticV1(
 export function createDebugReportV1(input: DebugReportInputV1) {
   const profile = asRecord(input.runtimeProfile);
   const samples = asRecord(profile.samples);
+  const powerReport = asRecord(samples.powerReport);
   const helpers = asRecord(profile.helpers);
   const helperMemory = asRecord(helpers.memory);
   const filesystem = asRecord(profile.filesystem);
@@ -143,6 +144,20 @@ export function createDebugReportV1(input: DebugReportInputV1) {
         summary: calculationSummary(samples.summary),
         scheduler: finiteBooleanRecord(samples.scheduler),
         heatmapPending: boolean(samples.heatmapPending),
+        powerReport: {
+          mode: safeToken(powerReport.mode),
+          reason: safeToken(powerReport.reason),
+          metric: safeToken(typeof powerReport.metric === 'string' ? powerReport.metric.replaceAll('/', '-') : undefined),
+          depth: powerReport.depth === 'All' ? 'All' : finite(powerReport.depth),
+          eligible: boolean(powerReport.eligible),
+          completed: boolean(powerReport.completed),
+          helpers: finite(powerReport.helpers),
+          localCount: finite(powerReport.localCount),
+          remote: finite(powerReport.remote),
+          localCompleted: finite(powerReport.localCompleted),
+          remoteCompleted: finite(powerReport.remoteCompleted),
+          handedOff: finite(powerReport.handedOff),
+        },
       },
       helpers: {
         requested: finite(helpers.requested),
