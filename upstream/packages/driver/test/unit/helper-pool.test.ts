@@ -23,7 +23,7 @@ Deno.test('node-power jobs preserve numeric fields, separate hydration kinds, an
   } finally { h.pool.close(); }
 });
 function harness(timeout = 1000) {
-  const workers: any[] = [], detached: number[] = [], available: boolean[] = [];
+  const workers: any[] = [], detached: number[] = [], available: boolean[] = [], diagnostics: any[] = [];
   let behavior: (worker: any, request: any) => void = (worker, request) => worker.reply(request);
   const pool = new HelperPool(() => {
     const worker = { onmessage: null as any, onerror: null as any, stopped: false, imported: '', requests: [] as any[],
@@ -40,8 +40,9 @@ function harness(timeout = 1000) {
       },
     };
     workers.push(worker); return worker as unknown as Worker;
-  }, async (_id, port) => { port.close(); }, async id => { detached.push(id); }, ready => available.push(ready), timeout);
-  return {pool, workers, detached, available, setBehavior(fn: typeof behavior) { behavior = fn; }};
+  }, async (_id, port) => { port.close(); }, async id => { detached.push(id); }, ready => available.push(ready),
+    timeout, 400, (event, data, level) => diagnostics.push({event, data, level}));
+  return {pool, workers, detached, available, diagnostics, setBehavior(fn: typeof behavior) { behavior = fn; }};
 }
 
 Deno.test('helper batches preserve candidate order across out-of-order workers and build lifetimes', async () => {
@@ -120,6 +121,8 @@ for (const bytes of [742326272, 2 ** 30, 2 ** 30 + 65536]) {
       } else {
         assertEquals(result, null);
         assertEquals(h.pool.profile().state, 'retired');
+        assertEquals(h.diagnostics.at(-1)?.event, 'helpers-fallback');
+        assertEquals(h.diagnostics.at(-1)?.data.reason, 'helper-memory');
       }
     } finally { h.pool.close(); }
   });

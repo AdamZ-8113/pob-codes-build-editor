@@ -13,7 +13,7 @@ import { toggleFullscreen } from "./fullscreen.ts";
 import { DOMKeyboardState, KeyboardHandler, type PoBKey, PoBKeyboardState } from "./keyboard.ts";
 import { MouseHandler, type MouseState } from "./mouse-handler.ts";
 import { LatestValueDispatcher } from "./latest-value-dispatcher.ts";
-import { type FrameData, ReactOverlayManager, type RenderStats, type ToolbarCallbacks } from "./overlay/index.ts";
+import { type DebugReportAction, type FrameData, ReactOverlayManager, type RenderStats, type ToolbarCallbacks } from "./overlay/index.ts";
 import type { ToolbarPosition as ToolbarPos } from "./overlay/types.ts";
 import { BackgroundPromiseOwner, enqueueOwnedAction } from "./promise-owner.ts";
 import type { DriverWorker, HostCallbacks } from "./worker.ts";
@@ -69,6 +69,7 @@ export type DriverLifecycleCallbacks = {
   onKeyboardStateChange?: (keys: readonly PoBKey[]) => void;
   onDiagnostic?: (diagnostic: DriverDiagnostic) => void;
   onPayloadProgress?: (progress: PayloadProgress) => void;
+  onDebugReport?: (action: DebugReportAction) => Promise<void>;
 };
 
 export class Driver {
@@ -97,6 +98,7 @@ export class Driver {
   private frames: FrameData[] = [];
   private renderStats: RenderStats | null = null;
   private payloadFailed = false;
+  private helperDecisionReported = false;
   private externalComponent: React.ComponentType<{ position: ToolbarPos; isLandscape: boolean }> | undefined;
   private clipboard = new ClipboardController(navigator.clipboard);
   private pendingClipboardAction: Promise<void> = Promise.resolve();
@@ -166,6 +168,7 @@ export class Driver {
         id => this.broker?.detachHelper(id) ?? Promise.resolve(),
         ready => { void this.driverWorker?.configureUniqueHelpers(ready ? this.helpers?.profile().ready ?? 0 : 0).catch(() => {}); },
         15000, runtimeGcPause(location.search, 'helper'),
+        (event, data, level) => this.diagnostic('worker', event, data, level),
       );
       const channel = new MessageChannel();
       const eventChannel = new MessageChannel();
@@ -270,8 +273,10 @@ export class Driver {
   startHelpers() {
     const requested = this.requestedHelpers;
     const memory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
-    if (this.build === 'release' && Number.isInteger(requested) && requested > 0 && navigator.hardwareConcurrency >= 6 &&
-        (memory === undefined || memory >= 8) && !/Android|iPhone|iPad|Mobile/i.test(navigator.userAgent)) {
+    const mobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+    const eligible = this.build === 'release' && Number.isInteger(requested) && requested > 0 &&
+      navigator.hardwareConcurrency >= 6 && (memory === undefined || memory >= 8) && !mobile;
+    if (eligible) {
       const count = Math.min(requested, 3, navigator.hardwareConcurrency - 2);
       if (this.eagerHelpers) {
         // Keep first-sort latency low; lazy startup remains an opt-in experiment.
@@ -280,6 +285,11 @@ export class Driver {
         const capacity = this.helpers?.prepare(count) ?? 0;
         void this.driverWorker?.configureUniqueHelpers(capacity).catch(() => {});
       }
+    } else if (!this.helperDecisionReported && Number.isInteger(requested) && requested > 0) {
+      this.helperDecisionReported = true;
+      const reason = mobile ? 'mobile-device' : navigator.hardwareConcurrency < 6 ? 'cpu-capacity'
+        : memory !== undefined && memory < 8 ? 'device-memory' : 'runtime-mode';
+      this.diagnostic('worker', 'helpers-unavailable', {reason});
     }
   }
 
@@ -494,6 +504,7 @@ export class Driver {
       frames: this.frames,
       renderStats: this.renderStats,
       performanceVisible: this.performanceVisible,
+      onDebugReport: this.lifecycleCallbacks.onDebugReport,
       externalComponent: this.externalComponent,
       onLayerVisibilityChange: (layer: number, sublayer: number, visible: boolean) => {
         this.setLayerVisible(layer, sublayer, visible);

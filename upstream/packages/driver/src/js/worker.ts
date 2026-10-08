@@ -430,7 +430,8 @@ export class DriverWorker {
     }
     const time = performance.now() - start;
     this.sampleMemory();
-    const stats = this.renderer?.getStats();
+    const rendererStats = this.renderer?.getStats();
+    const stats = rendererStats ? { ...rendererStats, wasmMemoryBytes: this.module?.HEAPU8.byteLength } : undefined;
     this.hostCallbacks?.onFrame(start, time, stats);
     if ((stats?.frameCount ?? 0) <= 3 || (stats?.frameCount ?? 0) % 60 === 0 || time > 100) {
       this.diagnostic("frame", "complete", {

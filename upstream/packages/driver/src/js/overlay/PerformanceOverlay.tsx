@@ -8,6 +8,8 @@ export interface FrameData {
   renderTime: number;
 }
 
+export type DebugReportAction = "copy" | "download";
+
 export interface LayerStats {
   layer: number;
   sublayer: number;
@@ -26,12 +28,14 @@ export interface RenderStats {
   frameCount: number;
   glyphAtlas: GlyphAtlasStats;
   backend: BackendStats;
+  wasmMemoryBytes?: number;
 }
 
 interface PerformanceOverlayProps {
   isVisible: boolean;
   frames: FrameData[];
   renderStats: RenderStats | null;
+  onDebugReport?: (action: DebugReportAction) => Promise<void>;
   onLayerVisibilityChange?: (layer: number, sublayer: number, visible: boolean) => void;
 }
 
@@ -39,6 +43,7 @@ export const PerformanceOverlay: React.FC<PerformanceOverlayProps> = ({
   isVisible,
   frames,
   renderStats,
+  onDebugReport,
   onLayerVisibilityChange,
 }) => {
   if (!isVisible) {
@@ -46,12 +51,71 @@ export const PerformanceOverlay: React.FC<PerformanceOverlayProps> = ({
   }
 
   return (
-    <div className="pw:absolute pw:top-2 pw:right-2 pw:bg-base-100/90 pw:p-3 pw:rounded pw:backdrop-blur-sm pw:space-y-2 pw:max-w-80 pw:pointer-events-auto">
+    <section
+      aria-label="Runtime stats"
+      className="driver-runtime-stats pw:absolute pw:bottom-3 pw:right-3 pw:max-h-72 pw:w-72 pw:overflow-auto pw:rounded pw:border pw:border-base-300 pw:bg-base-100/95 pw:p-3 pw:shadow-xl pw:backdrop-blur-sm pw:space-y-2 pw:pointer-events-auto"
+    >
+      <div className="pw:text-xs pw:font-semibold pw:uppercase pw:tracking-wide pw:text-base-content/70">
+        Runtime stats
+      </div>
       <LineChart data={frames} />
-      {renderStats && <RenderStatsView stats={renderStats} onLayerVisibilityChange={onLayerVisibilityChange} />}
-    </div>
+      {onDebugReport && <DebugReportActions onDebugReport={onDebugReport} />}
+      {renderStats && (
+        <RenderStatsView stats={renderStats} frames={frames} onLayerVisibilityChange={onLayerVisibilityChange} />
+      )}
+    </section>
   );
 };
+
+function DebugReportActions({ onDebugReport }: { onDebugReport: (action: DebugReportAction) => Promise<void> }) {
+  const [state, setState] = useState<"idle" | "working" | "copied" | "downloaded" | "error">("idle");
+
+  const run = useCallback(async (action: DebugReportAction) => {
+    if (state === "working") return;
+    setState("working");
+    try {
+      await onDebugReport(action);
+      setState(action === "copy" ? "copied" : "downloaded");
+    } catch (error) {
+      console.warn("Debug report action failed", error);
+      setState("error");
+    }
+  }, [onDebugReport, state]);
+
+  return (
+    <div className="pw:space-y-1 pw:border-t pw:border-base-300 pw:pt-2">
+      <div className="pw:grid pw:grid-cols-2 pw:gap-1">
+        <button
+          type="button"
+          disabled={state === "working"}
+          onClick={() => void run("copy")}
+          className="pw:rounded pw:border pw:border-base-300 pw:bg-base-200 pw:px-2 pw:py-1 pw:text-xs pw:hover:bg-base-300 pw:disabled:opacity-50"
+        >
+          Copy debug report
+        </button>
+        <button
+          type="button"
+          disabled={state === "working"}
+          onClick={() => void run("download")}
+          className="pw:rounded pw:border pw:border-base-300 pw:bg-base-200 pw:px-2 pw:py-1 pw:text-xs pw:hover:bg-base-300 pw:disabled:opacity-50"
+        >
+          Download JSON
+        </button>
+      </div>
+      <div aria-live="polite" className="pw:min-h-4 pw:text-[11px] pw:text-base-content/60">
+        {state === "working"
+          ? "Collecting sanitized diagnostics…"
+          : state === "copied"
+          ? "Debug report copied."
+          : state === "downloaded"
+          ? "Debug report downloaded."
+          : state === "error"
+          ? "Could not create the report."
+          : "Excludes build and account data."}
+      </div>
+    </div>
+  );
+}
 
 function LineChart({ data }: { data: FrameData[] }) {
   const scaleX = 1;
@@ -92,7 +156,7 @@ function LineChart({ data }: { data: FrameData[] }) {
       svg: (
         <svg
           className="pw:absolute pw:top-0 pw:left-0 pw:w-full pw:h-full pw:bg-neutral pw:text-neutral-content pw:border pw:border-neutral-content pw:py-2"
-          viewBox={`${minX * scaleX} ${minY * scaleY} ${(maxX - minX) * scaleX} ${(maxY - minY) * scaleY}`}
+          viewBox={`${minX * scaleX} ${minY * scaleY} ${Math.max(1, maxX - minX) * scaleX} ${Math.max(1, maxY - minY) * scaleY}`}
           preserveAspectRatio="none"
         >
           <title>Render performance</title>
@@ -115,7 +179,7 @@ function LineChart({ data }: { data: FrameData[] }) {
   }, [data]);
 
   return (
-    <div className="pw:relative pw:w-64 pw:h-16">
+    <div className="pw:relative pw:h-12 pw:w-full">
       {chart.svg}
       {Number.isFinite(chart.max) && (
         <span className="pw:absolute pw:bottom-1 pw:left-1 pw:p-1 pw:text-xs pw:bg-neutral pw:text-neutral-content pw:rounded">
@@ -128,11 +192,14 @@ function LineChart({ data }: { data: FrameData[] }) {
 
 function RenderStatsView({
   stats,
+  frames,
   onLayerVisibilityChange,
 }: {
   stats: RenderStats | null;
+  frames: FrameData[];
   onLayerVisibilityChange?: (layer: number, sublayer: number, visible: boolean) => void;
 }) {
+  const [showDetails, setShowDetails] = useState(false);
   const [showLayers, setShowLayers] = useState(false);
   const [layerVisibility, setLayerVisibility] = useState<Map<string, boolean>>(new Map());
 
@@ -151,6 +218,13 @@ function RenderStatsView({
   const layerDetails = stats.layerStats;
 
   const totalDrawCalls = summary.totalDrawImage + summary.totalDrawImageQuad + summary.totalDrawString;
+  const recentFrames = frames.slice(-60);
+  const busyMs = recentFrames.reduce((total, frame) => total + frame.renderTime, 0);
+  const elapsedMs = recentFrames.length > 1
+    ? Math.max(1_000, recentFrames.at(-1)!.at - recentFrames[0].at)
+    : 1_000;
+  const cpuEstimate = Math.min(100, busyMs / elapsedMs * 100);
+  const memory = (performance as Performance & { memory?: { usedJSHeapSize?: number } }).memory;
 
   const toggleLayerVisibility = useCallback(
     (layer: number, sublayer: number) => {
@@ -170,26 +244,43 @@ function RenderStatsView({
   );
 
   return (
-    <div className="pw:text-xs pw:space-y-2">
-      <div className="pw:font-semibold">Render Stats (Frame #{summary.frameCount})</div>
-      <div className="pw:grid pw:grid-cols-2 pw:gap-1 pw:text-xs">
-        <div>Backend: {stats.backend.name}</div>
-        <div>Layers: {summary.totalLayers}</div>
-        <div>Frame: {summary.frameTime}ms</div>
-        <div>Total draws: {totalDrawCalls}</div>
-        <div>Images: {summary.totalDrawImage}</div>
-        <div>Quads: {summary.totalDrawImageQuad}</div>
-        <div>Text: {summary.totalDrawString}</div>
-        <div>Glyphs: {stats.glyphAtlas.glyphQuads}</div>
-        <div>Glyph hit/miss: {stats.glyphAtlas.hits}/{stats.glyphAtlas.misses}</div>
-        <div>Glyph upload: {stats.glyphAtlas.uploadedBytes}B</div>
-        <div>Atlas pages: {stats.glyphAtlas.pages}</div>
-        <div>Instances: {stats.backend.instances}</div>
-        <div>Instance upload: {stats.backend.instanceBytes}B</div>
-        <div>Dispatches: {stats.backend.dispatches}</div>
+    <div className="pw:space-y-2 pw:text-xs">
+      <div className="pw:grid pw:grid-cols-2 pw:gap-x-3 pw:gap-y-1">
+        <Stat label="Wasm memory" value={formatBytes(stats.wasmMemoryBytes)} />
+        <Stat label="JS heap" value={formatBytes(memory?.usedJSHeapSize)} />
+        <Stat label="PoB CPU (est.)" value={`${cpuEstimate.toFixed(1)}%`} />
+        <Stat label="CPU threads" value={String(navigator.hardwareConcurrency || "—")} />
+        <Stat label="Frame" value={`${summary.frameTime} ms`} />
+        <Stat label="Frame max" value={`${Math.max(0, ...recentFrames.map((frame) => frame.renderTime)).toFixed(1)} ms`} />
+        <Stat label="Renderer" value={stats.backend.name} />
+        <Stat label="Draw calls" value={String(totalDrawCalls)} />
       </div>
 
-      {layerDetails.length > 0 && (
+      <button
+        type="button"
+        aria-expanded={showDetails}
+        onClick={() => setShowDetails((visible) => !visible)}
+        className="pw:w-full pw:rounded pw:px-1 pw:py-0.5 pw:text-left pw:font-semibold pw:hover:bg-base-200"
+      >
+        Details {showDetails ? "▼" : "▶"}
+      </button>
+
+      {showDetails && (
+        <div className="pw:grid pw:grid-cols-2 pw:gap-x-3 pw:gap-y-1">
+          <Stat label="Frame count" value={String(summary.frameCount)} />
+          <Stat label="Layers" value={String(summary.totalLayers)} />
+          <Stat label="Images" value={String(summary.totalDrawImage)} />
+          <Stat label="Quads" value={String(summary.totalDrawImageQuad)} />
+          <Stat label="Text" value={String(summary.totalDrawString)} />
+          <Stat label="Glyphs" value={String(stats.glyphAtlas.glyphQuads)} />
+          <Stat label="Atlas pages" value={String(stats.glyphAtlas.pages)} />
+          <Stat label="Instances" value={String(stats.backend.instances)} />
+          <Stat label="Upload" value={formatBytes(stats.backend.instanceBytes)} />
+          <Stat label="Dispatches" value={String(stats.backend.dispatches)} />
+        </div>
+      )}
+
+      {showDetails && layerDetails.length > 0 && (
         <div className="pw:space-y-1">
           <button
             type="button"
@@ -231,4 +322,25 @@ function RenderStatsView({
       )}
     </div>
   );
+}
+
+function Stat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="pw:min-w-0">
+      <div className="pw:text-base-content/60">{label}</div>
+      <div className="pw:whitespace-nowrap pw:font-mono" title={value}>{value}</div>
+    </div>
+  );
+}
+
+function formatBytes(bytes: number | undefined): string {
+  if (!Number.isFinite(bytes) || !bytes) return "—";
+  const units = ["B", "KiB", "MiB", "GiB"];
+  let value = bytes;
+  let unit = 0;
+  while (value >= 1024 && unit < units.length - 1) {
+    value /= 1024;
+    unit++;
+  }
+  return `${value.toFixed(unit < 2 ? 0 : 1)} ${units[unit]}`;
 }

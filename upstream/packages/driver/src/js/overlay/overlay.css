@@ -11,3 +11,26 @@
 html {
   scrollbar-gutter: auto !important;
 }
+
+.driver-runtime-stats {
+  scrollbar-color: #737983 #1d232a;
+  scrollbar-width: auto;
+}
+
+.driver-runtime-stats::-webkit-scrollbar {
+  width: 10px;
+}
+
+.driver-runtime-stats::-webkit-scrollbar-track {
+  background: #1d232a;
+}
+
+.driver-runtime-stats::-webkit-scrollbar-thumb {
+  background: #737983;
+  border: 2px solid #1d232a;
+  border-radius: 999px;
+}
+
+.driver-runtime-stats::-webkit-scrollbar-thumb:hover {
+  background: #9298a1;
+}

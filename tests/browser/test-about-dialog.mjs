@@ -29,7 +29,7 @@ try {
       };
     });
     const layout = await measure();
-    assert.equal(layout.tools.length, 4);
+    assert.equal(layout.tools.length, 2);
     assert.ok(layout.launch.right <= layout.about.left && layout.about.right <= layout.tools[0].left,
       `${width}px: About sits between Launch and the toolbar`);
     for (const box of [layout.launch, layout.about, ...layout.tools]) {

@@ -3,7 +3,7 @@ html, body { margin: 0; height: 100%; overflow: hidden; background: #161616; col
 body { display: flex; flex-direction: column; }
 .site-header { flex: 0 0 auto; position: relative; z-index: 1100; background: #161616; }
 /* Equal side columns keep the status centered; their minimum fits Launch, About
-   and the 182px toolbar on the compact row. */
+   and the compact diagnostics controls. */
 .site-header-inner { display: grid; grid-template-columns: minmax(var(--header-side-min), 1fr) minmax(0, 2fr) minmax(var(--header-side-min), 1fr); align-items: center; gap: 12px; padding: 10px var(--build-page-side-padding); }
 .site-header-links { display: inline-flex; align-items: center; justify-content: flex-end; gap: 10px; width: 317px; padding-right: 2px; box-sizing: border-box; min-width: 0; min-height: var(--control-h-compact); white-space: nowrap; }
 .site-brand, .site-header-link { color: var(--text-accent); font: 500 .88rem/var(--control-h-compact) -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif; letter-spacing: .01em; text-decoration: none; }
@@ -20,17 +20,20 @@ body { display: flex; flex-direction: column; }
 .site-about-button:hover { color: #c8c8c8; background: rgba(255,255,255,.08); }
 .site-about-icon { display: block; flex: none; }
 /* Keep the core site's 29px header row; larger hit targets must not move its text. */
-#editor-accessibility { min-width: 176px; height: var(--control-h-compact); }
+#editor-accessibility { min-width: 90px; height: var(--control-h-compact); }
 .embedded-toolbar > div { display: flex; align-items: center; flex-direction: row; gap: 2px; padding: 0; height: var(--control-h-compact); min-height: 0; background: transparent; box-shadow: none; }
 .embedded-toolbar button[aria-pressed] { width: 44px; height: 44px; padding: 8px; border: 1px solid transparent; background: transparent; color: #8f8f8f; box-shadow: none; border-radius: 4px; }
 .embedded-toolbar button[aria-pressed]:hover { color: #c8c8c8; background: rgba(255,255,255,.08); }
 .embedded-toolbar button[aria-pressed="true"] { color: #af8040; border-color: #af8040; background: #242019; }
+.embedded-toolbar .driver-tools-menu button { width: 100%; height: auto; min-height: 36px; padding: 4px 8px; border: 1px solid transparent; background: transparent; box-shadow: none; }
+.embedded-toolbar .driver-tools-menu button:hover { background: rgba(255,255,255,.08); }
 .embedded-toolbar .driver-zoom-panel { width: min(384px, calc(100vw - 24px)); min-width: 0; margin-top: 10px; max-height: calc(100dvh - 140px); overflow: auto; }
 .embedded-toolbar .driver-zoom-panel input[type="number"] { min-width: 0; width: 65px; height: var(--control-h); }
 .header-status { min-width: 0; height: var(--control-h-compact); display: flex; align-items: center; justify-content: center; }
 .header-status output { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; color: #8f8f8f; text-align: center; }
 #status.status-error { color: #ffaaaa; }
-.header-status:has(#calculation-status:not([hidden])) #status:not(.status-error), .header-status:has(.status-error) #calculation-status { display: none; }
+#status.status-warning { color: #e7bd74; }
+.header-status:has(#calculation-status:not([hidden])) #status:not(.status-error, .status-warning), .header-status:has(.status-error, .status-warning) #calculation-status { display: none; }
 button, #authorize { background: #323232; color: #eee; border: 1px solid #777; border-radius: 3px; padding: 6px 12px; cursor: pointer; font: inherit; font-size: 13px; }
 button:disabled { opacity: .45; cursor: default; }
 /* Keep the toolbar and canvas boundary on whole pixels (the inherited 19.5px
@@ -92,6 +95,7 @@ dialog h1 { font-size: 20px; }
   .site-about-button { width: 44px; height: 44px; }
   .header-status output { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; max-height: 36px; line-height: 18px; overflow-wrap: anywhere; }
   .site-discord-icon { width: 19px; }
+  .embedded-toolbar .driver-tools-menu { position: fixed; top: 93px; right: 12px; margin-top: 0; }
   .embedded-toolbar .driver-zoom-panel { position: fixed; top: 93px; left: 12px; right: 12px; width: auto; margin-top: 0; }
   dialog { max-height: 80dvh; overflow: auto; }
   .payload-progress { --panel-padding: 8px; width: max-content; }

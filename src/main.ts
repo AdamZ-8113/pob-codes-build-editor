@@ -9,6 +9,10 @@ import { createConfigurationBridgeV1 } from "./configuration-v1.ts";
 import type { ConfigurationRequestV1 } from "./configuration-v1.ts";
 import { createBuildTransferV1 } from "./build-transfer-v1.ts";
 import { bindAboutDialog } from "./about-dialog.ts";
+import { createDebugReportV1, sanitizeDiagnosticV1 } from "./debug-report.ts";
+import type { SanitizedDiagnosticV1 } from "./debug-report.ts";
+import { runtimeStatusNotice } from "./runtime-status.ts";
+import type { RuntimeStatusNotice } from "./runtime-status.ts";
 declare const __IMPORT2_PREVIEW__: boolean;
 declare const __IMPORT2_PAYLOAD_PREFIX__: string;
 declare const __DESKTOP_DEV_LAN_HOSTS__: string[];
@@ -44,15 +48,32 @@ let frames = 0;
 let lastStats: unknown;
 const frameSamples: { at: number; duration: number; render: number; reused: boolean }[] = [];
 const errors: string[] = [];
+const diagnostics: SanitizedDiagnosticV1[] = [];
+let getDebugReport: (() => Promise<ReturnType<typeof createDebugReportV1>>) | undefined;
+let statusTimer: number | undefined;
+let statusRevision = 0;
+
+function setHeaderStatus(message: string, tone: RuntimeStatusNotice["tone"] = "info", durationMs = 0) {
+  const revision = ++statusRevision;
+  clearTimeout(statusTimer);
+  statusTimer = undefined;
+  status.textContent = message;
+  status.title = message;
+  status.classList.toggle("status-warning", tone === "warning");
+  status.classList.toggle("status-error", tone === "error");
+  if (message && durationMs > 0) {
+    statusTimer = setTimeout(() => {
+      if (revision === statusRevision) setHeaderStatus("");
+    }, durationMs);
+  }
+}
 
 function report(error: unknown) {
   telemetry.emit("build_editor_error_v1", { result: "error", actionTarget: "runtime", errorCode: "runtime" });
   calculationStatus.hidden = true;
   const message = error instanceof Error ? error.message : String(error);
   errors.push(message);
-  status.textContent = message;
-  status.title = message;
-  status.classList.add("status-error");
+  setHeaderStatus(message, "error");
   payloadProgress.error(message);
   console.error(error);
 }
@@ -90,6 +111,9 @@ async function main() {
   let hasDrawn = false;
   payloadProgress.startup(0, "Downloading core data");
   const options = new URLSearchParams(location.search);
+  const payloadPrefetchEnabled = import2Preview
+    ? options.get("payloadPrefetch") === "1"
+    : options.get("payloadPrefetch") !== "0";
   const contributorMock = import.meta.env.DEV && options.get("characterMock") === "1";
   const characterTransport: CharacterTransportV1 = contributorMock ? {
     enabled: true,
@@ -108,6 +132,65 @@ async function main() {
   if (import2Preview && options.get("legacyPayload") === "1") {
     throw new Error("The legacy payload is unavailable in this browser-only preview.");
   }
+  getDebugReport = async () => {
+    const storage = await navigator.storage?.estimate().catch(() => undefined);
+    const memory = (performance as Performance & { memory?: { usedJSHeapSize?: number } }).memory;
+    const navigatorMemory = (navigator as Navigator & { deviceMemory?: number }).deviceMemory;
+    return createDebugReportV1({
+      generatedAt: new Date().toISOString(),
+      uptimeMs: performance.now() - startupAt,
+      productName: publicRuntime.productName,
+      appVersion,
+      mode: import2Preview ? "browser-preview" : "local-development",
+      ready,
+      errorCount: errors.length,
+      browser: debugBrowserIdentity(navigator.userAgent, navigator.platform),
+      capabilities: {
+        hardwareConcurrency: navigator.hardwareConcurrency,
+        deviceMemoryGiB: navigatorMemory,
+        crossOriginIsolated,
+        viewportWidth: window.innerWidth,
+        viewportHeight: window.innerHeight,
+        devicePixelRatio: window.devicePixelRatio,
+        jsHeapBytes: memory?.usedJSHeapSize,
+        storageUsageBytes: storage?.usage,
+        storageQuotaBytes: storage?.quota,
+      },
+      configuration: {
+        calculationScheduling: options.get("synchronousCalculations") === "1" ? "synchronous" : "scheduled",
+        renderReuse: options.get("renderReuse") !== "0",
+        payloadPrefetch: payloadPrefetchEnabled,
+      },
+      runtimeProfile: await driver!.getRuntimeProfile(),
+      renderStats: lastStats,
+      frames: frameSamples,
+      diagnostics,
+    });
+  };
+  const handleDebugReport = async (action: "copy" | "download") => {
+    try {
+      const report = await getDebugReport!();
+      const text = `${JSON.stringify(report, null, 2)}\n`;
+      if (action === "copy") {
+        await navigator.clipboard.writeText(text);
+        setHeaderStatus("Sanitized debug report copied", "info", 4_000);
+        return;
+      }
+      const blobUrl = URL.createObjectURL(new Blob([text], { type: "application/json" }));
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = `pob-codes-debug-${report.generatedAt.replaceAll(/[:.]/g, "-")}.json`;
+      link.hidden = true;
+      document.body.append(link);
+      link.click();
+      link.remove();
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 0);
+      setHeaderStatus("Sanitized debug report downloaded", "info", 4_000);
+    } catch (error) {
+      setHeaderStatus("Could not create the debug report", "warning", 7_000);
+      throw error;
+    }
+  };
   driver = new Driver("release", import2Preview ? __IMPORT2_PAYLOAD_PREFIX__ : `${location.origin}/payload`, {
     onError: report,
     onFrame: (at, duration, stats) => {
@@ -121,14 +204,23 @@ async function main() {
     },
     onFetch: async (url, headers, body) => await buildTransfer!.onFetch(url, headers, body) ?? characterHost.onFetch(url, headers, body),
     onOAuthAuthorize: authorize,
-    onOAuthLogout: () => { status.textContent = "Path of Exile disconnected"; },
+    onOAuthLogout: () => setHeaderStatus("Path of Exile disconnected", "warning", 7_000),
     onTitleChange: (title) => { document.title = `${title} · ${publicRuntime.productName}`; },
   }, {
     onDiagnostic: (event) => {
+      diagnostics.push(sanitizeDiagnosticV1(event, performance.now() - startupAt));
+      if (diagnostics.length > 100) diagnostics.shift();
       if (event.event === "calculations-pending") calculationStatus.hidden = !event.data?.pending;
       if (event.level === "error" || event.event === "destroy") calculationStatus.hidden = true;
+      const notice = runtimeStatusNotice(event);
+      if (notice) {
+        setHeaderStatus(notice.message, notice.tone, notice.durationMs);
+        const log = notice.tone === "info" ? console.info : notice.tone === "warning" ? console.warn : console.error;
+        log("[PoB runtime]", notice.message, event.data ?? {});
+      }
     },
     onPayloadProgress: (progress) => payloadProgress.update(progress),
+    onDebugReport: handleDebugReport,
   });
   configuration = createConfigurationBridgeV1({
     getBuildCode: () => driver!.getBuildCode(), loadBuildFromCode: code => driver!.loadBuildFromCode(code),
@@ -144,15 +236,15 @@ async function main() {
       launched.document.title = "Opening PoB.Codes…";
       launched.document.body.textContent = "Opening build in PoB.Codes…";
     }
-    launchButton.disabled = true; status.classList.remove("status-error"); status.textContent = "Launching build in PoB.Codes...";
+    launchButton.disabled = true; setHeaderStatus("Launching build in PoB.Codes...");
     try {
       const url = buildTransfer!.hasPendingShare ? await buildTransfer!.retry() : await buildTransfer!.share();
       if (launched && !launched.closed) launched.location.replace(url);
       else location.assign(url);
-      status.textContent = "Build opened in PoB.Codes";
+      setHeaderStatus("Build opened in PoB.Codes", "info", 4_000);
     } catch (error) {
       launched?.close();
-      status.textContent = error instanceof Error ? error.message : "PoB.Codes launch failed"; status.classList.add("status-error");
+      setHeaderStatus(error instanceof Error ? error.message : "PoB.Codes launch failed", "error");
     } finally { launchButton.disabled = !ready || !publicRuntime.apiBaseUrl; }
   };
   await driver.start({
@@ -180,12 +272,11 @@ async function main() {
   payloadProgress.completeStartup();
   const beginBackgroundWork = () => {
     driver?.startHelpers();
-    const prefetch = import2Preview ? options.get("payloadPrefetch") === "1" : options.get("payloadPrefetch") !== "0";
-    if (prefetch) void driver?.startPayloadPrefetch();
+    if (payloadPrefetchEnabled) void driver?.startPayloadPrefetch();
   };
   if ("requestIdleCallback" in window) window.requestIdleCallback(beginBackgroundWork);
   else setTimeout(beginBackgroundWork, 0);
-  status.textContent = "";
+  setHeaderStatus("");
   const initial = new URLSearchParams(location.hash.slice(1));
   const initialCode = initial.get("code");
   const initialBuild = initial.get("build");
@@ -201,6 +292,7 @@ Object.defineProperty(window, "__DESKTOP_POB__", { value: {
   get ready() { return ready; }, get frames() { return frames; }, get stats() { return lastStats; },
   get errors() { return [...errors]; },
   getRuntimeProfile: (reset = false) => driver!.getRuntimeProfile(reset),
+  getDebugReport: () => getDebugReport!(),
   configureCalculationScheduling: (enabled: boolean) => driver!.configureCalculationScheduling(enabled),
   configureRenderReuse: (enabled: boolean) => driver!.configureRenderReuse(enabled),
   get frameSamples() { return [...frameSamples]; },
@@ -214,6 +306,20 @@ Object.defineProperty(window, "__DESKTOP_POB__", { value: {
 } });
 window.addEventListener("pagehide", () => { driver?.detachFromDOM(); driver?.destory(); });
 void main().catch(report);
+
+function debugBrowserIdentity(userAgent: string, platform: string) {
+  const candidates: [string, RegExp][] = [
+    ["Edge", /Edg\/(\d+)/],
+    ["Chrome", /Chrome\/(\d+)/],
+    ["Firefox", /Firefox\/(\d+)/],
+    ["Safari", /Version\/(\d+).*Safari/],
+  ];
+  const match = candidates.map(([name, pattern]) => ({ name, match: userAgent.match(pattern) })).find((entry) => entry.match);
+  const coarsePlatform = /android/i.test(userAgent) ? "Android" : /iphone|ipad/i.test(userAgent) ? "iOS"
+    : /win/i.test(platform) ? "Windows" : /mac/i.test(platform) ? "macOS"
+    : /linux/i.test(platform) ? "Linux" : "Other";
+  return { name: match?.name ?? "Other", major: match?.match?.[1] ?? "unknown", platform: coarsePlatform };
+}
 
 function createPayloadProgressOverlay() {
   const squareCount = 15;

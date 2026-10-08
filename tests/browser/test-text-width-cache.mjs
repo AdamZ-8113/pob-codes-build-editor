@@ -177,9 +177,11 @@ try {
         const states = [];
         for (const zoom of [1, .8]) {
           if (zoom !== 1) {
-            await page.getByRole('button', { name: 'Zoom Controls', exact: true }).click();
+            await page.getByRole('button', { name: 'WebAssembly tools', exact: true }).click();
+            await page.getByRole('menuitemcheckbox', { name: 'Zoom & canvas', exact: true }).click();
             await page.getByRole('group', { name: 'Zoom and canvas controls' }).locator('input[type="range"]').fill(String(zoom));
-            await page.getByRole('button', { name: 'Zoom Controls', exact: true }).click();
+            await page.getByRole('button', { name: 'WebAssembly tools', exact: true }).click();
+            await page.getByRole('menuitemcheckbox', { name: 'Zoom & canvas', exact: true }).click();
             await flush();
           }
           let state = (await profile()).samples.textWidthVisual;

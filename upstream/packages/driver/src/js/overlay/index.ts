@@ -1,7 +1,7 @@
 export { KeyButton } from "./KeyButton.tsx";
 export { ModifierButton } from "./ModifierButton.tsx";
 export { ReactOverlayManager } from "./OverlayContainer.tsx";
-export type { FrameData, LayerStats, RenderStats } from "./PerformanceOverlay.tsx";
+export type { DebugReportAction, FrameData, LayerStats, RenderStats } from "./PerformanceOverlay.tsx";
 export { PerformanceOverlay } from "./PerformanceOverlay.tsx";
 export { Toolbar } from "./Toolbar.tsx";
 export { ToolbarButton } from "./ToolbarButton.tsx";

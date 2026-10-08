@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import { createPortal } from "react-dom";
 import type { DOMKeyboardState } from "../keyboard.ts";
 import "./overlay.css";
-import type { FrameData, RenderStats } from "./PerformanceOverlay.tsx";
+import type { DebugReportAction, FrameData, RenderStats } from "./PerformanceOverlay.tsx";
 import { PerformanceOverlay } from "./PerformanceOverlay.tsx";
 import { Toolbar } from "./Toolbar.tsx";
 import type { ToolbarCallbacks, ToolbarPosition } from "./types.ts";
@@ -21,6 +21,7 @@ interface OverlayContainerProps {
   frames?: FrameData[];
   renderStats?: RenderStats | null;
   performanceVisible?: boolean;
+  onDebugReport?: (action: DebugReportAction) => Promise<void>;
   onLayerVisibilityChange?: (layer: number, sublayer: number, visible: boolean) => void;
   externalComponent?: React.ComponentType<{ position: ToolbarPosition; isLandscape: boolean }>;
 }
@@ -36,6 +37,7 @@ export const OverlayContainer: React.FC<OverlayContainerProps> = ({
   frames = [],
   renderStats = null,
   performanceVisible = false,
+  onDebugReport,
   onLayerVisibilityChange,
   externalComponent,
 }) => {
@@ -157,6 +159,7 @@ export const OverlayContainer: React.FC<OverlayContainerProps> = ({
         isVisible={performanceOverlayVisible}
         frames={frames}
         renderStats={renderStats}
+        onDebugReport={onDebugReport}
         onLayerVisibilityChange={onLayerVisibilityChange}
       />
     </div>
