@@ -2,6 +2,7 @@ import * as zstd from "@bokuweb/zstd-wasm";
 import { Format, parseDDSDX10, Target, Texture } from "dds";
 import { decodeBc7Texture } from "./bc7.ts";
 import { log, tag } from "./logger.ts";
+import { downloadImage, type ImageDownload } from "./image-download.ts";
 
 export type TextureSource =
   & {
@@ -94,7 +95,7 @@ export class ImageRepository {
     this.resolveBptcSupport = resolve;
   });
 
-  constructor(prefix: string) {
+  constructor(prefix: string, private readonly download: ImageDownload = downloadImage) {
     this.prefix = prefix;
   }
 
@@ -130,9 +131,8 @@ export class ImageRepository {
 
   private async loadResource(holder: TextureHolder, src: string, flags: number, id: string): Promise<boolean> {
     const type = src.endsWith(".dds.zst") ? "Texture" : "Image";
-    const r = await fetch(this.prefix + src, { referrerPolicy: "no-referrer" });
-    if (r.ok) {
-      const blob = await r.blob();
+    const blob = await this.download(this.prefix + src);
+    if (blob) {
       if (type === "Texture") {
         if (!zstdInitialized) {
           await zstd.init();

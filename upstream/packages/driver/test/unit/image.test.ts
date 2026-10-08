@@ -3,6 +3,29 @@ import { ImageRepository, TextureFlags } from "../../src/js/image.ts";
 
 const flags = TextureFlags.TF_NOMIPMAP;
 
+Deno.test("host image downloads hand fully consumed blobs to the Lua worker", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalDecode = globalThis.createImageBitmap;
+  globalThis.fetch = () => { throw new Error("Lua worker must not fetch image bodies"); };
+  const pixels = new Blob(["host-downloaded pixels"]);
+  const requests: string[] = [];
+  globalThis.createImageBitmap = (async (blob: ImageBitmapSource) => {
+    assertStrictEquals(blob, pixels);
+    return { width: 2, height: 2 } as ImageBitmap;
+  }) as typeof createImageBitmap;
+  try {
+    const repo = new ImageRepository("/assets/", async url => { requests.push(url); return pixels; });
+    const first = repo.load(1, "a.png", flags);
+    assertStrictEquals(repo.load(2, "a.png", flags), undefined);
+    assertEquals(await first, true);
+    assertEquals(requests, ["/assets/a.png"]);
+    assertStrictEquals(repo.get(1), repo.get(2));
+  } finally {
+    globalThis.fetch = originalFetch;
+    globalThis.createImageBitmap = originalDecode;
+  }
+});
+
 async function withImages(run: (requests: string[], respond: (response: Response) => void) => Promise<void>) {
   const originalFetch = globalThis.fetch;
   const originalDecode = globalThis.createImageBitmap;
