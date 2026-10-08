@@ -50,7 +50,8 @@ retry outcomes plus measured test/phase budget utilization. Their bounded,
 synthetic-fixture diagnostics are retained for seven days even after a flaky
 success.
 Failed browser acceptance also prints the last 100 console messages, truncated
-to 1,000 characters each, so startup stalls can be diagnosed from the job log.
+to 1,000 characters each, pending fixture requests, and startup state so stalls
+can be diagnosed from the job log before Playwright finalizes the test status.
 
 Each main push retains one CI candidate for seven days, and each promoted SHA
 retains a second transport copy for seven days. With the current roughly

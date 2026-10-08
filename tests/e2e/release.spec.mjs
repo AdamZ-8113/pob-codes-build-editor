@@ -31,6 +31,10 @@ async function ready(page) {
 test("candidate imports, edits, recalculates, shares and persists the displayed native build", async ({ page, context }, testInfo) => {
   const faults = [], blocked = [], assetPaths = [], uploads = [], resolutions = [], characterRequests = [];
   const browserConsole = [];
+  const pendingRequests = new Set();
+  context.on("request", request => pendingRequests.add(request));
+  context.on("requestfinished", request => pendingRequests.delete(request));
+  context.on("requestfailed", request => pendingRequests.delete(request));
   page.on("console", message => {
     browserConsole.push(message.text().slice(0, 1000));
     if (browserConsole.length > 100) browserConsole.shift();
@@ -257,8 +261,14 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
     await clickItemsUntilRequest(3);
     expect(typeof releaseImport).toBe("function");
     expect(decode(await exportCode())).toBe(beforeFailure);
+  } catch (error) {
+    console.error("Release browser diagnostics:", JSON.stringify({ console: browserConsole,
+      pendingRequests: [...pendingRequests].slice(-20).map(request => request.url()),
+      startup: await page.evaluate(() => ({ ready: window.__DESKTOP_POB__?.ready,
+        frames: window.__DESKTOP_POB__?.frames, errors: window.__DESKTOP_POB__?.errors,
+        status: document.querySelector("#status")?.textContent })).catch(() => null) }));
+    throw error;
   } finally {
-    if (testInfo.status !== testInfo.expectedStatus) console.error("Release browser diagnostics:", JSON.stringify(browserConsole));
     // Also release on assertion failure so route cleanup cannot hang the suite.
     releaseImport?.();
   }
