@@ -103,8 +103,12 @@ do
                     if run then
                         local phase = self.powerPhase or 'combined'
                         local p = run.progress[phase] or {count = 0, last = 0, valid = true}
-                        p.valid = p.valid and type(percent) == 'number' and percent == percent and percent >= p.last and percent <= 100
-                        p.last, p.count = percent, p.count + 1
+                        if percent == nil then
+                            p.indeterminate = (p.indeterminate or 0) + 1
+                        else
+                            p.valid = p.valid and type(percent) == 'number' and percent == percent and percent >= p.last and percent <= 100
+                            p.last, p.count = percent, p.count + 1
+                        end
                         run.progress[phase] = p
                     end
                     if progressCallback then progressCallback(percent) end

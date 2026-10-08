@@ -472,6 +472,12 @@ counters; sanitized debug exports retain these aggregate fields. Composite
 Offence/Defence replies preserve all three numeric fields. Each pool import and
 chunk retains its bounded deadline; total report time no longer discards healthy
 long-running work after 60 seconds and repeats it serially.
+The node-power adapter announces each report through PoB's existing
+indeterminate progress callback before planning or helper calculation. It
+respects dismissal, restores the indicator when reopening a pending heatmap,
+and removes stale report toasts on build replacement/shutdown. This changes no
+calculation scheduling or helper policy and sends no per-frame progress updates.
+
 If helpers finish before the UI share, one handoff moves at least 25 remaining
 serializable evaluations to the idle pool. Completed evaluations keep their
 original indices, unresolvable nodes remain local, and revision/metric/depth

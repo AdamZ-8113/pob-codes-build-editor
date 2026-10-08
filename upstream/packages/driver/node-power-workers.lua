@@ -1,6 +1,26 @@
 -- Browser scheduling adapter. PoB owns evaluation, cache keys and merging.
 local epoch = 0
+local progressTree
+local shutdownWrapped = setmetatable({}, {__mode='k'})
+local function clearProgress(tree)
+    if tree and tree.powerBuilderToastId and ToastNotification then
+        ToastNotification:ClearDismissed(tree.powerBuilderToastId)
+        ToastNotification:Remove(tree.powerBuilderToastId, true)
+        tree.powerBuilderToastId = nil
+    end
+end
 return function(build)
+    -- Imports reuse the build object but replace its tree and callbacks.
+    clearProgress(progressTree)
+    progressTree = build.treeTab
+    if type(build.Shutdown) == 'function' and not shutdownWrapped[build] then
+        shutdownWrapped[build] = true
+        local shutdown = build.Shutdown
+        build.Shutdown = function(self, ...)
+            clearProgress(self.treeTab)
+            return shutdown(self, ...)
+        end
+    end
     epoch = epoch + 1
     local currentEpoch = epoch
     local tab = build.calcsTab
@@ -16,6 +36,19 @@ return function(build)
     end
     local buildPower = tab.BuildPower
     tab.BuildPower = function(self, ...)
+        local tree = build.treeTab
+        -- Helpers do not publish percentages while calculating. Announce the
+        -- report before planning/waiting, using PoB's indeterminate message.
+        -- Reopening a hidden heatmap resumes its indicator; manual dismissal
+        -- remains respected until a new report starts.
+        local resumeProgress = self.powerBuilder and tree and ToastNotification
+            and not ToastNotification:Exists(tree.powerBuilderToastId)
+            and not ToastNotification:WasDismissed(tree.powerBuilderToastId)
+        if build.powerBuilderProgressCallback and (self.powerBuildFlag or resumeProgress) then
+            if self.powerBuildFlag then clearProgress(tree) end
+            if tree then tree.lastProgressToastUpdate = -math.huge end
+            build.powerBuilderProgressCallback()
+        end
         if self.powerBuildFlag and self.nodePowerDelegation and not self.nodePowerDelegation.completed then
             CancelUniqueSort()
         end

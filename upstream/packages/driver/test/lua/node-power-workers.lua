@@ -10,6 +10,55 @@ return function(install)
     BeginUniqueSort = function() reply=nil; return 1 end
     PollUniqueSort = function() return reply and 'reply' end
     package.loaded.dkjson = {encode=function(value) sent=value; return 'job' end, decode=function() return reply end}
+    -- The indicator lifecycle is independent of helper allocation/slice policy.
+    do
+        local originalToast = ToastNotification
+        local toasts, dismissed, notifications, shutdowns = {}, {}, 0, 0
+        ToastNotification = {
+            Exists=function(_,id) return toasts[id] ~= nil end,
+            WasDismissed=function(_,id) return dismissed[id] == true end,
+            ClearDismissed=function(_,id) dismissed[id] = nil end,
+            Remove=function(_,id,immediate) assert(immediate); toasts[id] = nil end,
+        }
+        local function tree() return {lastProgressToastUpdate=GetTime()} end
+        local build = {treeTab=tree(), Shutdown=function() shutdowns=shutdowns+1; return 'closed' end}
+        local function tab()
+            return {EvaluateNodePowerItem=function() end, powerBuildFlag=true,
+                BuildPower=function(self)
+                    self.powerBuildFlag=false; self.powerBuilder={}
+                    return 'result', nil, 3
+                end}
+        end
+        build.calcsTab=tab()
+        build.powerBuilderProgressCallback=function(percent)
+            assert(percent == nil, 'Start is indeterminate, not a fabricated percentage')
+            local now = GetTime()
+            if now-build.treeTab.lastProgressToastUpdate < 100 then return end
+            build.treeTab.lastProgressToastUpdate=now
+            notifications=notifications+1
+            build.treeTab.powerBuilderToastId=notifications
+            toasts[notifications]=true
+        end
+        install(build)
+        local a,b,c=build.calcsTab:BuildPower()
+        assert(a=='result' and b==nil and c==3 and notifications==1)
+        for _=1,20 do build.calcsTab:BuildPower() end
+        assert(notifications==1, 'Waiting frames do not republish the toast')
+        toasts[1]=nil; dismissed[1]=true
+        build.calcsTab:BuildPower(); assert(notifications==1, 'Respect manual dismissal')
+        build.calcsTab.powerBuildFlag=true
+        build.calcsTab:BuildPower()
+        assert(notifications==2 and not dismissed[1], 'Rapid restart bypasses old throttle/dismissal')
+        toasts[2]=nil -- Heatmap hidden, then reopened while the report is active.
+        build.calcsTab:BuildPower(); assert(notifications==3)
+        local shutdown=build.Shutdown
+        build.treeTab=tree(); build.calcsTab=tab(); install(build)
+        assert(not toasts[3] and build.Shutdown==shutdown, 'Import clears the old tree without stacking shutdown hooks')
+        build.calcsTab:BuildPower(); assert(notifications==4)
+        assert(build:Shutdown()=='closed' and shutdowns==1 and not toasts[4])
+        assert(build.treeTab.powerBuilderToastId==nil)
+        ToastNotification=originalToast
+    end
     local function completeReply()
         if reply then return end
         reply={}
