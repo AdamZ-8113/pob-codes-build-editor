@@ -111,6 +111,12 @@ reporting. Comlink, MessagePorts, SharedArrayBuffer/Atomics, broker/subworkers,
 the Lua host ABI, WebGL2 renderer, OffscreenCanvas, and original Lua UI remain
 the upstream architecture.
 
+Right-button input begins a browser clipboard read inside the input gesture.
+The driver carries a per-click read identity through the worker and broker,
+and drains that click at its original position before releasing the snapshot.
+PoB's existing Lua controls remain responsible for invoking Paste, filtering
+text and replacing selections; other right-click actions remain native.
+
 Page departure terminates the main and filesystem workers synchronously after
 detaching input and closing helpers. A departing document cannot rely on a
 native shutdown reply or its one-second fallback timer. Broker resources must

@@ -87,6 +87,7 @@ export class DriverWorker {
   private mouseState: MouseState = { x: 0, y: 0 };
   private pressedKeys: Set<PoBKey> = new Set();
   private pasteBuffer = new PasteBuffer();
+  private rightClickGestureId: number | undefined;
   private clipboardControlPending = false;
   private hostCallbacks: Omit<HostCallbacks, "onFetch" | "onOAuthAuthorize"> | undefined;
   private mainCallbacks: MainCallbacks | undefined;
@@ -320,7 +321,22 @@ export class DriverWorker {
     this.scheduleFrame();
   }
 
-  handleKeyDown(name: string, doubleClick: number) {
+  handleKeyDown(name: string, doubleClick: number, gestureId?: number) {
+    if (name === "RIGHTBUTTON" && gestureId !== undefined) {
+      this.inputFrame.flush();
+      this.rightClickGestureId = gestureId;
+      try {
+        this.imports?.onKeyDown(name, doubleClick);
+        this.inputFrame.markPending();
+        // Consume this click at its own cursor position, with its own clipboard.
+        // Lua still decides whether the clicked control should call Paste().
+        this.inputFrame.flush();
+      } finally {
+        this.rightClickGestureId = undefined;
+      }
+      this.invalidate();
+      return;
+    }
     this.imports?.onKeyDown(name, doubleClick);
     this.inputFrame.markPending();
     this.invalidate();
@@ -492,7 +508,9 @@ export class DriverWorker {
       getCursorPosY: () => this.mouseState.y,
       isKeyDown: (name: string) =>
         this.pressedKeys.has(name as PoBKey) || (name === "CTRL" && this.clipboardControlPending),
-      takePasteText: () => this.pasteBuffer.take(),
+      takePasteText: () => this.rightClickGestureId === undefined
+        ? this.pasteBuffer.take()
+        : module.rpcCall<string>("paste", [this.rightClickGestureId]).value,
       imageLoad: (handle: number, filename: string, flags: number) => {
         const load = this.imageRepo?.load(handle, filename, flags);
         if (!load) return;

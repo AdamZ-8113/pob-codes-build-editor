@@ -20,10 +20,28 @@ type TextClipboard = {
 };
 
 export class ClipboardController {
+  private nextReadId = 0;
+  private gestureReads = new Map<number, Promise<string | undefined>>();
+
   constructor(
     private readonly clipboard: TextClipboard,
     private readonly warn: (message: string, error: unknown) => void = (message, error) => console.warn(message, error),
   ) {}
+
+  // Start inside the DOM gesture, before crossing worker/RPC boundaries.
+  beginGestureRead(): number {
+    const id = ++this.nextReadId;
+    this.gestureReads.set(id, this.readText());
+    return id;
+  }
+
+  readGesture(id: number): Promise<string | undefined> {
+    return this.gestureReads.get(id) ?? Promise.resolve(undefined);
+  }
+
+  endGestureRead(id: number): void {
+    this.gestureReads.delete(id);
+  }
 
   async readText(): Promise<string | undefined> {
     try {

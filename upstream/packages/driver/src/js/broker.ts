@@ -22,7 +22,7 @@ import SubWorkerObject from "./sub.ts?worker";
 type BrokerCallbacks = {
   fetch: (url: string, headers: Record<string, string>, body?: string) => Promise<unknown>;
   oauthAuthorize: (url: string, timeoutMs: number) => Promise<PoeOAuthAuthorization>;
-  paste: () => Promise<string>;
+  paste: (gestureId?: number) => Promise<string>;
 };
 
 class AsyncBroker {
@@ -156,7 +156,7 @@ class AsyncBroker {
         };
       }
       case "paste":
-        return { value: await this.callbacks!.paste() };
+        return { value: await this.callbacks!.paste(args[0] as number | undefined) };
       case "oauth_authorize":
         return { value: await this.callbacks!.oauthAuthorize(args[0] as string, args[1] as number) };
       case "subscript_start": {

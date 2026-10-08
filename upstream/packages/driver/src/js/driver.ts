@@ -43,7 +43,7 @@ type AsyncBroker = {
     config: FilesystemConfig,
     fetchCallback: HostCallbacks["onFetch"],
     oauthAuthorizeCallback: HostCallbacks["onOAuthAuthorize"],
-    pasteCallback: () => Promise<string>,
+    pasteCallback: (gestureId?: number) => Promise<string>,
     payloadProgressCallback: (progress: PayloadProgress) => void | Promise<void>,
     payloadFailureCallback: (message: string) => void | Promise<void>,
   ): Promise<void>;
@@ -179,7 +179,7 @@ export class Driver {
         fileSystemConfig,
         Comlink.proxy(this.hostCallbacks.onFetch),
         Comlink.proxy(this.hostCallbacks.onOAuthAuthorize),
-        Comlink.proxy(() => this.paste()),
+        Comlink.proxy((gestureId?: number) => this.paste(gestureId)),
         Comlink.proxy((progress: PayloadProgress) => this.lifecycleCallbacks.onPayloadProgress?.(progress)),
         Comlink.proxy((message: string) => this.handlePayloadFailure(message)),
       );
@@ -402,7 +402,18 @@ export class Driver {
       onKeyDown: (state: PoBKeyboardState, key: PoBKey, doubleClick: number) => {
         this.lifecycleCallbacks.onKeyboardStateChange?.([...state.pobKeys]);
         this.dispatchWorker("keyboard-state", () => this.driverWorker?.updateKeyboardState(state.pobKeys));
-        this.dispatchWorker("key-down", () => this.driverWorker?.handleKeyDown(key, doubleClick));
+        if (key === "RIGHTBUTTON") {
+          const gestureId = this.clipboard.beginGestureRead();
+          this.dispatchWorker("key-down", async () => {
+            try {
+              await this.driverWorker?.handleKeyDown(key, doubleClick, gestureId);
+            } finally {
+              this.clipboard.endGestureRead(gestureId);
+            }
+          });
+        } else {
+          this.dispatchWorker("key-down", () => this.driverWorker?.handleKeyDown(key, doubleClick));
+        }
         if (doubleClick > 0) this.dispatchWorker("key-up", () => this.driverWorker?.handleKeyUp(key, 0));
       },
       onKeyUp: (state: PoBKeyboardState, key: PoBKey) => {
@@ -539,8 +550,8 @@ export class Driver {
     void this.clipboard.writeText(text);
   }
 
-  async paste() {
-    return (await this.clipboard.readText()) ?? "";
+  async paste(gestureId?: number) {
+    return (await (gestureId === undefined ? this.clipboard.readText() : this.clipboard.readGesture(gestureId))) ?? "";
   }
 
   private dispatchClipboardAction(action: ClipboardAction) {
