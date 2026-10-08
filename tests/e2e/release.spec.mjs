@@ -28,6 +28,37 @@ async function ready(page) {
   expect(await page.evaluate(() => window.__DESKTOP_POB__.ready)).toBe(true);
 }
 
+test("pagehide releases runtime workers when graceful shutdown cannot reply", async ({ page, context }) => {
+  await context.route("**/*", route => new URL(route.request().url()).origin === origin ? route.continue() : route.abort("blockedbyclient"));
+  await page.addInitScript(() => {
+    const NativeWorker = window.Worker;
+    const state = window.__SHUTDOWN_TEST__ = { created: 0, terminated: 0, heldDestroy: 0, block: false };
+    window.Worker = class extends NativeWorker {
+      constructor(...args) { super(...args); state.created++; }
+      postMessage(...args) {
+        const message = args[0];
+        if (state.block && message?.type === "APPLY" && message.path?.join(".") === "destroy") {
+          state.heldDestroy++;
+          return;
+        }
+        super.postMessage(...args);
+      }
+      terminate() { state.terminated++; super.terminate(); }
+    };
+  });
+  await page.goto("/import2/?helpers=0");
+  await ready(page);
+  const state = await page.evaluate(() => {
+    window.__SHUTDOWN_TEST__.block = true;
+    // A departing document cannot rely on its timers or Comlink replies.
+    window.dispatchEvent(new PageTransitionEvent("pagehide"));
+    return window.__SHUTDOWN_TEST__;
+  });
+  expect(state.created).toBeGreaterThanOrEqual(2);
+  expect(state.terminated).toBe(state.created);
+  expect(state.heldDestroy).toBe(0);
+});
+
 test("candidate imports, edits, recalculates, shares and persists the displayed native build", async ({ page, context }, testInfo) => {
   const faults = [], blocked = [], assetPaths = [], uploads = [], resolutions = [], characterRequests = [];
   const browserConsole = [];

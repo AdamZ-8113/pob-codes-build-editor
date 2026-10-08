@@ -111,6 +111,15 @@ test("release-browser summary distinguishes a flaky success and reports finite b
   ]);
 });
 
+test("two release tests passing first try are not a flaky success", () => {
+  const markdown = formatReleaseBrowserSummary({ schemaVersion: 1, status: "passed", attempts: [
+    { title: "pagehide", timeoutMs: 240_000, retry: 0, status: "passed", durationMs: 5_000 },
+    { title: "candidate acceptance", timeoutMs: 240_000, retry: 0, status: "passed", durationMs: 150_000 },
+  ] }, []);
+  assert.doesNotMatch(markdown, /flaky success/);
+  assert.match(markdown, /passed on the first attempt/);
+});
+
 test("predecessor archive and inventory IDs must name assets of the selected release", () => {
   const release = { tag_name: "build-editor-abc", assets: [
     { id: 11, name: "pob-codes-build-editor-abc.tar.gz" },

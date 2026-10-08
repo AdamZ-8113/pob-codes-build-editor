@@ -27,7 +27,7 @@ export function formatReleaseBrowserSummary(summary, timings) {
     const teardown = Number.isFinite(testBudgetMs) && Number.isFinite(teardownMs) ? `${(teardownMs / testBudgetMs * 100).toFixed(1)}%` : "unavailable";
     lines.push(`| ${attempt.retry + 1} | ${attempt.status} | ${(attempt.durationMs / 1000).toFixed(1)}s | ${testUtilization} | ${timing ? `${(phase * 100).toFixed(1)}%` : "unavailable"} | ${teardown} |`);
   }
-  const flaky = summary.attempts.length > 1 && summary.attempts.at(-1).status === "passed";
+  const flaky = summary.attempts.some(attempt => attempt.retry > 0 && attempt.status === "passed");
   lines.push("", flaky ? "Result: flaky success after a failed first attempt." : `Result: ${summary.attempts[0].status} on the first attempt.`);
   return `${lines.join("\n")}\n`;
 }

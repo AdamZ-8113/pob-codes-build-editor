@@ -304,7 +304,7 @@ Object.defineProperty(window, "__DESKTOP_POB__", { value: {
   shareBuild: () => buildTransfer!.share(), retryShare: () => buildTransfer!.retry(),
   getBuildCode: exportBuildCode, flushInput: () => driver!.flushInput(),
 } });
-window.addEventListener("pagehide", () => { driver?.detachFromDOM(); driver?.destory(); });
+window.addEventListener("pagehide", () => { driver?.detachFromDOM(); driver?.destory(true); });
 void main().catch(report);
 
 function debugBrowserIdentity(userAgent: string, platform: string) {

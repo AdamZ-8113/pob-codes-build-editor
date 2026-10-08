@@ -111,6 +111,12 @@ reporting. Comlink, MessagePorts, SharedArrayBuffer/Atomics, broker/subworkers,
 the Lua host ABI, WebGL2 renderer, OffscreenCanvas, and original Lua UI remain
 the upstream architecture.
 
+Page departure terminates the main and filesystem workers synchronously after
+detaching input and closing helpers. A departing document cannot rely on a
+native shutdown reply or its one-second fallback timer. Broker resources must
+be released before the next page initializes its filesystem. Explicit driver destruction
+outside page departure retains its graceful native shutdown and bounded fallback.
+
 The native filesystem integration test uses the local compiler's `build/release`
 output directory. The source pin and packaging adjustments are implemented in
 the local packer; `scripts/build/build-runtime.mjs` uses the toolchain image by immutable digest

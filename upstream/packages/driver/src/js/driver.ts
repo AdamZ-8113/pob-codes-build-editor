@@ -233,7 +233,7 @@ export class Driver {
     }
   }
 
-  destory() {
+  destory(immediate = false) {
     this.helpers?.close();
     this.diagnostic("driver", "destroy");
     this.mouseMoves.close();
@@ -242,6 +242,12 @@ export class Driver {
       worker?.terminate();
       broker?.terminate();
     };
+    // pagehide can freeze the document before timers or Comlink replies run.
+    // Release broker resources before the next page initializes its filesystem.
+    if (immediate) {
+      stop();
+      return;
+    }
     const timeout = setTimeout(stop, 1000);
     if (this.driverWorker) {
       void this.driverWorker.destroy().catch(() => {}).finally(() => {
