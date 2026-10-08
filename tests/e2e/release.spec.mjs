@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import { deflateSync, inflateSync } from "node:zlib";
+import { createReleaseDiagnostics } from "./release-diagnostics.mjs";
 
 const origin = "http://127.0.0.1:3011";
 const fixture = (await readFile(new URL("../../fixtures/guided import parity desktop 329.txt", import.meta.url), "utf8")).trim();
@@ -27,9 +28,13 @@ async function ready(page) {
   expect(await page.evaluate(() => window.__DESKTOP_POB__.ready)).toBe(true);
 }
 
-test("candidate imports, edits, recalculates, shares and persists the displayed native build", async ({ page, context }) => {
+test("candidate imports, edits, recalculates, shares and persists the displayed native build", async ({ page, context }, testInfo) => {
   const faults = [], blocked = [], assetPaths = [], uploads = [], resolutions = [], characterRequests = [];
   let importMode = "empty", releaseImport;
+  let prefix, exported;
+  const diagnostics = createReleaseDiagnostics(testInfo);
+  const canvas = page.locator("canvas");
+  const exportCode = () => page.evaluate(() => window.__DESKTOP_POB__.getBuildCode());
   const requestsFor = path => characterRequests.filter(request => request.path === `/api/poe/${path}`);
   page.on("pageerror", error => faults.push(error.message));
   const cors = { "access-control-allow-origin": origin, "access-control-allow-headers": "content-type,x-pobcodes-client", "access-control-allow-methods": "GET,POST,OPTIONS", "cache-control": "no-store" };
@@ -79,6 +84,8 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
     blocked.push(request.url()); await route.abort("blockedbyclient");
   });
 
+  try {
+  await diagnostics.phase("startup and immutable release identity", 120_000, async () => {
   const response = await page.goto("/import2/");
   expect(response.status()).toBe(200);
   expect(response.headers()["cross-origin-opener-policy"]).toBe("same-origin");
@@ -89,21 +96,21 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
   expect(await page.evaluate(async () => (await window.__DESKTOP_POB__.getRuntimeProfile()).filesystem.payload.packagesBeforeReady)).toBeGreaterThan(0);
   expect(await page.title()).toContain("PoB Codes Build Editor");
   const metadata = await (await context.request.get(`${origin}/import2/release.json`)).json();
-  const prefix = `/import2/releases/${metadata.current}/`;
+  prefix = `/import2/releases/${metadata.current}/`;
   expect(metadata.current).toMatch(/^[a-f0-9]{24}$/);
   const shellScript = await page.locator("script[type=module]").getAttribute("src");
   expect(shellScript.startsWith(`${prefix}shell/`)).toBe(true);
   const shellResponse = await context.request.get(`${origin}${shellScript}`);
   expect(shellResponse.headers()["cache-control"]).toBe("public, max-age=31536000, immutable");
+  });
 
+  await diagnostics.phase("native import, edit, recalculation, export and sharing", 120_000, async () => {
   const resolved = await page.evaluate(() => window.__DESKTOP_POB__.resolveBuildInput("https://pobb.in/fixture"));
   expect(resolved).toBe(fixture);
   expect(resolutions).toEqual(["https://pobb.in/fixture"]);
   await page.evaluate(code => window.__DESKTOP_POB__.loadBuildFromCode(code), resolved);
-  const exportCode = () => page.evaluate(() => window.__DESKTOP_POB__.getBuildCode());
   const initialXml = decode(await exportCode());
   expect(buildTag(initialXml)).toMatch(/className="Duelist"/);
-  const canvas = page.locator("canvas");
   // Pinned native Build.lua character-level input in the displayed PoB header.
   await canvas.click({ position: { x: (await canvas.boundingBox()).width / 2 + 135, y: 16 } });
   await page.keyboard.press("Control+a");
@@ -118,7 +125,7 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
 
   // Exercise an actual padded native export, not a substituted getBuildCode.
   // XML attribute ordering can vary; adjust a real note until compression needs padding.
-  let exported = await exportCode();
+  exported = await exportCode();
   if (!exported.endsWith("=")) {
     await page.keyboard.press("Control+6");
     await canvas.click({ position: { x: 400, y: 200 } });
@@ -140,7 +147,9 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
   await page.bringToFront();
   await page.evaluate(code => window.__DESKTOP_POB__.loadBuildFromCode(code), exported);
   expect(buildTag(decode(await exportCode()))).toMatch(/level="73"/);
+  });
 
+  await diagnostics.phase("native save, reload and persisted reopen", 90_000, async () => {
   await canvas.click({ position: { x: 120, y: 16 } });
   await page.evaluate(() => window.__DESKTOP_POB__.flushInput());
   await page.keyboard.press("Control+a");
@@ -172,7 +181,9 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
     return result;
   });
   expect(directories).toContain("Path of Building");
+  });
 
+  await diagnostics.phase("mocked character listing and first import", 60_000, async () => {
   // Pinned Build.lua sidebar (322 px); browser adapter hides the OAuth section
   // and anchors the public-account section at y=18 within the import viewport.
   // Use native UI so this also proves the release selects the production host adapter.
@@ -199,6 +210,7 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
     { path: "/api/poe/characters", body: { accountName: "FixtureAccount#1234", realm: "pc" } },
     { path: "/api/poe/import-character", body: { accountName: "FixtureAccount#1234", characterName: "FixtureDuelist", realm: "pc" } },
   ]);
+  });
 
   const flushInput = () => page.evaluate(() => window.__DESKTOP_POB__.flushInput());
   const clickNative = async (x, y) => { await canvas.click({ position: { x, y } }); await flushInput(); };
@@ -228,6 +240,7 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
     }, { timeout: 5_000 }).toBe(expectedImports);
   };
 
+  await diagnostics.phase("failure, held response cleanup and retry", 60_000, async () => {
   await relist(2);
   const beforeFailure = decode(await exportCode());
   expect(importedItem(beforeFailure)).toBe("");
@@ -246,7 +259,9 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
   await expect.poll(async () => importedItem(decode(await exportCode()))).toContain("+17 to maximum Life");
   expect(requestsFor("characters")).toHaveLength(2);
   expect(requestsFor("import-character")).toHaveLength(3);
+  });
 
+  await diagnostics.phase("synthetic relisting and full item/passive import", 60_000, async () => {
   await relist(3);
   // siteCharImportAll is 32 px below Items; Enter activates the native
   // OpenConfirmPopup's confirm control. Click once after the list callback.
@@ -268,4 +283,9 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
   expect(await page.evaluate(() => window.__DESKTOP_POB__.errors)).toEqual([]);
   expect(faults).toEqual([]);
   expect(blocked).toEqual([]);
+  });
+  } finally {
+    releaseImport?.();
+    await diagnostics.finish();
+  }
 });

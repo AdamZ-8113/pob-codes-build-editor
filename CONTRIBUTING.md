@@ -11,7 +11,9 @@ npm run test:unit
 
 Add focused coverage for changed behavior. Runtime or payload changes also need
 native and representative headless-browser acceptance. Release-affecting work
-must keep full source/patch/package/release hash verification.
+must keep full source/patch/package/release hash verification. `npm run
+verify:release` also streams the packaged tar against its inventory and record;
+do not rebuild between release acceptance and promotion.
 
 See `docs/DEVELOPMENT.md` for the repository layout and validation routing.
 Path of Building's Lua behavior remains authoritative. Do not edit prepared

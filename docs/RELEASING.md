@@ -8,23 +8,53 @@ other production secrets. Source ownership and deployment authority are separate
 
 1. Select a full reviewed commit on public `main`. Its exact-SHA `ci.yml` push
    run must pass `fast-gates`, `native-and-browser` and `browser-harnesses`.
-2. Dispatch the **Build Editor Release Artifact** workflow
+2. On push/main, `native-and-browser` builds the release tree, inventory, record,
+   and tar before running the release-browser suite. It verifies the tree and
+   archive both before and after browser acceptance, then publishes the
+   seven-day `ci-candidate-<sha>-<run-id>-<attempt>` artifact. Pull request,
+   fork, manual, failed, cancelled, and incomplete CI runs cannot publish an
+   eligible source candidate.
+3. Dispatch the **Build Editor Release Artifact** workflow
    (`.github/workflows/deploy-import2.yml`, retained filename for continuity)
    from `main`, supplying `commit_sha`.
-3. The workflow prepares, checks, tests, builds and packages one generation.
-   It verifies the release and runs the materialized editor's headless tests.
-   `npm run test:e2e:release` serves those candidate bytes on loopback at
-   `/import2/`, including their static headers. The gate exercises native editing,
-   recalculation, export, save/reload using the existing native OPFS layout and
-   mocked network integrations. No test request reaches production.
-4. Download `build-editor-<full-sha>` or supply the successful run ID and SHA to
+4. The manual workflow selects one completed successful push/main CI run and
+   its exact attempt, requires all three jobs, resolves one unexpired candidate
+   by immutable artifact ID, and verifies the downloaded outer artifact digest.
+   It streams and checks every file in the inner tar against the inventory and
+   record before re-uploading the same three inner files. Promotion does not
+   install compilers or browsers, rebuild, or rerun tests.
+5. Download `build-editor-<full-sha>` or supply the successful promotion run ID and SHA to
    the private deployment operator. The seven-day Actions artifact contains
    one tarball, the complete file inventory, and the release record. The record
-   binds the tarball and inventory with SHA-256 hashes.
+   binds the tarball and inventory with SHA-256 hashes. The promotion artifact's
+   outer Actions digest is transport provenance and can differ from the CI
+   artifact digest; the inner tar, inventory, record, generation, and hashes
+   must remain byte-for-byte identical.
+
+If the CI candidate expires, rerun the complete producer workflow attempt so
+native, browser, and harness acceptance all execute again and a new
+attempt-qualified artifact is created. Do not use an old successful SHA or a
+partial rerun as a substitute, and do not fall back to rebuilding inside the
+promotion workflow.
 
 The workflow has read-only GitHub permissions apart from its own artifact
 upload capability. It has no production environment, deployment step, or
 Cloudflare secrets. Forks can build their own copies without production access.
+
+Workflow summaries distinguish build provenance (source CI run, attempt,
+artifact ID and digest) from promotion transport provenance (destination run,
+artifact ID and digest). Release-browser summaries report first-attempt and
+retry outcomes plus measured test/phase budget utilization. Their bounded,
+synthetic-fixture diagnostics are retained for seven days even after a flaky
+success.
+
+Each main push retains one CI candidate for seven days, and each promoted SHA
+retains a second transport copy for seven days. With the current roughly
+0.57-GiB inner archive, that is about 4 GiB-days per CI candidate and another
+4 GiB-days for a promoted copy. The promotion summary records the actual source
+artifact bytes and verified download time; Actions step timing records upload
+and total promotion duration. These repository measurements do not establish
+an account-wide billing balance.
 
 ## Deployment boundary
 
@@ -32,7 +62,10 @@ Production deployment belongs to a separate private operator workflow. It must:
 
 - Fetch the candidate by exact public repository, successful workflow run and
   commit, verify GitHub's artifact digest and the complete archive inventory,
-  and independently confirm the required CI jobs.
+  and independently confirm all three required CI jobs, the selected attempt,
+  public producer artifact, repository/head repository, workflow, event, and
+  source SHA. Private verification must be aligned to these producer checks
+  before the optimized path is treated as fully rolled out.
 - Treat public archives as data. Reject traversal, duplicate paths, links,
   special files, unexpected roots and oversized entries before extraction.
 - Use private verification code, deployment tools, static headers, redirects

@@ -48,19 +48,56 @@ jobs:
       - run: npm run prepare
       - run: npm run test:native
       - run: npm run pack
-      - run: node scripts/release/materialize-import2.mjs
+      - name: Build and bind the canonical release candidate
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+        run: node scripts/release/materialize-import2.mjs && node scripts/release/create-release-record.mjs && node scripts/release/archive-release.mjs
+      - name: Verify candidate tree and archive before browser acceptance
+        run: npm run verify:release
       - run: npx playwright install --with-deps chromium
-      - run: npm run test:e2e:release
-      - name: Retain public-fixture browser failure diagnostics
-        if: failure()
+      - name: Exercise the exact candidate tree in a headless browser
+        id: release-browser
+        run: npm run test:e2e:release
+      - name: Summarize release-browser attempts and phase budgets
+        if: always()
+        run: node scripts/release/summarize-release-browser.mjs
+      - name: Retain bounded public-fixture browser diagnostics
+        if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: candidate-browser-failure-${{ github.sha }}
+          name: candidate-browser-diagnostics-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
           path: |
             test-results/**/test-failed-*.png
             test-results/**/error-context.md
-          if-no-files-found: ignore
+            test-results/**/release-phase-timings.json
+            test-results/release-browser-summary.json
+          if-no-files-found: error
           retention-days: 7
+      - name: Reverify that browser acceptance did not mutate candidate bytes
+        if: steps.release-browser.outcome == 'success'
+        run: npm run verify:release
+      - name: Publish the successful push/main CI candidate
+        id: ci-candidate
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main' && steps.release-browser.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: ci-candidate-${{ github.sha }}-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            .runtime/release-assets/*.tar.gz
+            .runtime/release-inventory.json
+            .runtime/release-record.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+      - name: Record CI candidate provenance
+        if: steps.ci-candidate.outcome == 'success'
+        env:
+          ARTIFACT_ID: ${{ steps.ci-candidate.outputs.artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.ci-candidate.outputs.artifact-digest }}
+        run: |
+          echo "### Canonical release candidate" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Source: CI run $GITHUB_RUN_ID attempt $GITHUB_RUN_ATTEMPT at $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Artifact: $ARTIFACT_ID ($ARTIFACT_DIGEST)" >> "$GITHUB_STEP_SUMMARY"
 
   browser-harnesses:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'runtime')

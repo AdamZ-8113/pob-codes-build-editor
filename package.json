@@ -25,7 +25,7 @@
     "test:e2e:release": "playwright test --config=playwright.release.config.mjs",
     "bench": "node tools/profiles/benchmark.mjs",
     "build:release": "node scripts/build/build-runtime.mjs --test && node scripts/build/pack.mjs && node scripts/release/materialize-import2.mjs && node scripts/release/create-release-record.mjs && node scripts/release/archive-release.mjs",
-    "verify:release": "node scripts/release/verify-import2-release.mjs && node scripts/release/verify-release-record.mjs",
+    "verify:release": "node scripts/release/verify-import2-release.mjs && node scripts/release/verify-release-record.mjs && node scripts/release/verify-release-candidate.mjs",
     "test:e2e:production-smoke": "node tools/profiles/profile-import2-production.mjs"
   },
   "devDependencies": {

@@ -1,5 +1,5 @@
 name: Build Editor Release Artifact
-run-name: Build editor artifact ${{ inputs.commit_sha }}
+run-name: Promote tested editor artifact ${{ inputs.commit_sha }}
 
 on:
   workflow_dispatch:
@@ -19,10 +19,10 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  build:
+  promote:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -39,44 +39,54 @@ jobs:
           test "$(git rev-parse "$TARGET")" = "$TARGET"
           git fetch origin main --depth=1
           git merge-base --is-ancestor "$TARGET" origin/main
-      - name: Require successful push CI for exact SHA
+      - name: Select one eligible CI run attempt and immutable candidate artifact
+        id: source
         env:
           GH_TOKEN: ${{ github.token }}
           TARGET: ${{ inputs.commit_sha }}
-        run: node scripts/release/verify-ci-eligibility.mjs --sha="$TARGET"
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
-        with:
-          node-version: 22
-      - uses: denoland/setup-deno@22d081ff2d3a40755e97629de92e3bcbfa7cf2ed
-        with:
-          deno-version: v2.7.12
-      - run: npm ci --ignore-scripts
-      - run: npm run prepare
-      - run: npm run check && npm run test:unit && npm run test:native && npm run pack
-      - name: Materialize one standalone candidate generation
+        run: node scripts/release/verify-ci-eligibility.mjs --sha="$TARGET" --github-output="$GITHUB_OUTPUT"
+      - name: Download and verify the selected outer artifact digest
+        id: download
         env:
-          GITHUB_SHA: ${{ inputs.commit_sha }}
-        run: node scripts/release/materialize-import2.mjs && node scripts/release/create-release-record.mjs && node scripts/release/archive-release.mjs
-      - run: npm run verify:release
-      - name: Verify the materialized editor in a headless browser
-        run: npx playwright install --with-deps chromium && npm run test:e2e:release
-      - name: Retain public-fixture browser failure diagnostics
-        if: failure()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: candidate-browser-failure-${{ inputs.commit_sha }}
-          path: |
-            test-results/**/test-failed-*.png
-            test-results/**/error-context.md
-          if-no-files-found: ignore
-          retention-days: 7
-      - name: Publish candidate bytes for independent deployment verification
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ steps.source.outputs.source-artifact-id }}
+          ARTIFACT_DIGEST: ${{ steps.source.outputs.source-artifact-digest }}
+        run: >-
+          node scripts/release/download-ci-candidate.mjs
+          --artifact-id="$ARTIFACT_ID"
+          --digest="$ARTIFACT_DIGEST"
+          --zip="$RUNNER_TEMP/ci-candidate.zip"
+          --output="$RUNNER_TEMP/ci-candidate"
+          --github-output="$GITHUB_OUTPUT"
+      - name: Verify the unchanged inner archive, inventory, and record
+        env:
+          TARGET: ${{ inputs.commit_sha }}
+        run: node scripts/release/verify-release-candidate.mjs --bundle-root="$RUNNER_TEMP/ci-candidate" --sha="$TARGET"
+      - name: Publish unchanged bytes for independent deployment verification
+        id: promotion
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: build-editor-${{ inputs.commit_sha }}
           path: |
-            .runtime/release-assets/*.tar.gz
-            .runtime/release-inventory.json
-            .runtime/release-record.json
+            ${{ runner.temp }}/ci-candidate/release-assets/*.tar.gz
+            ${{ runner.temp }}/ci-candidate/release-inventory.json
+            ${{ runner.temp }}/ci-candidate/release-record.json
           if-no-files-found: error
           retention-days: 7
+          compression-level: 0
+      - name: Record build and transport provenance
+        env:
+          SOURCE_RUN: ${{ steps.source.outputs.source-run-id }}
+          SOURCE_ATTEMPT: ${{ steps.source.outputs.source-run-attempt }}
+          SOURCE_ARTIFACT: ${{ steps.source.outputs.source-artifact-id }}
+          SOURCE_DIGEST: ${{ steps.source.outputs.source-artifact-digest }}
+          SOURCE_BYTES: ${{ steps.source.outputs.source-artifact-size }}
+          DOWNLOAD_SECONDS: ${{ steps.download.outputs.download-seconds }}
+          DESTINATION_ARTIFACT: ${{ steps.promotion.outputs.artifact-id }}
+          DESTINATION_DIGEST: ${{ steps.promotion.outputs.artifact-digest }}
+        run: |
+          echo "### Tested-byte promotion" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Build provenance: CI run $SOURCE_RUN attempt $SOURCE_ATTEMPT, artifact $SOURCE_ARTIFACT ($SOURCE_DIGEST)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Source transfer: $SOURCE_BYTES bytes; verified download completed in ${DOWNLOAD_SECONDS}s" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Promotion transport: run $GITHUB_RUN_ID attempt $GITHUB_RUN_ATTEMPT, artifact $DESTINATION_ARTIFACT ($DESTINATION_DIGEST)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- The promotion run did not compile or browser-test these bytes; it verified and re-uploaded the CI-tested inner tuple unchanged." >> "$GITHUB_STEP_SUMMARY"

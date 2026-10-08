@@ -128,7 +128,11 @@ Chromium (POSIX: `BUILD_EDITOR_BROWSER_CHANNEL='' npm run test:browser`).
 Shells that remove empty environment values need a Node launcher to set this
 variable. CI uses bundled Chromium in the dedicated `browser-harnesses` job,
 which prepares, builds and packs its own runtime. Candidate acceptance remains
-in `native-and-browser`. Both jobs must pass for exact-SHA release eligibility.
+in `native-and-browser`. That job creates and verifies the canonical release
+tuple before acceptance, reverifies it afterward, and publishes it only for
+successful push/main producers. `fast-gates`, `native-and-browser`, and
+`browser-harnesses` must all pass in the selected run attempt for exact-SHA
+release eligibility.
 The curated subset checks input latency, payload integrity, startup paths and
 unique databases. Native editing/save/reload and
 render reuse remain manual while Linux reload and pixel-parity failures are
@@ -153,8 +157,12 @@ isolation/cache headers.
 External requests are mocked or blocked. The suite ignores development origin
 overrides and refuses to reuse an existing server. Run `build:release` again after
 source changes before using the candidate suite.
-CI retains failure screenshots and error contexts from these public fixtures as
-`candidate-browser-failure-<sha>` artifacts for seven days.
+CI retains bounded screenshots, error contexts, phase timings, and a suite
+summary from these public fixtures as attempt-qualified
+`candidate-browser-diagnostics-<sha>-<run>-<attempt>` artifacts for seven days,
+including after a flaky success. The test has a 240-second finite budget,
+justified by measured 2.8-2.9-minute Linux runs; startup and each functional
+phase have their own smaller deadline.
 
 The host keeps `PoB Codes Import2 Preview v1` as its configured `userDirectory`
 for settings/cloud lookup. Native PoB currently writes browser saves under the
@@ -218,3 +226,10 @@ and rollback belong to the separate private operator. Its deploy-authorized
 handoff reuses the durable private recovery Release rather than creating a
 private Actions artifact. This public repository must remain free of production
 credentials.
+
+The manual release workflow is a promotion boundary, not a second builder. It
+downloads one exact attempt-qualified CI artifact, checks the outer digest and
+streams the inner tar against its inventory, then publishes the unchanged inner
+tuple as `build-editor-<sha>`. Missing, expired, duplicate, incomplete, or
+tampered source evidence fails closed; recovery is a new full CI producer
+attempt rather than a promotion-time rebuild.

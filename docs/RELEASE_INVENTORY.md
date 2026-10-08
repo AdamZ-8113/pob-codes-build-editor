@@ -17,3 +17,11 @@ version 2 and must carry the pinned Path of Building license identity.
 `scripts/release/verify-release-record.mjs` rejects missing, extra, or changed files.
 The archive contains no source checkout, compiler output, credentials, reports,
 browser state, raw private builds, captures, or private repository history.
+
+CI creates this tuple once, verifies the exact tree before and after browser
+acceptance, and retains it for seven days in an attempt-qualified candidate
+artifact. Manual promotion revalidates the outer Actions digest and every inner
+archive member, then re-uploads these three files unchanged as
+`build-editor-<sha>`. The source and destination Actions artifact digests bind
+their separate zip transports; equality is required for the inner tar,
+inventory, and record bytes instead.
