@@ -139,7 +139,7 @@ export class HelperPool {
     });
   }
   cancel() { this.generation++; }
-  run(job: HelperJob): Promise<unknown[] | null> {
+  run(job: HelperJob, onProgress: (completed: number) => void = () => {}): Promise<unknown[] | null> {
     const nodePower = 'kind' in job && job.kind === 'nodePower';
     const identity = `${nodePower ? 'nodePower' : 'unique'}:${job.identity}`;
     const generation = ++this.generation;
@@ -160,7 +160,7 @@ export class HelperPool {
         }));
         if (generation !== this.generation) return null;
         const values: unknown[] = Array(job.items.length);
-        let cursor = 0;
+        let cursor = 0, completed = 0;
         await Promise.all(this.members.map(async member => {
           let first = true;
           while (cursor < job.items.length && generation === this.generation) {
@@ -177,6 +177,8 @@ export class HelperPool {
                 nodePower ? !nodePowerResult(v) : v !== '-inf' && !numberText(v))) throw new Error('Invalid helper result');
             results.forEach((value, index) => values[offset + index] = value);
             this.completed += results.length;
+            completed += results.length;
+            onProgress(completed);
           }
         }));
         if (!this.admitted(job.uiBytes)) throw new Error('Helper memory reserve exhausted');

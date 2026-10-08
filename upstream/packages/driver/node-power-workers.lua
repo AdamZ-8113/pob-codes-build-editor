@@ -135,6 +135,7 @@ return function(build)
         local id = BeginUniqueSort(json.encode({kind='nodePower', identity=currentEpoch..':'..revision,
             xml=xml, metric=metric, items=remote}))
         local values, localIndex, remoteDone, handedOff = {}, 1, false, false
+        local remoteProgress = 0
         self.nodePowerDelegation = {remote=#remote, localCount=#localItems, helpers=helpers, completed=false}
         local status = self.nodePowerStatus or {}
         self.nodePowerStatus = status
@@ -155,20 +156,29 @@ return function(build)
             local reply = not remoteDone and PollUniqueSort(id)
             if reply then
                 local results = json.decode(reply)
-                if type(results) ~= 'table' or #results ~= #remote then fallback('helper-failed'); return end
-                for i, result in ipairs(results) do
-                    local keys = (not self.powerStat or not self.powerStat.stat)
-                        and {'singleStat', 'offence', 'defence'} or {'singleStat'}
-                    local decoded = {}
-                    for _, key in ipairs(keys) do
-                        local value = type(result) == 'table' and type(result[key]) == 'string' and tonumber(result[key])
-                        if not value or value ~= value or math.abs(value) == math.huge then fallback('invalid-result'); return end
-                        decoded[key] = value
+                if type(results) == 'table' and results.completed ~= nil then
+                    local count = results.completed
+                    if type(count) ~= 'number' or count ~= math.floor(count) or count < remoteProgress or count > #remote then
+                        fallback('invalid-progress'); return
                     end
-                    values[remoteIndices[i]] = decoded
+                    remoteProgress = count
+                else
+                    if type(results) ~= 'table' or #results ~= #remote then fallback('helper-failed'); return end
+                    for i, result in ipairs(results) do
+                        local keys = (not self.powerStat or not self.powerStat.stat)
+                            and {'singleStat', 'offence', 'defence'} or {'singleStat'}
+                        local decoded = {}
+                        for _, key in ipairs(keys) do
+                            local value = type(result) == 'table' and type(result[key]) == 'string' and tonumber(result[key])
+                            if not value or value ~= value or math.abs(value) == math.huge then fallback('invalid-result'); return end
+                            decoded[key] = value
+                        end
+                        values[remoteIndices[i]] = decoded
+                    end
+                    remoteDone = true
+                    status.remoteCompleted = status.remoteCompleted + #remote
+                    remoteProgress = 0
                 end
-                remoteDone = true
-                status.remoteCompleted = status.remoteCompleted + #remote
             end
             -- A frame-bound UI share can lag behind the helpers. Hand its
             -- serializable tail to the now-idle pool once, without duplicating
@@ -200,10 +210,11 @@ return function(build)
                 if GetTime() >= deadline then break end
             end
             if build.powerBuilderProgressCallback then
-                -- Count evaluated items, including validated helper replies.
-                -- Handoffs preserve the original total and never double count.
+                -- Pool progress counts validated chunks in the current request.
+                -- Final replies move that count into remoteCompleted exactly once;
+                -- a tail handoff starts a new request against the same report total.
                 build.powerBuilderProgressCallback(math.floor(
-                    (status.localCompleted + status.remoteCompleted) / #items * 100))
+                    (status.localCompleted + status.remoteCompleted + remoteProgress) / #items * 100))
             end
             if remoteDone and localIndex > #localItems then
                 self.nodePowerDelegation.completed = true

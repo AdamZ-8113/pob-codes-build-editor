@@ -69,11 +69,36 @@ Deno.test('cancelled jobs cannot publish late scores or progress', async () => {
     await h.pool.start(1);
     let reply: (() => void) | undefined;
     h.setBehavior((w,r) => r.job?.items ? reply = () => w.reply(r) : w.reply(r));
-    const pending = h.pool.run(job()); await tick();
+    const progress: number[] = [];
+    const pending = h.pool.run(job(), count => progress.push(count)); await tick();
     assert(reply); h.pool.cancel(); reply();
     assertEquals(await pending, null); assertEquals(h.pool.profile().completed, 0);
+    assertEquals(progress, []);
     h.setBehavior((w,r) => w.reply(r));
     assertEquals((await h.pool.run(job('new:1')))?.length, 180);
+  } finally { h.pool.close(); }
+});
+
+Deno.test('helper progress counts validated chunks per job before the last worker returns', async () => {
+  const h = harness();
+  try {
+    await h.pool.start(2);
+    const held: (() => void)[] = [];
+    h.setBehavior((worker, request) => request.job?.items
+      ? held.push(() => worker.reply(request)) : worker.reply(request));
+    const progress: number[] = [];
+    const pending = h.pool.run(job('chunks', 50), count => progress.push(count));
+    await tick(); assertEquals(held.length, 2); assertEquals(progress, []);
+    held[1](); await tick(); assertEquals(progress, [25]);
+    held[0](); assertEquals((await pending)?.length, 50); assertEquals(progress, [25, 50]);
+    h.setBehavior((worker, request) => worker.reply(request));
+    const next: number[] = [];
+    await h.pool.run(job('next', 10), count => next.push(count));
+    assertEquals(next, [10], 'Progress is relative to this request, not the pool lifetime');
+    h.setBehavior((worker, request) => worker.reply(request, request.job?.items ? ['bad'] : undefined));
+    const invalid: number[] = [];
+    assertEquals(await h.pool.run(job('invalid', 50), count => invalid.push(count)), null);
+    assertEquals(invalid, [], 'Invalid chunks cannot advance progress');
   } finally { h.pool.close(); }
 });
 

@@ -165,6 +165,12 @@ return function(install)
     assert(progressBuild.percentages[1] > 0 and progressBuild.percentages[1] < 25)
     for _=1,20 do local success,result=coroutine.resume(pending); assert(success and result==nil) end
     assert(progressBuild.percentages[#progressBuild.percentages]==25, 'Only the completed UI quarter is counted while helpers wait')
+    reply={completed=50}
+    local success,result=coroutine.resume(pending); assert(success and result==nil)
+    assert(progressBuild.percentages[#progressBuild.percentages]==50, 'Validated helper chunks count before the full reply')
+    success,result=coroutine.resume(pending); assert(success and result==nil)
+    assert(progressBuild.percentages[#progressBuild.percentages]==50, 'Polling the same chunk count never double counts')
+    reply=nil
     repeat completeReply(); local success; success,values=coroutine.resume(pending); assert(success,values) until coroutine.status(pending)=='dead'
     assert(progressBuild.percentages[#progressBuild.percentages]==99, 'Reserve completion for the report callback')
     progressBuild.powerBuilderProgressCallback(10)
@@ -172,6 +178,23 @@ return function(install)
     for i=2,#progressBuild.percentages do assert(progressBuild.percentages[i]>=progressBuild.percentages[i-1]) end
     progressTab.powerBuildFlag=true; progressTab:BuildPower()
     assert(progressBuild.percentages[#progressBuild.percentages]==0, 'Replacement resets progress')
+    -- A completed first request and an in-flight tail share the original total.
+    local handoffBuild, handoffTab, beginHandoff=setup()
+    pending=beginHandoff(); completeReply()
+    success,result=coroutine.resume(pending); assert(success and result==nil)
+    assert(handoffTab.nodePowerStatus.handedOff > 25)
+    reply={completed=25}
+    success,result=coroutine.resume(pending); assert(success and result==nil)
+    assert(handoffBuild.percentages[#handoffBuild.percentages] == math.floor(
+        (handoffTab.nodePowerStatus.localCompleted + 150 + 25) / 200 * 100), 'Handoff progress counts each request once')
+    reply=nil
+    repeat completeReply(); success,values=coroutine.resume(pending); assert(success,values) until coroutine.status(pending)=='dead'
+    for i=1,200 do assert(values[i].singleStat==i+0.125) end
+    for _, count in ipairs({-1, 151, 1.5, '25', math.huge}) do
+        local _, invalidTab, beginInvalid=setup(); pending=beginInvalid(); reply={completed=count}
+        success,result=coroutine.resume(pending)
+        assert(success and result==nil and coroutine.status(pending)=='dead' and invalidTab.nodePowerStatus.reason=='invalid-progress')
+    end
     -- Expensive valid work must not be discarded merely because total time exceeds 60s.
     local _, slow, beginSlow=setup(); pending=beginSlow(); clock=clock+61000
     reply={}; for i,item in ipairs(sent.items) do reply[i]={singleStat='1'} end

@@ -34,7 +34,7 @@ try {
       let heldReply = false;
       if (helpers) await context.route(/\/src\/js\/worker\.ts\?worker_file/, async route => {
         const response = await route.fetch(), source = await response.text();
-        const marker = 'sortRequest({ ...JSON.parse(text), uiBytes: module.HEAPU8.buffer.byteLength })';
+        const marker = 'sortRequest(job, id)';
         assert.ok(source.includes(marker)); heldReply = true;
         // Guarantee a waiting interval even on fast machines. Work still runs
         // through the real pool, then its result is delayed only in this test.
@@ -89,6 +89,9 @@ try {
         const advanced = await until(s => /\(([1-9]\d*)%\)/.test(s.toastMessage) && !s.delegation.completed,
           'Percentage advances while helpers are still calculating');
         assert.equal(advanced.runs.at(-1).reportReadyAt,undefined);
+        const chunkProgress = await until(s => Number(s.toastMessage?.match(/\((\d+)%\)/)?.[1]) > 25 &&
+          !s.delegation.completed, 'Completed helper chunks advance beyond the UI quarter before the batch returns');
+        assert.equal(chunkProgress.runs.at(-1).reportReadyAt,undefined);
       }
       // A replacement must retain an indicator and remove the previous toast.
       await select('metric','Life');

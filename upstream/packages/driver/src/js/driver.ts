@@ -207,11 +207,15 @@ export class Driver {
             window.open(url, "_blank");
           }),
           Comlink.proxy(() => filesystemReady),
-          Comlink.proxy((job: HelperJob | null) => {
+          Comlink.proxy((job: HelperJob | null, requestId?: number) => {
             if (!job) { this.helpers?.cancel(); return Promise.resolve(null); }
             if ('kind' in job && job.kind === 'nodePower' &&
                 (this.build !== 'release' || !this.nodePowerHelpers)) return Promise.resolve(null);
-            return this.helpers?.run(job) ?? Promise.resolve(null);
+            return this.helpers?.run(job, completed => {
+              if ('kind' in job && job.kind === 'nodePower' && requestId !== undefined) {
+                void this.driverWorker?.reportNodePowerProgress(requestId, completed).catch(() => {});
+              }
+            }) ?? Promise.resolve(null);
           }),
           runtimeGcPause(location.search, 'ui'),
           new URLSearchParams(location.search).get('tooltipCache') === 'off' ? -1

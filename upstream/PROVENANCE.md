@@ -493,8 +493,11 @@ chunk retains its bounded deadline; total report time no longer discards healthy
 long-running work after 60 seconds and repeats it serially.
 The node-power adapter announces each report through PoB's existing
 progress callback at 0% before planning or helper calculation. It publishes the
-fraction of evaluated items from UI work and validated helper replies, preserving
-the original total across handoffs. Progress stays monotonic through the final
+fraction of evaluated items from UI work and validated helper chunks as each
+chunk finishes, instead of waiting for the whole helper batch. Counts are scoped
+to the current request; cancelled/replaced requests and late updates cannot
+advance a new report. Final replies and tail handoffs count each item once,
+preserving the original total. Progress stays monotonic through the final
 merge and is capped at 99% until the completion callback removes the toast. It
 respects dismissal, restores the indicator when reopening a pending heatmap,
 and removes stale report toasts on build replacement/shutdown. This changes no

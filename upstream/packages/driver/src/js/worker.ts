@@ -74,6 +74,14 @@ type Imports = {
 
 export class DriverWorker {
   private uniqueHelpersEnabled = 0;
+  private nodePowerProgress?: { id: number; total: number; completed: number; finished: boolean };
+  reportNodePowerProgress(id: number, completed: number) {
+    const progress = this.nodePowerProgress;
+    if (!progress || progress.id !== id || progress.finished || !Number.isSafeInteger(completed) ||
+        completed <= progress.completed || completed > progress.total) return;
+    progress.completed = completed;
+    this.invalidate();
+  }
   private nodePowerHelpersEnabled = false;
   configureUniqueHelpers(count: number) { this.uniqueHelpersEnabled = count; }
   private imageRepo: ImageRepository | undefined;
@@ -149,7 +157,7 @@ export class DriverWorker {
     copy: MainCallbacks["copy"],
     openUrl: MainCallbacks["openUrl"],
     filesystemReady: () => Promise<void>,
-    sortRequest: (job: HelperJob | null) => Promise<unknown[] | null>,
+    sortRequest: (job: HelperJob | null, requestId?: number) => Promise<unknown[] | null>,
     gcPause = 400,
     itemTooltipCacheMode = 1,
     nativeTextWidthCacheEnabled = true,
@@ -202,20 +210,29 @@ export class DriverWorker {
       nodePowerAvailable: () => this.nodePowerHelpersEnabled ? this.uniqueHelpersEnabled : 0,
       cancelUniqueSort: () => {
         sortSequence++; sortReplies.clear();
+        this.nodePowerProgress = undefined;
         void sortRequest(null).catch(() => {});
       },
       beginUniqueSort: (text: string) => {
         const id = ++sortSequence; sortReplies.clear();
-        void sortRequest({ ...JSON.parse(text), uiBytes: module.HEAPU8.buffer.byteLength }).then(values => {
-          if (id === sortSequence) { sortReplies.set(id, JSON.stringify(values)); this.invalidate(); }
-        }, () => { if (id === sortSequence) { sortReplies.set(id, 'null'); this.invalidate(); } });
+        const job = { ...JSON.parse(text), uiBytes: module.HEAPU8.buffer.byteLength };
+        this.nodePowerProgress = job.kind === 'nodePower'
+          ? { id, total: job.items.length, completed: 0, finished: false } : undefined;
+        const finish = (value: string) => {
+          if (id !== sortSequence) return;
+          if (this.nodePowerProgress) this.nodePowerProgress.finished = true;
+          sortReplies.set(id, value); this.invalidate();
+        };
+        void sortRequest(job, id).then(values => finish(JSON.stringify(values)), () => finish('null'));
         return id;
       },
       pollUniqueSort: (id: number) => {
         if (id !== sortSequence) return 'null';
         const value = sortReplies.get(id);
         if (value !== undefined) sortReplies.delete(id);
-        return value;
+        if (value !== undefined) return value;
+        const progress = this.nodePowerProgress;
+        if (progress && !progress.finished) return JSON.stringify({ completed: progress.completed });
       },
     });
     this.sampleMemory();
