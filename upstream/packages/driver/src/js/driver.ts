@@ -22,7 +22,6 @@ import type { PayloadProgress } from "./payload.ts";
 import WorkerObject from "./worker.ts?worker";
 import { HelperPool, type HelperJob } from './helper-pool.ts';
 import { runtimeGcPause } from './gc-policy.ts';
-import { downloadImage } from './image-download.ts';
 // @ts-types="./vite-worker.d.ts"
 import HelperWorker from './calc-helper.ts?worker';
 
@@ -219,7 +218,6 @@ export class Driver {
             : new URLSearchParams(location.search).get('tooltipCache') === 'calculator' ? 0 : 1,
           new URLSearchParams(location.search).get('textWidthCache') !== 'off',
           this.nodePowerHelpers,
-          Comlink.proxy(downloadImage),
         ),
       ]);
     } catch (error) {

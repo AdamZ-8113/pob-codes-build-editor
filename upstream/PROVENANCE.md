@@ -111,12 +111,6 @@ reporting. Comlink, MessagePorts, SharedArrayBuffer/Atomics, broker/subworkers,
 the Lua host ABI, WebGL2 renderer, OffscreenCanvas, and original Lua UI remain
 the upstream architecture.
 
-Image downloads and response-body consumption run through a Comlink host
-callback. The Lua worker still owns decoding, texture caching and rendering,
-but its synchronous broker RPC waits cannot hold Chromium's per-origin HTTP
-connections open while the broker needs another payload package during startup
-or reload. Missing images and download errors retain the existing handling.
-
 The native filesystem integration test uses the local compiler's `build/release`
 output directory. The source pin and packaging adjustments are implemented in
 the local packer; `scripts/build/build-runtime.mjs` uses the toolchain image by immutable digest

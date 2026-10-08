@@ -12,7 +12,6 @@ import { loadFonts, Renderer, type RenderStats, TextMetrics, WebGL2Backend } fro
 import { createRpcClient } from "./rpc.ts";
 import { registerSentryWasm } from "./sentry-wasm.ts";
 import { startRuntime } from "./startup.ts";
-import { downloadImage, type ImageDownload } from "./image-download.ts";
 import { InputFrameBoundary } from "./input-frame.ts";
 import { FrameDemand } from "./frame-demand.ts";
 import type { HelperJob } from './helper-pool.ts';
@@ -154,12 +153,11 @@ export class DriverWorker {
     itemTooltipCacheMode = 1,
     nativeTextWidthCacheEnabled = true,
     nodePowerHelpers = false,
-    imageDownload: ImageDownload = downloadImage,
   ) {
     this.onDiagnostic = onDiagnostic;
     this.nodePowerHelpersEnabled = build === 'release' && nodePowerHelpers;
     this.diagnostic("worker", "start");
-    this.imageRepo = new ImageRepository(`${assetPrefix}/root/`, imageDownload);
+    this.imageRepo = new ImageRepository(`${assetPrefix}/root/`);
 
     this.hostCallbacks = {
       onError,
