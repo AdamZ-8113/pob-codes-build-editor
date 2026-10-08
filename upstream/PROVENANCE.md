@@ -39,9 +39,11 @@ applied after #10373, followed by #10381. Those three PRs overlap in
 `CalcsTab.lua` and `TestPowerReport_spec.lua`; the resolution keeps #10373's
 `useClusterPower` gating, #10313's stage options, #10381's context-aware cache
 keys, and all specs. The composite also includes the required local relevance
-patch described below. Its SHA-256 is
-`a17b2cb828eee3483e7b89c720653447733f8053752c7b5ca494853eb7891cea`
-and its result tree is `adb0454235cd52bd22b83c14d4c7153e4017daa6`.
+patch described below. PR #10360 is recorded through head
+`44062f75d922e387be6d7c7eff8dedc18ee8f669`, including its always-visible node
+power controls and heat-map-gated Power Report action. The composite SHA-256 is
+`257c1a7bcec07830913584e3e8f43e2160fdbd8a04908173de9904db25bd49ae`
+and its result tree is `cc9f00cf79e0b34a10cbf74bee0d77121c5892a8`.
 
 The maintainer-supplied 2026-09-30 gem-dropdown hover patch is preserved in
 `../patches/gem-dropdown-hover-tooltip.patch` (SHA-256

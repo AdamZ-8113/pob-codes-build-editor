@@ -1,5 +1,5 @@
 diff --git a/spec/System/TestGemSocketQuality_spec.lua b/spec/System/TestGemSocketQuality_spec.lua
-index 719004b176701f6f4df573dd0fd7119da64a4c4d..3f54c87649455c045ed2bd15dcca05e64653b769 100644
+index 719004b..3f54c87 100644
 --- a/spec/System/TestGemSocketQuality_spec.lua
 +++ b/spec/System/TestGemSocketQuality_spec.lua
 @@ -23,6 +23,20 @@ describe("TestGemSocketQuality", function()
@@ -24,7 +24,7 @@ index 719004b176701f6f4df573dd0fd7119da64a4c4d..3f54c87649455c045ed2bd15dcca05e6
  		equipBody("B-B-B")
  		build.skillsTab:PasteSocketGroup("Slot: Body Armour\nFireball 20/0  1\n")
 diff --git a/spec/System/TestImport_spec.lua b/spec/System/TestImport_spec.lua
-index 185e4a482ef8d31d580488c09e54307fd549b866..fdb3083fd39912ba6eab23bea75b848d4d35bdbb 100644
+index 185e4a4..fdb3083 100644
 --- a/spec/System/TestImport_spec.lua
 +++ b/spec/System/TestImport_spec.lua
 @@ -12,6 +12,90 @@ describe("TestImport", function()
@@ -119,7 +119,7 @@ index 185e4a482ef8d31d580488c09e54307fd549b866..fdb3083fd39912ba6eab23bea75b848d
  		build.importTab:ImportPassiveTreeAndJewels(sampleData, true)
  		runCallback("OnFrame")
 diff --git a/spec/System/TestItemListControl_spec.lua b/spec/System/TestItemListControl_spec.lua
-index 2d690a6eb860ce960ffd6d41a096708189548c4c..0362a5f8645f928a0d08467e3663d07aef34ec7e 100644
+index 2d690a6..0362a5f 100644
 --- a/spec/System/TestItemListControl_spec.lua
 +++ b/spec/System/TestItemListControl_spec.lua
 @@ -52,6 +52,10 @@ describe("ItemListControl", function()
@@ -183,7 +183,7 @@ index 2d690a6eb860ce960ffd6d41a096708189548c4c..0362a5f8645f928a0d08467e3663d07a
  		local control = newItemListControl()
  		control:UpdateLoadoutList()
 diff --git a/spec/System/TestItemMods_spec.lua b/spec/System/TestItemMods_spec.lua
-index 3aa079e67b968dd4b3b291d9721027c53a45b78d..362ce3a1c80bad43b773bbec9ca78b0cb73bca04 100644
+index 3aa079e..362ce3a 100644
 --- a/spec/System/TestItemMods_spec.lua
 +++ b/spec/System/TestItemMods_spec.lua
 @@ -7,6 +7,133 @@ describe("TetsItemMods", function()
@@ -321,7 +321,7 @@ index 3aa079e67b968dd4b3b291d9721027c53a45b78d..362ce3a1c80bad43b773bbec9ca78b0c
  		build.itemsTab:CreateDisplayItemFromRaw([[
  			Rarity: Unique
 diff --git a/spec/System/TestSkills_spec.lua b/spec/System/TestSkills_spec.lua
-index 8075f75884cc60908e37c56acedcdb5d2b89a48d..8e90b9f5b5359948f71a9e88e8dca44a7b803aa7 100644
+index 8075f75..8e90b9f 100644
 --- a/spec/System/TestSkills_spec.lua
 +++ b/spec/System/TestSkills_spec.lua
 @@ -7,6 +7,123 @@ describe("TestSkills", function()
@@ -449,7 +449,7 @@ index 8075f75884cc60908e37c56acedcdb5d2b89a48d..8e90b9f5b5359948f71a9e88e8dca44a
  		build.itemsTab:CreateDisplayItemFromRaw("New Item\nAssassin Bow\nGrants Level 1 Summon Raging Spirit\nGrants Level 25 Envy Skill")
  		build.itemsTab:AddDisplayItem()
 diff --git a/src/Classes/CalcSectionControl.lua b/src/Classes/CalcSectionControl.lua
-index 668e742d4376907f0ad1d653dda95def2ce627c5..cbe1bd74b832ead2c16d1aa4cc6664d34c903e0d 100644
+index 668e742..cbe1bd7 100644
 --- a/src/Classes/CalcSectionControl.lua
 +++ b/src/Classes/CalcSectionControl.lua
 @@ -25,6 +25,7 @@ function CalcSectionClass:CalcSectionControl(calcsTab, width, id, group, colour,
@@ -532,7 +532,7 @@ index 668e742d4376907f0ad1d653dda95def2ce627c5..cbe1bd74b832ead2c16d1aa4cc6664d3
  						local cellH = colData.height or 18
  
 diff --git a/src/Classes/CalcsTab.lua b/src/Classes/CalcsTab.lua
-index 7d79e865d98a5e76e11c5604b3083f03cb86fa8d..5703b900179b88c3863be1a531ecf4b822dff353 100644
+index 7d79e86..5703b90 100644
 --- a/src/Classes/CalcsTab.lua
 +++ b/src/Classes/CalcsTab.lua
 @@ -35,7 +35,8 @@ function CalcsTabClass:CalcsTab(build)
@@ -624,7 +624,7 @@ index 7d79e865d98a5e76e11c5604b3083f03cb86fa8d..5703b900179b88c3863be1a531ecf4b8
  	self.controls.scrollBar:SetContentDimension(maxY - (baseY - 26), viewPort.height)
  	for _, section in ipairs(self.sectionList) do
 diff --git a/src/Classes/CheckBoxControl.lua b/src/Classes/CheckBoxControl.lua
-index 048d2582a2b82d6b65dc20895d690c5c5c578215..e8b08226de2aaf098a13ca028eeedfbad53d982e 100644
+index 048d258..e8b0822 100644
 --- a/src/Classes/CheckBoxControl.lua
 +++ b/src/Classes/CheckBoxControl.lua
 @@ -4,6 +4,7 @@
@@ -721,7 +721,7 @@ index 048d2582a2b82d6b65dc20895d690c5c5c578215..e8b08226de2aaf098a13ca028eeedfba
  	end
  end
 diff --git a/src/Classes/ConfigTab.lua b/src/Classes/ConfigTab.lua
-index 3d1f007cd634f6121e58646c1cb8284471428a52..090985ab6ffb11215d12e81f24244ffc1c8a20f0 100644
+index 3d1f007..090985a 100644
 --- a/src/Classes/ConfigTab.lua
 +++ b/src/Classes/ConfigTab.lua
 @@ -41,7 +41,7 @@ function CustomModBlockClass:CustomModBlockControl(anchor, rect, configTab, bloc
@@ -946,7 +946,7 @@ index 3d1f007cd634f6121e58646c1cb8284471428a52..090985ab6ffb11215d12e81f24244ffc
  			return not self:IsSectionCollapsed(self.customSection)
  		end
 diff --git a/src/Classes/DropDownControl.lua b/src/Classes/DropDownControl.lua
-index bb999c49a48545c2e882a0fe7336780a8a9eee50..098783802834c16ea57886630a387b1d180adc93 100644
+index bb999c4..0987838 100644
 --- a/src/Classes/DropDownControl.lua
 +++ b/src/Classes/DropDownControl.lua
 @@ -9,6 +9,9 @@ local m_max = math.max
@@ -1157,7 +1157,7 @@ index bb999c49a48545c2e882a0fe7336780a8a9eee50..098783802834c16ea57886630a387b1d
 +	self.controls.scrollBar.x = self.dropOffset + self.droppedWidth - self.width - 1
  end
 diff --git a/src/Classes/EditControl.lua b/src/Classes/EditControl.lua
-index 899f5b0bcfe1ebf053db509bb60487e0b8228eb8..140a4ebc1ba88dcab684d63da38261b6cff513f2 100644
+index 899f5b0..140a4eb 100644
 --- a/src/Classes/EditControl.lua
 +++ b/src/Classes/EditControl.lua
 @@ -213,10 +213,10 @@ function EditClass:UpdateScrollBars()
@@ -1205,7 +1205,7 @@ index 899f5b0bcfe1ebf053db509bb60487e0b8228eb8..140a4ebc1ba88dcab684d63da38261b6
  			local textHeight = self.lineHeight or (height - 4)
  			if self.prompt then
 diff --git a/src/Classes/GemSelectControl.lua b/src/Classes/GemSelectControl.lua
-index e87c36ecbc23b94447bd7b5561dfcc4c11896a19..e1a243fcca307e80188764d8fa91a5e675eaccfa 100644
+index e87c36e..e1a243f 100644
 --- a/src/Classes/GemSelectControl.lua
 +++ b/src/Classes/GemSelectControl.lua
 @@ -628,7 +628,7 @@ function GemSelectClass:Draw(viewPort, noTooltip)
@@ -1218,7 +1218,7 @@ index e87c36ecbc23b94447bd7b5561dfcc4c11896a19..e1a243fcca307e80188764d8fa91a5e6
  			local hoverGem = self.skillsTab.displayGroup.gemList[hoverControl.index]
  			if thisGem and hoverGem and thisGem.enabled and hoverGem.enabled and thisGem.gemData and hoverGem.gemData and
 diff --git a/src/Classes/ImportTab.lua b/src/Classes/ImportTab.lua
-index a44f91bc0aae98ab66f7b44513eb700f0b7fc64b..ba2af22a92f5c533e1011ec3d7dfffb87ea0f608 100644
+index a44f91b..ba2af22 100644
 --- a/src/Classes/ImportTab.lua
 +++ b/src/Classes/ImportTab.lua
 @@ -8,12 +8,30 @@ local t_insert = table.insert
@@ -1905,7 +1905,7 @@ index a44f91bc0aae98ab66f7b44513eb700f0b7fc64b..ba2af22a92f5c533e1011ec3d7dfffb8
  					self.lastRealm = realm.id
  					main.lastRealm = realm.id
 diff --git a/src/Classes/ItemDBControl.lua b/src/Classes/ItemDBControl.lua
-index bc5c227bf3dedb6655fd4f3424b61cbe90d73916..9143cb87169f33fc205fb0793f49a94fb80ddff3 100644
+index bc5c227..9143cb8 100644
 --- a/src/Classes/ItemDBControl.lua
 +++ b/src/Classes/ItemDBControl.lua
 @@ -25,6 +25,7 @@ local ItemDBClass = newClass("ItemDBControl", "ListControl")
@@ -2096,7 +2096,7 @@ index bc5c227bf3dedb6655fd4f3424b61cbe90d73916..9143cb87169f33fc205fb0793f49a94f
  	end
  end
 diff --git a/src/Classes/ItemListControl.lua b/src/Classes/ItemListControl.lua
-index a38fe5fbc5e3a67248ecd6f0b454aaa9e711a4c1..0ebf59105330a3b2f3f5c1ab3514b0732cfd6044 100644
+index a38fe5f..0ebf591 100644
 --- a/src/Classes/ItemListControl.lua
 +++ b/src/Classes/ItemListControl.lua
 @@ -6,6 +6,18 @@
@@ -2591,7 +2591,7 @@ index a38fe5fbc5e3a67248ecd6f0b454aaa9e711a4c1..0ebf59105330a3b2f3f5c1ab3514b073
  			itemLib.wiki.openItem(item)
  		end
 diff --git a/src/Classes/ItemSlotControl.lua b/src/Classes/ItemSlotControl.lua
-index a3f658a78e3edfd835a13200f221477d0eaa3319..12ba8f2e30fa2f02ce2150b059d282c377090243 100644
+index a3f658a..12ba8f2 100644
 --- a/src/Classes/ItemSlotControl.lua
 +++ b/src/Classes/ItemSlotControl.lua
 @@ -19,7 +19,7 @@ local ItemSlotClass = newClass("ItemSlotControl", "DropDownControl")
@@ -2626,7 +2626,7 @@ index a3f658a78e3edfd835a13200f221477d0eaa3319..12ba8f2e30fa2f02ce2150b059d282c3
  	self.itemsTab.build.buildFlag = true
  end
 diff --git a/src/Classes/ItemsTab.lua b/src/Classes/ItemsTab.lua
-index 0b3852aba588904abf14e9ff27162ade2f4476b0..7649e17228ab87a2a13bde8b8dc738ba9a9019b2 100644
+index 0b3852a..7649e17 100644
 --- a/src/Classes/ItemsTab.lua
 +++ b/src/Classes/ItemsTab.lua
 @@ -18,6 +18,7 @@ local m_modf = math.modf
@@ -3763,7 +3763,7 @@ index 0b3852aba588904abf14e9ff27162ade2f4476b0..7649e17228ab87a2a13bde8b8dc738ba
  
  
 diff --git a/src/Classes/ListControl.lua b/src/Classes/ListControl.lua
-index 554075835035596abb5e2abaaf71570b320d8aa8..9b49a46f6bd23ed14cd2cae60d6e18ad5224304e 100644
+index 5540758..9b49a46 100644
 --- a/src/Classes/ListControl.lua
 +++ b/src/Classes/ListControl.lua
 @@ -32,6 +32,7 @@ local m_floor = math.floor
@@ -3816,7 +3816,7 @@ index 554075835035596abb5e2abaaf71570b320d8aa8..9b49a46f6bd23ed14cd2cae60d6e18ad
  		end
  		if self.colLabels then
 diff --git a/src/Classes/SectionControl.lua b/src/Classes/SectionControl.lua
-index e0acb6fd2130e9c903bac624d0ea6c71444c09e8..a63e4bc00acf1005a2aabcdee0b2258227f45c9d 100644
+index e0acb6f..a63e4bc 100644
 --- a/src/Classes/SectionControl.lua
 +++ b/src/Classes/SectionControl.lua
 @@ -25,9 +25,9 @@ function SectionClass:Draw()
@@ -3834,7 +3834,7 @@ index e0acb6fd2130e9c903bac624d0ea6c71444c09e8..a63e4bc00acf1005a2aabcdee0b22582
  end
 \ No newline at end of file
 diff --git a/src/Classes/SharedItemListControl.lua b/src/Classes/SharedItemListControl.lua
-index cbbb32728f460908beb892b20548f697c26d75bf..2590aeebe0e1b3462d73cbc9db8d3e26d71aff5b 100644
+index cbbb327..2590aee 100644
 --- a/src/Classes/SharedItemListControl.lua
 +++ b/src/Classes/SharedItemListControl.lua
 @@ -18,9 +18,9 @@ function SharedItemListClass:SharedItemListControl(anchor, rect, itemsTab, force
@@ -3850,7 +3850,7 @@ index cbbb32728f460908beb892b20548f697c26d75bf..2590aeebe0e1b3462d73cbc9db8d3e26
  	end)
  	self.controls.delete.enabled = function()
 diff --git a/src/Classes/SkillListControl.lua b/src/Classes/SkillListControl.lua
-index f5b86e4084addd0fec355e276eb159054ee4fdd8..1d6683433c8f0942d1f8cb31868b4b030c7985f4 100644
+index f5b86e4..1d66834 100644
 --- a/src/Classes/SkillListControl.lua
 +++ b/src/Classes/SkillListControl.lua
 @@ -6,6 +6,8 @@
@@ -3895,7 +3895,7 @@ index f5b86e4084addd0fec355e276eb159054ee4fdd8..1d6683433c8f0942d1f8cb31868b4b03
  			label = "",
  			enabled = true,
 diff --git a/src/Classes/SkillsTab.lua b/src/Classes/SkillsTab.lua
-index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced869b5563 100644
+index f1326dd..79574c5 100644
 --- a/src/Classes/SkillsTab.lua
 +++ b/src/Classes/SkillsTab.lua
 @@ -9,6 +9,40 @@ local t_insert = table.insert
@@ -4461,7 +4461,7 @@ index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced
  
  -- Opens the skill set manager
 diff --git a/src/Classes/Tooltip.lua b/src/Classes/Tooltip.lua
-index 0a806c0cedcbf8b394afdb477650ddb1de418529..bfee2e5190c316da7fae8b7f0a1c0f44812da94f 100644
+index 0a806c0..bfee2e5 100644
 --- a/src/Classes/Tooltip.lua
 +++ b/src/Classes/Tooltip.lua
 @@ -41,6 +41,7 @@ for _, recipeName in pairs(recipeNames) do
@@ -4643,19 +4643,21 @@ index 0a806c0cedcbf8b394afdb477650ddb1de418529..bfee2e5190c316da7fae8b7f0a1c0f44
  				SetDrawColor(self.color)
  			else
 diff --git a/src/Classes/TreeTab.lua b/src/Classes/TreeTab.lua
-index 842b3b4e09ad99c69deee45fcf68695e679efb4f..7dba225173246e145868275fa34856f5dcd54afb 100644
+index 842b3b4..08fa400 100644
 --- a/src/Classes/TreeTab.lua
 +++ b/src/Classes/TreeTab.lua
-@@ -196,7 +196,7 @@ function TreeTabClass:TreeTab(build)
+@@ -196,9 +196,8 @@ function TreeTabClass:TreeTab(build)
  	self.defaultTattoo = { }
  
  	-- Show Node Power Checkbox
 -	self.controls.treeHeatMap = new("CheckBoxControl"):CheckBoxControl({ "LEFT", self.controls.findTimelessJewel, "RIGHT" }, { 130, 0, 20 }, "Show Node Power:", function(state)
 +	self.controls.treeHeatMap = new("CheckBoxControl"):CheckBoxControl({ "LEFT", self.controls.findTimelessJewel, "RIGHT" }, { 0, 0, 20 }, "Show Node Power:", function(state)
  		self.viewer.showHeatMap = state
- 		self.controls.treeHeatMapStatSelect.shown = state
+-		self.controls.treeHeatMapStatSelect.shown = state
  
-@@ -207,6 +207,8 @@ function TreeTabClass:TreeTab(build)
+ 		if state == false and ToastNotification:Exists(self.powerBuilderToastId) then
+ 			self.controls.powerReportList.shown = false 
+@@ -207,6 +206,8 @@ function TreeTabClass:TreeTab(build)
  			self.controls.powerReportList.shown = false 
  		end
  	end)
@@ -4664,7 +4666,17 @@ index 842b3b4e09ad99c69deee45fcf68695e679efb4f..7dba225173246e145868275fa34856f5
  
  	-- Control for setting max node depth to limit calculation time of the heat map
  	self.controls.nodePowerMaxDepthSelect = new("DropDownControl"):DropDownControl({ "LEFT", self.controls.treeHeatMap, "RIGHT" }, { 8, 0, 55, 20 }, { "All", 5, 10, 15, "Custom" }, function(index, value)
-@@ -403,7 +405,7 @@ function TreeTabClass:Draw(viewPort, inputEvents)
+@@ -273,6 +274,9 @@ function TreeTabClass:TreeTab(build)
+ 		function() return self.controls.powerReportList.shown and "Hide Power Report" or "Show Power Report" end, function()
+ 		self.controls.powerReportList.shown = not self.controls.powerReportList.shown
+ 	end)
++	self.controls.powerReport.enabled = function()
++		return self.viewer.showHeatMap
++	end
+ 
+ 	-- Power Report List
+ 	local yPos = self.controls.treeHeatMap.y == 0 and self.controls.specSelect.height + 4 or self.controls.specSelect.height * 2 + 8
+@@ -403,11 +407,11 @@ function TreeTabClass:Draw(viewPort, inputEvents)
  	
  	local widthSecondLineControls = self.controls.treeSearch.width + 8
  									+ self.controls.findTimelessJewel.width + self.controls.findTimelessJewel.x
@@ -4672,8 +4684,14 @@ index 842b3b4e09ad99c69deee45fcf68695e679efb4f..7dba225173246e145868275fa34856f5
 +									+ self.controls.treeHeatMap.width + self.treeHeatMapOffset
  									+ self.controls.nodePowerMaxDepthSelect.width + self.controls.nodePowerMaxDepthSelect.x
  									+ (self.isCustomMaxDepth and (self.controls.nodePowerMaxDepthCustom.width + self.controls.nodePowerMaxDepthCustom.x) or 0)
- 									+ (self.viewer.showHeatMap and (self.controls.treeHeatMapStatSelect.width + self.controls.treeHeatMapStatSelect.x 
-@@ -421,7 +423,7 @@ function TreeTabClass:Draw(viewPort, inputEvents)
+-									+ (self.viewer.showHeatMap and (self.controls.treeHeatMapStatSelect.width + self.controls.treeHeatMapStatSelect.x 
+-																	+ self.controls.powerReport.width + self.controls.powerReport.x) or 0)
++									+ self.controls.treeHeatMapStatSelect.width + self.controls.treeHeatMapStatSelect.x
++									+ self.controls.powerReport.width + self.controls.powerReport.x
+ 	
+ 	-- Check first line
+ 	if viewPort.width >= widthFirstLineControls + widthSecondLineControls + rightMargin then
+@@ -421,7 +425,7 @@ function TreeTabClass:Draw(viewPort, inputEvents)
  
  	-- Check second line
  	if viewPort.width >= widthSecondLineControls + rightMargin then
@@ -4682,7 +4700,15 @@ index 842b3b4e09ad99c69deee45fcf68695e679efb4f..7dba225173246e145868275fa34856f5
  	else
  		linesHeight = linesHeight * 2
  		self.controls.treeHeatMap:SetAnchor("TOPLEFT", self.controls.treeSearch, "BOTTOMLEFT", 124, 4)
-@@ -474,7 +476,7 @@ function TreeTabClass:Draw(viewPort, inputEvents)
+@@ -463,7 +467,6 @@ function TreeTabClass:Draw(viewPort, inputEvents)
+ 	end
+ 
+ 	self.controls.treeHeatMap.state = self.viewer.showHeatMap
+-	self.controls.treeHeatMapStatSelect.shown = self.viewer.showHeatMap
+ 	self.controls.treeHeatMapStatSelect.list = self.powerStatList
+ 	self.controls.treeHeatMapStatSelect.selIndex = 1
+ 	self.controls.treeHeatMapStatSelect:CheckDroppedWidth(true)
+@@ -474,7 +477,7 @@ function TreeTabClass:Draw(viewPort, inputEvents)
  	SetDrawLayer(1)
  
  	SetDrawColor(0.05, 0.05, 0.05)
@@ -4692,7 +4718,7 @@ index 842b3b4e09ad99c69deee45fcf68695e679efb4f..7dba225173246e145868275fa34856f5
  		local height = viewPort.width < convertMaxWidth and (bottomDrawerHeight + linesHeight) or 0
  		SetDrawColor(0.05, 0.05, 0.05)
 diff --git a/src/Modules/AddImplicitPopup.lua b/src/Modules/AddImplicitPopup.lua
-index b324c47cddba1414dc2a47e1f5eb8404dc719aa5..41ee8c0e083be3c6453fad6389027a6f4b26fa9d 100644
+index b324c47..41ee8c0 100644
 --- a/src/Modules/AddImplicitPopup.lua
 +++ b/src/Modules/AddImplicitPopup.lua
 @@ -25,6 +25,18 @@ function M.AddImplicitToDisplayItem(itemsTab, displayItem)
@@ -4830,7 +4856,7 @@ index b324c47cddba1414dc2a47e1f5eb8404dc719aa5..41ee8c0e083be3c6453fad6389027a6f
  
  return M
 diff --git a/src/Modules/Build.lua b/src/Modules/Build.lua
-index 3ad9d8eafff62f1926bef3e75ff754be4303c0b9..b90a6525a96a355caafbc9e78c186e635ce59ebd 100644
+index 3ad9d8e..b90a652 100644
 --- a/src/Modules/Build.lua
 +++ b/src/Modules/Build.lua
 @@ -14,6 +14,18 @@ local m_huge = math.huge
@@ -5384,7 +5410,7 @@ index 3ad9d8eafff62f1926bef3e75ff754be4303c0b9..b90a6525a96a355caafbc9e78c186e63
  		Exit()
  	elseif action == "UPDATE" then
 diff --git a/src/Modules/CalcSections.lua b/src/Modules/CalcSections.lua
-index e6b2284aa57a519349791ca7198785938c0c6c48..8dcf0865571872d6fc85530411019cac3036d169 100644
+index e6b2284..8dcf086 100644
 --- a/src/Modules/CalcSections.lua
 +++ b/src/Modules/CalcSections.lua
 @@ -1820,7 +1820,7 @@ return {
@@ -5433,7 +5459,7 @@ index e6b2284aa57a519349791ca7198785938c0c6c48..8dcf0865571872d6fc85530411019cac
  	{ label = "Chill Duration", { format = "{1:output:SelfChillDuration}%", { modName = { "SelfChillDuration", "SelfDebuffExpirationRate", "SelfChillDebuffExpirationRate", "SelfAilmentDuration", "SelfElementalAilmentDuration", "SelfIgniteDurationToElementalAilments" }, }, }, },
  	{ label = "Shock Duration", { format = "{1:output:SelfShockDuration}%", { modName = { "SelfShockDuration", "SelfDebuffExpirationRate", "SelfShockDebuffExpirationRate", "SelfAilmentDuration", "SelfElementalAilmentDuration", "SelfIgniteDurationToElementalAilments" }, }, }, },
 diff --git a/src/Modules/CalcSetup.lua b/src/Modules/CalcSetup.lua
-index 7030116836054fed579e2a3385b76ff48d54d15a..13242a8c3e9264a26073db7e3479858f0dbc8800 100644
+index 7030116..13242a8 100644
 --- a/src/Modules/CalcSetup.lua
 +++ b/src/Modules/CalcSetup.lua
 @@ -1893,19 +1893,7 @@ function calcs.initEnv(build, mode, override, specEnv)
@@ -5458,7 +5484,7 @@ index 7030116836054fed579e2a3385b76ff48d54d15a..13242a8c3e9264a26073db7e3479858f
  				-- Save the active skill list for display in the socket group tooltip
  				group.displaySkillList = socketGroupSkillList
 diff --git a/src/Modules/ConfigModBrowser.lua b/src/Modules/ConfigModBrowser.lua
-index 2408963bb6fa5bb7af4acf6c61e770e194dda985..0b0cde3bdf8a89c31348c547a2dd89b50097510e 100644
+index 2408963..0b0cde3 100644
 --- a/src/Modules/ConfigModBrowser.lua
 +++ b/src/Modules/ConfigModBrowser.lua
 @@ -264,10 +264,8 @@ function M.OpenAddModPopup(configTab, blockData)
@@ -5499,7 +5525,7 @@ index 2408963bb6fa5bb7af4acf6c61e770e194dda985..0b0cde3bdf8a89c31348c547a2dd89b5
  
  return M
 diff --git a/src/Modules/Data.lua b/src/Modules/Data.lua
-index 26afb5f4dfb24630be383305136c31ff280b0faf..3e52eb2c9bcaf0540928c14fe1e0ed32646e852a 100644
+index 26afb5f..3e52eb2 100644
 --- a/src/Modules/Data.lua
 +++ b/src/Modules/Data.lua
 @@ -635,11 +635,11 @@ data.enchantmentSource = {
@@ -5521,7 +5547,7 @@ index 26afb5f4dfb24630be383305136c31ff280b0faf..3e52eb2c9bcaf0540928c14fe1e0ed32
  -- Stat descriptions
 diff --git a/src/Modules/ItemSocketControls.lua b/src/Modules/ItemSocketControls.lua
 new file mode 100644
-index 0000000000000000000000000000000000000000..5c5d7c47be149a1d1c124eeb508bff16ec3934fc
+index 0000000..5c5d7c4
 --- /dev/null
 +++ b/src/Modules/ItemSocketControls.lua
 @@ -0,0 +1,162 @@
@@ -5688,7 +5714,7 @@ index 0000000000000000000000000000000000000000..5c5d7c47be149a1d1c124eeb508bff16
 +
 +return socketControls
 diff --git a/src/Modules/Main.lua b/src/Modules/Main.lua
-index 294fb64c24b7766c4aa7f7a307a71da09d5bc14c..ba137678649df496950c11751ad609b8d8232f8f 100644
+index 294fb64..ba13767 100644
 --- a/src/Modules/Main.lua
 +++ b/src/Modules/Main.lua
 @@ -221,7 +221,7 @@ function main:Init()

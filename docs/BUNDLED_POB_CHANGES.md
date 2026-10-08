@@ -23,7 +23,7 @@ pack-time adaptations run.
 
 | Ledger identity | Change carried by the build |
 | --- | --- |
-| `10360` — [PoB #10360](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10360) | Broad UI and editing improvements across the passive tree, skills, items, calculations, configuration, and import/export screens. |
+| `10360` — [PoB #10360](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10360) | Broad UI and editing improvements across the passive tree, skills, items, calculations, configuration, and import/export screens, including always-visible node-power controls with the Power Report action gated by the heat map. |
 | `10371` — [PoB #10371](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10371) | Excludes hidden equipment slots from item-stat sorting and avoids calculating those slots. |
 | `10372` — [PoB #10372](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10372) | Caches unique-item sort results until the build changes. |
 | `10373` — [PoB #10373](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10373) | Skips cluster-passive work that Offence/Defence power mode does not consume. |

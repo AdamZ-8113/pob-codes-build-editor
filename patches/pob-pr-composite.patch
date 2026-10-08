@@ -1,5 +1,5 @@
 diff --git a/spec/System/TestGemSocketQuality_spec.lua b/spec/System/TestGemSocketQuality_spec.lua
-index 719004b176701f6f4df573dd0fd7119da64a4c4d..3f54c87649455c045ed2bd15dcca05e64653b769 100644
+index 719004b..3f54c87 100644
 --- a/spec/System/TestGemSocketQuality_spec.lua
 +++ b/spec/System/TestGemSocketQuality_spec.lua
 @@ -23,6 +23,20 @@ describe("TestGemSocketQuality", function()
@@ -24,7 +24,7 @@ index 719004b176701f6f4df573dd0fd7119da64a4c4d..3f54c87649455c045ed2bd15dcca05e6
  		equipBody("B-B-B")
  		build.skillsTab:PasteSocketGroup("Slot: Body Armour\nFireball 20/0  1\n")
 diff --git a/spec/System/TestImport_spec.lua b/spec/System/TestImport_spec.lua
-index 185e4a482ef8d31d580488c09e54307fd549b866..fdb3083fd39912ba6eab23bea75b848d4d35bdbb 100644
+index 185e4a4..fdb3083 100644
 --- a/spec/System/TestImport_spec.lua
 +++ b/spec/System/TestImport_spec.lua
 @@ -12,6 +12,90 @@ describe("TestImport", function()
@@ -119,7 +119,7 @@ index 185e4a482ef8d31d580488c09e54307fd549b866..fdb3083fd39912ba6eab23bea75b848d
  		build.importTab:ImportPassiveTreeAndJewels(sampleData, true)
  		runCallback("OnFrame")
 diff --git a/spec/System/TestItemDBControl_spec.lua b/spec/System/TestItemDBControl_spec.lua
-index 98d4605c4a21fa8be397a8f1c72288a938a87d96..9dbf1be931ea74fcc790f5f30a41eeca2244ffce 100644
+index 98d4605..9dbf1be 100644
 --- a/spec/System/TestItemDBControl_spec.lua
 +++ b/spec/System/TestItemDBControl_spec.lua
 @@ -29,7 +29,7 @@ describe("ItemDBControl", function()
@@ -189,7 +189,7 @@ index 98d4605c4a21fa8be397a8f1c72288a938a87d96..9dbf1be931ea74fcc790f5f30a41eeca
  		local item = new("Item"):Item([[
  			Rarity: Unique
 diff --git a/spec/System/TestItemListControl_spec.lua b/spec/System/TestItemListControl_spec.lua
-index 2d690a6eb860ce960ffd6d41a096708189548c4c..0362a5f8645f928a0d08467e3663d07aef34ec7e 100644
+index 2d690a6..0362a5f 100644
 --- a/spec/System/TestItemListControl_spec.lua
 +++ b/spec/System/TestItemListControl_spec.lua
 @@ -52,6 +52,10 @@ describe("ItemListControl", function()
@@ -253,7 +253,7 @@ index 2d690a6eb860ce960ffd6d41a096708189548c4c..0362a5f8645f928a0d08467e3663d07a
  		local control = newItemListControl()
  		control:UpdateLoadoutList()
 diff --git a/spec/System/TestItemMods_spec.lua b/spec/System/TestItemMods_spec.lua
-index 3aa079e67b968dd4b3b291d9721027c53a45b78d..362ce3a1c80bad43b773bbec9ca78b0cb73bca04 100644
+index 3aa079e..362ce3a 100644
 --- a/spec/System/TestItemMods_spec.lua
 +++ b/spec/System/TestItemMods_spec.lua
 @@ -7,6 +7,133 @@ describe("TetsItemMods", function()
@@ -391,7 +391,7 @@ index 3aa079e67b968dd4b3b291d9721027c53a45b78d..362ce3a1c80bad43b773bbec9ca78b0c
  		build.itemsTab:CreateDisplayItemFromRaw([[
  			Rarity: Unique
 diff --git a/spec/System/TestPowerReport_spec.lua b/spec/System/TestPowerReport_spec.lua
-index a98126e57515376b3bbec11aa0d00920c955573b..dca0ceec430ca0245183c4775b6d6c86177ebd2e 100644
+index a98126e..dca0cee 100644
 --- a/spec/System/TestPowerReport_spec.lua
 +++ b/spec/System/TestPowerReport_spec.lua
 @@ -36,3 +36,634 @@ describe("PowerReportListControl", function()
@@ -1030,7 +1030,7 @@ index a98126e57515376b3bbec11aa0d00920c955573b..dca0ceec430ca0245183c4775b6d6c86
 +	end)
 +end)
 diff --git a/spec/System/TestSkills_spec.lua b/spec/System/TestSkills_spec.lua
-index 8075f75884cc60908e37c56acedcdb5d2b89a48d..8e90b9f5b5359948f71a9e88e8dca44a7b803aa7 100644
+index 8075f75..8e90b9f 100644
 --- a/spec/System/TestSkills_spec.lua
 +++ b/spec/System/TestSkills_spec.lua
 @@ -7,6 +7,123 @@ describe("TestSkills", function()
@@ -1158,7 +1158,7 @@ index 8075f75884cc60908e37c56acedcdb5d2b89a48d..8e90b9f5b5359948f71a9e88e8dca44a
  		build.itemsTab:CreateDisplayItemFromRaw("New Item\nAssassin Bow\nGrants Level 1 Summon Raging Spirit\nGrants Level 25 Envy Skill")
  		build.itemsTab:AddDisplayItem()
 diff --git a/src/Classes/CalcSectionControl.lua b/src/Classes/CalcSectionControl.lua
-index 668e742d4376907f0ad1d653dda95def2ce627c5..cbe1bd74b832ead2c16d1aa4cc6664d34c903e0d 100644
+index 668e742..cbe1bd7 100644
 --- a/src/Classes/CalcSectionControl.lua
 +++ b/src/Classes/CalcSectionControl.lua
 @@ -25,6 +25,7 @@ function CalcSectionClass:CalcSectionControl(calcsTab, width, id, group, colour,
@@ -1241,7 +1241,7 @@ index 668e742d4376907f0ad1d653dda95def2ce627c5..cbe1bd74b832ead2c16d1aa4cc6664d3
  						local cellH = colData.height or 18
  
 diff --git a/src/Classes/CalcsTab.lua b/src/Classes/CalcsTab.lua
-index 7d79e865d98a5e76e11c5604b3083f03cb86fa8d..8a0e2bf19b38ae560ce6274e49bc4b64a3449abb 100644
+index 7d79e86..8a0e2bf 100644
 --- a/src/Classes/CalcsTab.lua
 +++ b/src/Classes/CalcsTab.lua
 @@ -35,7 +35,8 @@ function CalcsTabClass:CalcsTab(build)
@@ -1504,7 +1504,7 @@ index 7d79e865d98a5e76e11c5604b3083f03cb86fa8d..8a0e2bf19b38ae560ce6274e49bc4b64
  			if coroutine.running() and GetTime() - start > 100 then
  				if self.build.powerBuilderProgressCallback then
 diff --git a/src/Classes/CheckBoxControl.lua b/src/Classes/CheckBoxControl.lua
-index 048d2582a2b82d6b65dc20895d690c5c5c578215..e8b08226de2aaf098a13ca028eeedfbad53d982e 100644
+index 048d258..e8b0822 100644
 --- a/src/Classes/CheckBoxControl.lua
 +++ b/src/Classes/CheckBoxControl.lua
 @@ -4,6 +4,7 @@
@@ -1601,7 +1601,7 @@ index 048d2582a2b82d6b65dc20895d690c5c5c578215..e8b08226de2aaf098a13ca028eeedfba
  	end
  end
 diff --git a/src/Classes/ConfigTab.lua b/src/Classes/ConfigTab.lua
-index 3d1f007cd634f6121e58646c1cb8284471428a52..090985ab6ffb11215d12e81f24244ffc1c8a20f0 100644
+index 3d1f007..090985a 100644
 --- a/src/Classes/ConfigTab.lua
 +++ b/src/Classes/ConfigTab.lua
 @@ -41,7 +41,7 @@ function CustomModBlockClass:CustomModBlockControl(anchor, rect, configTab, bloc
@@ -1826,7 +1826,7 @@ index 3d1f007cd634f6121e58646c1cb8284471428a52..090985ab6ffb11215d12e81f24244ffc
  			return not self:IsSectionCollapsed(self.customSection)
  		end
 diff --git a/src/Classes/DropDownControl.lua b/src/Classes/DropDownControl.lua
-index bb999c49a48545c2e882a0fe7336780a8a9eee50..098783802834c16ea57886630a387b1d180adc93 100644
+index bb999c4..0987838 100644
 --- a/src/Classes/DropDownControl.lua
 +++ b/src/Classes/DropDownControl.lua
 @@ -9,6 +9,9 @@ local m_max = math.max
@@ -2037,7 +2037,7 @@ index bb999c49a48545c2e882a0fe7336780a8a9eee50..098783802834c16ea57886630a387b1d
 +	self.controls.scrollBar.x = self.dropOffset + self.droppedWidth - self.width - 1
  end
 diff --git a/src/Classes/EditControl.lua b/src/Classes/EditControl.lua
-index 899f5b0bcfe1ebf053db509bb60487e0b8228eb8..140a4ebc1ba88dcab684d63da38261b6cff513f2 100644
+index 899f5b0..140a4eb 100644
 --- a/src/Classes/EditControl.lua
 +++ b/src/Classes/EditControl.lua
 @@ -213,10 +213,10 @@ function EditClass:UpdateScrollBars()
@@ -2085,7 +2085,7 @@ index 899f5b0bcfe1ebf053db509bb60487e0b8228eb8..140a4ebc1ba88dcab684d63da38261b6
  			local textHeight = self.lineHeight or (height - 4)
  			if self.prompt then
 diff --git a/src/Classes/GemSelectControl.lua b/src/Classes/GemSelectControl.lua
-index e87c36ecbc23b94447bd7b5561dfcc4c11896a19..e1a243fcca307e80188764d8fa91a5e675eaccfa 100644
+index e87c36e..e1a243f 100644
 --- a/src/Classes/GemSelectControl.lua
 +++ b/src/Classes/GemSelectControl.lua
 @@ -628,7 +628,7 @@ function GemSelectClass:Draw(viewPort, noTooltip)
@@ -2098,7 +2098,7 @@ index e87c36ecbc23b94447bd7b5561dfcc4c11896a19..e1a243fcca307e80188764d8fa91a5e6
  			local hoverGem = self.skillsTab.displayGroup.gemList[hoverControl.index]
  			if thisGem and hoverGem and thisGem.enabled and hoverGem.enabled and thisGem.gemData and hoverGem.gemData and
 diff --git a/src/Classes/ImportTab.lua b/src/Classes/ImportTab.lua
-index a44f91bc0aae98ab66f7b44513eb700f0b7fc64b..ba2af22a92f5c533e1011ec3d7dfffb87ea0f608 100644
+index a44f91b..ba2af22 100644
 --- a/src/Classes/ImportTab.lua
 +++ b/src/Classes/ImportTab.lua
 @@ -8,12 +8,30 @@ local t_insert = table.insert
@@ -2785,7 +2785,7 @@ index a44f91bc0aae98ab66f7b44513eb700f0b7fc64b..ba2af22a92f5c533e1011ec3d7dfffb8
  					self.lastRealm = realm.id
  					main.lastRealm = realm.id
 diff --git a/src/Classes/ItemDBControl.lua b/src/Classes/ItemDBControl.lua
-index bc5c227bf3dedb6655fd4f3424b61cbe90d73916..550943265ac25fbe3d4c8ea02e3ef40481840deb 100644
+index bc5c227..5509432 100644
 --- a/src/Classes/ItemDBControl.lua
 +++ b/src/Classes/ItemDBControl.lua
 @@ -25,6 +25,7 @@ local ItemDBClass = newClass("ItemDBControl", "ListControl")
@@ -3017,7 +3017,7 @@ index bc5c227bf3dedb6655fd4f3424b61cbe90d73916..550943265ac25fbe3d4c8ea02e3ef404
  	end
  end
 diff --git a/src/Classes/ItemListControl.lua b/src/Classes/ItemListControl.lua
-index a38fe5fbc5e3a67248ecd6f0b454aaa9e711a4c1..0ebf59105330a3b2f3f5c1ab3514b0732cfd6044 100644
+index a38fe5f..0ebf591 100644
 --- a/src/Classes/ItemListControl.lua
 +++ b/src/Classes/ItemListControl.lua
 @@ -6,6 +6,18 @@
@@ -3512,7 +3512,7 @@ index a38fe5fbc5e3a67248ecd6f0b454aaa9e711a4c1..0ebf59105330a3b2f3f5c1ab3514b073
  			itemLib.wiki.openItem(item)
  		end
 diff --git a/src/Classes/ItemSlotControl.lua b/src/Classes/ItemSlotControl.lua
-index a3f658a78e3edfd835a13200f221477d0eaa3319..12ba8f2e30fa2f02ce2150b059d282c377090243 100644
+index a3f658a..12ba8f2 100644
 --- a/src/Classes/ItemSlotControl.lua
 +++ b/src/Classes/ItemSlotControl.lua
 @@ -19,7 +19,7 @@ local ItemSlotClass = newClass("ItemSlotControl", "DropDownControl")
@@ -3547,7 +3547,7 @@ index a3f658a78e3edfd835a13200f221477d0eaa3319..12ba8f2e30fa2f02ce2150b059d282c3
  	self.itemsTab.build.buildFlag = true
  end
 diff --git a/src/Classes/ItemsTab.lua b/src/Classes/ItemsTab.lua
-index 0b3852aba588904abf14e9ff27162ade2f4476b0..7649e17228ab87a2a13bde8b8dc738ba9a9019b2 100644
+index 0b3852a..7649e17 100644
 --- a/src/Classes/ItemsTab.lua
 +++ b/src/Classes/ItemsTab.lua
 @@ -18,6 +18,7 @@ local m_modf = math.modf
@@ -4684,7 +4684,7 @@ index 0b3852aba588904abf14e9ff27162ade2f4476b0..7649e17228ab87a2a13bde8b8dc738ba
  
  
 diff --git a/src/Classes/ListControl.lua b/src/Classes/ListControl.lua
-index 554075835035596abb5e2abaaf71570b320d8aa8..9b49a46f6bd23ed14cd2cae60d6e18ad5224304e 100644
+index 5540758..9b49a46 100644
 --- a/src/Classes/ListControl.lua
 +++ b/src/Classes/ListControl.lua
 @@ -32,6 +32,7 @@ local m_floor = math.floor
@@ -4737,7 +4737,7 @@ index 554075835035596abb5e2abaaf71570b320d8aa8..9b49a46f6bd23ed14cd2cae60d6e18ad
  		end
  		if self.colLabels then
 diff --git a/src/Classes/ModDB.lua b/src/Classes/ModDB.lua
-index ffaf1e5ea591bd8aabbacb7f29f96c684deb79cf..81b88184602c187a5f9ef95fd096173f7b2b814a 100644
+index ffaf1e5..81b8818 100644
 --- a/src/Classes/ModDB.lua
 +++ b/src/Classes/ModDB.lua
 @@ -20,8 +20,8 @@ local mod_createMod = modLib.createMod
@@ -4752,7 +4752,7 @@ index ffaf1e5ea591bd8aabbacb7f29f96c684deb79cf..81b88184602c187a5f9ef95fd096173f
  	return self
  end
 diff --git a/src/Classes/ModList.lua b/src/Classes/ModList.lua
-index ec686674d772a7ac27d1fef77b28d8c7d18678e1..46f06f06b7d5fa3d7cc0ff28b094e4dff6715884 100644
+index ec68667..46f06f0 100644
 --- a/src/Classes/ModList.lua
 +++ b/src/Classes/ModList.lua
 @@ -19,8 +19,8 @@ local mod_createMod = modLib.createMod
@@ -4767,7 +4767,7 @@ index ec686674d772a7ac27d1fef77b28d8c7d18678e1..46f06f06b7d5fa3d7cc0ff28b094e4df
  end
  
 diff --git a/src/Classes/ModStore.lua b/src/Classes/ModStore.lua
-index 0dd30e41d664333f5532f376f2c443d90bbc97f8..40159353f12c75de02f664303eacdddeac610220 100644
+index 0dd30e4..4015935 100644
 --- a/src/Classes/ModStore.lua
 +++ b/src/Classes/ModStore.lua
 @@ -37,7 +37,9 @@ end })
@@ -4852,7 +4852,7 @@ index 0dd30e41d664333f5532f376f2c443d90bbc97f8..40159353f12c75de02f664303eacddde
  end
  
 diff --git a/src/Classes/SectionControl.lua b/src/Classes/SectionControl.lua
-index e0acb6fd2130e9c903bac624d0ea6c71444c09e8..a63e4bc00acf1005a2aabcdee0b2258227f45c9d 100644
+index e0acb6f..a63e4bc 100644
 --- a/src/Classes/SectionControl.lua
 +++ b/src/Classes/SectionControl.lua
 @@ -25,9 +25,9 @@ function SectionClass:Draw()
@@ -4870,7 +4870,7 @@ index e0acb6fd2130e9c903bac624d0ea6c71444c09e8..a63e4bc00acf1005a2aabcdee0b22582
  end
 \ No newline at end of file
 diff --git a/src/Classes/SharedItemListControl.lua b/src/Classes/SharedItemListControl.lua
-index cbbb32728f460908beb892b20548f697c26d75bf..2590aeebe0e1b3462d73cbc9db8d3e26d71aff5b 100644
+index cbbb327..2590aee 100644
 --- a/src/Classes/SharedItemListControl.lua
 +++ b/src/Classes/SharedItemListControl.lua
 @@ -18,9 +18,9 @@ function SharedItemListClass:SharedItemListControl(anchor, rect, itemsTab, force
@@ -4886,7 +4886,7 @@ index cbbb32728f460908beb892b20548f697c26d75bf..2590aeebe0e1b3462d73cbc9db8d3e26
  	end)
  	self.controls.delete.enabled = function()
 diff --git a/src/Classes/SkillListControl.lua b/src/Classes/SkillListControl.lua
-index f5b86e4084addd0fec355e276eb159054ee4fdd8..1d6683433c8f0942d1f8cb31868b4b030c7985f4 100644
+index f5b86e4..1d66834 100644
 --- a/src/Classes/SkillListControl.lua
 +++ b/src/Classes/SkillListControl.lua
 @@ -6,6 +6,8 @@
@@ -4931,7 +4931,7 @@ index f5b86e4084addd0fec355e276eb159054ee4fdd8..1d6683433c8f0942d1f8cb31868b4b03
  			label = "",
  			enabled = true,
 diff --git a/src/Classes/SkillsTab.lua b/src/Classes/SkillsTab.lua
-index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced869b5563 100644
+index f1326dd..79574c5 100644
 --- a/src/Classes/SkillsTab.lua
 +++ b/src/Classes/SkillsTab.lua
 @@ -9,6 +9,40 @@ local t_insert = table.insert
@@ -5497,7 +5497,7 @@ index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced
  
  -- Opens the skill set manager
 diff --git a/src/Classes/Tooltip.lua b/src/Classes/Tooltip.lua
-index 0a806c0cedcbf8b394afdb477650ddb1de418529..bfee2e5190c316da7fae8b7f0a1c0f44812da94f 100644
+index 0a806c0..bfee2e5 100644
 --- a/src/Classes/Tooltip.lua
 +++ b/src/Classes/Tooltip.lua
 @@ -41,6 +41,7 @@ for _, recipeName in pairs(recipeNames) do
@@ -5679,19 +5679,21 @@ index 0a806c0cedcbf8b394afdb477650ddb1de418529..bfee2e5190c316da7fae8b7f0a1c0f44
  				SetDrawColor(self.color)
  			else
 diff --git a/src/Classes/TreeTab.lua b/src/Classes/TreeTab.lua
-index 842b3b4e09ad99c69deee45fcf68695e679efb4f..7dba225173246e145868275fa34856f5dcd54afb 100644
+index 842b3b4..08fa400 100644
 --- a/src/Classes/TreeTab.lua
 +++ b/src/Classes/TreeTab.lua
-@@ -196,7 +196,7 @@ function TreeTabClass:TreeTab(build)
+@@ -196,9 +196,8 @@ function TreeTabClass:TreeTab(build)
  	self.defaultTattoo = { }
  
  	-- Show Node Power Checkbox
 -	self.controls.treeHeatMap = new("CheckBoxControl"):CheckBoxControl({ "LEFT", self.controls.findTimelessJewel, "RIGHT" }, { 130, 0, 20 }, "Show Node Power:", function(state)
 +	self.controls.treeHeatMap = new("CheckBoxControl"):CheckBoxControl({ "LEFT", self.controls.findTimelessJewel, "RIGHT" }, { 0, 0, 20 }, "Show Node Power:", function(state)
  		self.viewer.showHeatMap = state
- 		self.controls.treeHeatMapStatSelect.shown = state
+-		self.controls.treeHeatMapStatSelect.shown = state
  
-@@ -207,6 +207,8 @@ function TreeTabClass:TreeTab(build)
+ 		if state == false and ToastNotification:Exists(self.powerBuilderToastId) then
+ 			self.controls.powerReportList.shown = false 
+@@ -207,6 +206,8 @@ function TreeTabClass:TreeTab(build)
  			self.controls.powerReportList.shown = false 
  		end
  	end)
@@ -5700,7 +5702,17 @@ index 842b3b4e09ad99c69deee45fcf68695e679efb4f..7dba225173246e145868275fa34856f5
  
  	-- Control for setting max node depth to limit calculation time of the heat map
  	self.controls.nodePowerMaxDepthSelect = new("DropDownControl"):DropDownControl({ "LEFT", self.controls.treeHeatMap, "RIGHT" }, { 8, 0, 55, 20 }, { "All", 5, 10, 15, "Custom" }, function(index, value)
-@@ -403,7 +405,7 @@ function TreeTabClass:Draw(viewPort, inputEvents)
+@@ -273,6 +274,9 @@ function TreeTabClass:TreeTab(build)
+ 		function() return self.controls.powerReportList.shown and "Hide Power Report" or "Show Power Report" end, function()
+ 		self.controls.powerReportList.shown = not self.controls.powerReportList.shown
+ 	end)
++	self.controls.powerReport.enabled = function()
++		return self.viewer.showHeatMap
++	end
+ 
+ 	-- Power Report List
+ 	local yPos = self.controls.treeHeatMap.y == 0 and self.controls.specSelect.height + 4 or self.controls.specSelect.height * 2 + 8
+@@ -403,11 +407,11 @@ function TreeTabClass:Draw(viewPort, inputEvents)
  	
  	local widthSecondLineControls = self.controls.treeSearch.width + 8
  									+ self.controls.findTimelessJewel.width + self.controls.findTimelessJewel.x
@@ -5708,8 +5720,14 @@ index 842b3b4e09ad99c69deee45fcf68695e679efb4f..7dba225173246e145868275fa34856f5
 +									+ self.controls.treeHeatMap.width + self.treeHeatMapOffset
  									+ self.controls.nodePowerMaxDepthSelect.width + self.controls.nodePowerMaxDepthSelect.x
  									+ (self.isCustomMaxDepth and (self.controls.nodePowerMaxDepthCustom.width + self.controls.nodePowerMaxDepthCustom.x) or 0)
- 									+ (self.viewer.showHeatMap and (self.controls.treeHeatMapStatSelect.width + self.controls.treeHeatMapStatSelect.x 
-@@ -421,7 +423,7 @@ function TreeTabClass:Draw(viewPort, inputEvents)
+-									+ (self.viewer.showHeatMap and (self.controls.treeHeatMapStatSelect.width + self.controls.treeHeatMapStatSelect.x 
+-																	+ self.controls.powerReport.width + self.controls.powerReport.x) or 0)
++									+ self.controls.treeHeatMapStatSelect.width + self.controls.treeHeatMapStatSelect.x
++									+ self.controls.powerReport.width + self.controls.powerReport.x
+ 	
+ 	-- Check first line
+ 	if viewPort.width >= widthFirstLineControls + widthSecondLineControls + rightMargin then
+@@ -421,7 +425,7 @@ function TreeTabClass:Draw(viewPort, inputEvents)
  
  	-- Check second line
  	if viewPort.width >= widthSecondLineControls + rightMargin then
@@ -5718,7 +5736,15 @@ index 842b3b4e09ad99c69deee45fcf68695e679efb4f..7dba225173246e145868275fa34856f5
  	else
  		linesHeight = linesHeight * 2
  		self.controls.treeHeatMap:SetAnchor("TOPLEFT", self.controls.treeSearch, "BOTTOMLEFT", 124, 4)
-@@ -474,7 +476,7 @@ function TreeTabClass:Draw(viewPort, inputEvents)
+@@ -463,7 +467,6 @@ function TreeTabClass:Draw(viewPort, inputEvents)
+ 	end
+ 
+ 	self.controls.treeHeatMap.state = self.viewer.showHeatMap
+-	self.controls.treeHeatMapStatSelect.shown = self.viewer.showHeatMap
+ 	self.controls.treeHeatMapStatSelect.list = self.powerStatList
+ 	self.controls.treeHeatMapStatSelect.selIndex = 1
+ 	self.controls.treeHeatMapStatSelect:CheckDroppedWidth(true)
+@@ -474,7 +477,7 @@ function TreeTabClass:Draw(viewPort, inputEvents)
  	SetDrawLayer(1)
  
  	SetDrawColor(0.05, 0.05, 0.05)
@@ -5728,7 +5754,7 @@ index 842b3b4e09ad99c69deee45fcf68695e679efb4f..7dba225173246e145868275fa34856f5
  		local height = viewPort.width < convertMaxWidth and (bottomDrawerHeight + linesHeight) or 0
  		SetDrawColor(0.05, 0.05, 0.05)
 diff --git a/src/Modules/AddImplicitPopup.lua b/src/Modules/AddImplicitPopup.lua
-index b324c47cddba1414dc2a47e1f5eb8404dc719aa5..41ee8c0e083be3c6453fad6389027a6f4b26fa9d 100644
+index b324c47..41ee8c0 100644
 --- a/src/Modules/AddImplicitPopup.lua
 +++ b/src/Modules/AddImplicitPopup.lua
 @@ -25,6 +25,18 @@ function M.AddImplicitToDisplayItem(itemsTab, displayItem)
@@ -5866,7 +5892,7 @@ index b324c47cddba1414dc2a47e1f5eb8404dc719aa5..41ee8c0e083be3c6453fad6389027a6f
  
  return M
 diff --git a/src/Modules/Build.lua b/src/Modules/Build.lua
-index 3ad9d8eafff62f1926bef3e75ff754be4303c0b9..b90a6525a96a355caafbc9e78c186e635ce59ebd 100644
+index 3ad9d8e..b90a652 100644
 --- a/src/Modules/Build.lua
 +++ b/src/Modules/Build.lua
 @@ -14,6 +14,18 @@ local m_huge = math.huge
@@ -6420,7 +6446,7 @@ index 3ad9d8eafff62f1926bef3e75ff754be4303c0b9..b90a6525a96a355caafbc9e78c186e63
  		Exit()
  	elseif action == "UPDATE" then
 diff --git a/src/Modules/CalcActiveSkill.lua b/src/Modules/CalcActiveSkill.lua
-index de16231644eeda5aeda94de612485a6712b3bf5b..0beb9bf1a560f236accfbde13386e609d309f4cf 100644
+index de16231..0beb9bf 100644
 --- a/src/Modules/CalcActiveSkill.lua
 +++ b/src/Modules/CalcActiveSkill.lua
 @@ -179,11 +179,11 @@ function calcs.copyActiveSkill(env, mode, skill)
@@ -6447,7 +6473,7 @@ index de16231644eeda5aeda94de612485a6712b3bf5b..0beb9bf1a560f236accfbde13386e609
  	activeSkill.baseSkillModList = skillModList
  	
 diff --git a/src/Modules/CalcMirages.lua b/src/Modules/CalcMirages.lua
-index b6826b567ea927936791d783ae9bd388723bdef5..b7ff9a32be7aa71ae35f5bd7a0970a6129f399a6 100644
+index b6826b5..b7ff9a3 100644
 --- a/src/Modules/CalcMirages.lua
 +++ b/src/Modules/CalcMirages.lua
 @@ -124,6 +124,9 @@ function calcs.mirages(env)
@@ -6461,19 +6487,10 @@ index b6826b567ea927936791d783ae9bd388723bdef5..b7ff9a32be7aa71ae35f5bd7a0970a61
  						calcs.buildActiveSkill(env, env.mode, skill, uuid)
  					end
 diff --git a/src/Modules/CalcPerform.lua b/src/Modules/CalcPerform.lua
-index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc1ebded8f 100644
+index c7f75ed..078d0cf 100644
 --- a/src/Modules/CalcPerform.lua
 +++ b/src/Modules/CalcPerform.lua
-@@ -33,27 +33,27 @@ local function getCachedOutputValue(env, activeSkill, ...)
- 	if not GlobalCache.cachedData[env.mode][uuid] or env.mode == "CALCULATOR" then
- 		calcs.buildActiveSkill(env, env.mode, activeSkill, uuid, {uuid})
- 	end
- 
- 	local tempValues = {}
- 	for i,v in ipairs({...}) do
- 		tempValues[i] = GlobalCache.cachedData[env.mode][uuid].Env.player.output[v]
- 	end
- 	return unpack(tempValues)
+@@ -42,9 +42,9 @@ local function getCachedOutputValue(env, activeSkill, ...)
  end
  
  -- Merge an instance of a buff, taking the highest value of each modifier
@@ -6485,25 +6502,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  	end
  	local dest = destTable[destKey]
  	for _, mod in ipairs(src) do
- 		local match = false
- 		if mod.type ~= "LIST" then
- 			for index, destMod in ipairs(dest) do
- 				if modLib.compareModParams(mod, destMod) then
- 					if type(destMod.value) == "number" and mod.value > destMod.value then
- 						dest[index] = mod
- 					end
- 					match = true
- 					break
-@@ -1286,37 +1286,41 @@ end
- function calcs.perform(env, skipEHP)
- 	local modDB = env.modDB
- 	local enemyDB = env.enemyDB
- 
- 	-- Merge keystone modifiers
- 	env.keystonesAdded = { }
- 	modLib.mergeKeystones(env, env.modDB)
- 
- 	-- Build minion skills
+@@ -1295,7 +1295,7 @@ function calcs.perform(env, skipEHP)
  	for _, activeSkill in ipairs(env.player.activeSkillList) do
  		activeSkill.skillModList = new("ModList"):ModList(activeSkill.baseSkillModList)
  		if activeSkill.minion then
@@ -6512,12 +6511,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  			activeSkill.minion.modDB.actor = activeSkill.minion
  			calcs.createMinionSkills(env, activeSkill)
  			activeSkill.skillPartName = activeSkill.minion.mainSkill.activeEffect.grantedEffect.name
- 		end
- 	end
- 
- 	env.player.output = { }
- 	env.enemy.output = {}
- 	---@class Output
+@@ -1308,6 +1308,10 @@ function calcs.perform(env, skipEHP)
  	local output = env.player.output
  
  	env.partyMembers = env.build.partyTab.actor
@@ -6528,25 +6522,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  	env.player.partyMembers = env.partyMembers
  	local partyTabEnableExportBuffs = env.build.partyTab.enableExportBuffs and env.mode ~= "CALCULATOR"
  
- 	-- Calculator passes reuse the environment after the player's shield has been removed.
- 	env.aegisItem = env.aegisModList and (env.player.itemList["Weapon 2"] or env.aegisItem)
- 	env.minion = env.player.mainSkill.minion
- 	if env.minion then
- 		-- Initialise minion modifier database
- 		output.Minion = { }
- 		initMinionModDB(env, env.player.mainSkill, output.Minion)
- 	end
- 	if env.aegisModList then
-@@ -1717,64 +1721,64 @@ function calcs.perform(env, skipEHP)
- 			end
- 			local effectMod = 1 + (flaskEffectInc) / 100
- 			local effectModNonPlayer = 1 + (flaskEffectIncNonPlayer) / 100
- 
- 			-- Life and Mana flasks are not Utility flasks, so their effects are kept when Utility flasks are disabled
- 			local isUtilityFlask = not (item.base.flask.life or item.base.flask.mana)
- 
- 			-- Avert thine eyes, lest they be forever scarred
- 			-- I have no idea how to determine which buff is applied by a given flask,
+@@ -1726,24 +1730,24 @@ function calcs.perform(env, skipEHP)
  			-- so utility flasks are grouped by base, unique flasks are grouped by name, and magic flasks by their modifiers
  			if buffModList[1] then
  				if not onlyMinion then
@@ -6579,11 +6555,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  				srcList:ScaleAddList(modList, effectMod)
  				local key
  				if item.rarity == "UNIQUE" or item.rarity == "RELIC" then
- 					key = item.title
- 				else
- 					key = ""
- 					for _, mod in ipairs(modList) do
- 						key = key .. modLib.formatModParams(mod) .. "&"
+@@ -1755,17 +1759,17 @@ function calcs.perform(env, skipEHP)
  					end
  				end
  				if not onlyRecovery then
@@ -6607,25 +6579,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  				end
  			end
  		end
- 
- 		for item in pairs(flasks) do
- 			flaskBuffsPerBase[item.baseName] = flaskBuffsPerBase[item.baseName] or {}
- 			flaskBuffsPerBaseNonPlayer[item.baseName] = flaskBuffsPerBaseNonPlayer[item.baseName] or {}
- 			local instantPerc = getFlaskInstantRecovery(item)
- 			if instantPerc < 100 then
- 				flaskConditions["UsingFlask"] = true
- 				flaskConditions["Using"..item.baseName:gsub("%s+", "")] = true
- 				if item.base.flask.life or item.base.flask.mana then
-@@ -1871,44 +1875,44 @@ function calcs.perform(env, skipEHP)
- 
- 		local function calcTinctureMods(item, baseName, buffModList, modList)
- 			local tinctureEffectInc = effectInc + item.tinctureData.effectInc
- 			if item.rarity == "MAGIC" then
- 				tinctureEffectInc = tinctureEffectInc + effectIncMagic
- 			end
- 			-- Compute tincture effect multiplier.
- 			-- Tincture effect multiplier is rounded to 2 decimal places before applying it.
- 			local effectMod = math.floor((1 + (tinctureEffectInc) / 100) * (1 + (item.quality or 0) / 100) * 100) / 100 
+@@ -1880,14 +1884,14 @@ function calcs.perform(env, skipEHP)
  
  			-- same deal as flasks, go look at the comment there
  			if buffModList[1] then
@@ -6644,10 +6598,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  				srcList:ScaleAddList(modList, effectMod)
  				local key
  				if item.rarity == "UNIQUE" or item.rarity == "RELIC" then
- 					key = item.title
- 				else
- 					key = ""
- 					for _, mod in ipairs(modList) do
+@@ -1898,8 +1902,8 @@ function calcs.perform(env, skipEHP)
  						key = key .. modLib.formatModParams(mod) .. "&"
  					end
  				end
@@ -6658,25 +6609,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  			end
  		end
  		for item in pairs(tinctures) do
- 			if tinctureLimit <= 0 then
- 				break
- 			end
- 			tinctureLimit = tinctureLimit - 1
- 			tinctureBuffsPerBase[item.baseName] = tinctureBuffsPerBase[item.baseName] or {}
- 			tinctureConditions["UsingTincture"] = true
- 			tinctureConditions["Using"..item.baseName:gsub("%s+", "")] = true
- 			calcTinctureMods(item, item.baseName, item.buffModList, item.modList)
- 		end
-@@ -2235,41 +2239,41 @@ function calcs.perform(env, skipEHP)
- 						if tagName == "beast" then
- 							modDB.conditions["HaveBeastSpectre"] = true
- 							break
- 						end
- 					end
- 				end
- 				for modId = 1, #spectreData.modList do
- 					local modData = spectreData.modList[modId]
- 					if modData.name == "EnemyCurseLimit" then
+@@ -2244,8 +2248,8 @@ function calcs.perform(env, skipEHP)
  						minionCurses.limit = modData.value + 1
  						break
  					elseif modData.name == "AllyModifier" and modData.type == "LIST" then
@@ -6687,7 +6620,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  						for _, modValue in pairs(modData.value) do
  							local copyModValue = copyTable(modValue)
  							copyModValue.source = "Spectre:"..spectreData.name
- 							t_insert(minionBuffs["Spectre"], copyModValue)
+@@ -2253,14 +2257,14 @@ function calcs.perform(env, skipEHP)
  							t_insert(buffs["Spectre"], copyModValue)
  						end
  					elseif modData.name == "MinionModifier" and modData.type == "LIST" then
@@ -6704,25 +6637,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  						for _, modValue in pairs(modData.value) do
  							local copyModValue = copyTable(modValue)
  							copyModValue.source = "Spectre:"..spectreData.name
- 							t_insert(buffs["Spectre"], copyModValue)
- 						end
- 					end
- 				end
- 			end
- 		end
- 	end
- 
- 	-- To support maximum sustainable stages for the following skills we need to get the data from already
-@@ -2313,60 +2317,60 @@ function calcs.perform(env, skipEHP)
- 				-- Nothing!
- 			elseif buff.enemyCond and not enemyDB:GetCondition(buff.enemyCond) then
- 				-- Also nothing :/
- 			elseif buff.type == "GlobalDB" then
- 				modDB:AddList(buff.modList) -- Allows a skill mod to affect other skills through modDB
- 			elseif buff.type == "Buff" then
- 				if env.mode_buffs and (not activeSkill.skillFlags.totem or buff.allowTotemBuff) then
- 					local skillCfg = buff.activeSkillBuff and skillCfg
- 					local modStore = buff.activeSkillBuff and skillModList or modDB
+@@ -2322,11 +2326,11 @@ function calcs.perform(env, skipEHP)
  				 	if not buff.applyNotPlayer then
  						activeSkill.buffSkill = true
  						modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
@@ -6736,7 +6651,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  						if activeSkill.skillData.thisIsNotABuff then
  							buffs[buff.name].notBuff = true
  						end
- 					end
+@@ -2334,11 +2338,11 @@ function calcs.perform(env, skipEHP)
  					if env.minion and not env.minion.hostile and (buff.applyMinions or buff.applyAllies or skillModList:Flag(nil, "BuffAppliesToAllies")) then
  						activeSkill.minionBuffSkill = true
  						env.minion.modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
@@ -6750,14 +6665,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  					end
  					if partyTabEnableExportBuffs and (buff.applyAllies or skillModList:Flag(nil, "BuffAppliesToAllies") or skillModList:Flag(nil, "BuffAppliesToPartyMembers")) then
  						local inc = modStore:Sum("INC", skillCfg, "BuffEffect") + skillModList:Sum("INC", skillCfg, buff.name:gsub(" ", "").."Effect")
- 						local more = modStore:More(skillCfg, "BuffEffect")
- 						buffExports["Aura"]["otherEffects"] = buffExports["Aura"]["otherEffects"] or { }
- 						buffExports["Aura"]["otherEffects"][buff.name] =  { effectMult = (1 + inc / 100) * more, modList = buff.modList }
- 					end
- 				end
- 			elseif buff.type == "Guard" then
- 				if env.mode_buffs and (not activeSkill.skillFlags.totem or buff.allowTotemBuff) then
- 					local skillCfg = buff.activeSkillBuff and skillCfg
+@@ -2353,11 +2357,11 @@ function calcs.perform(env, skipEHP)
  					local modStore = buff.activeSkillBuff and skillModList or modDB
  				 	if not buff.applyNotPlayer then
  						activeSkill.buffSkill = true
@@ -6771,25 +6679,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  					end
  				end
  			elseif buff.type == "Warcry" then
- 				if env.mode_buffs then
- 					local skillCfg = skillCfg
- 					local modStore = skillModList or modDB
- 					local warcryName = buff.name:gsub(" Cry", ""):gsub("'s",""):gsub(" ","")
- 					local baseExerts = modStore:Sum("BASE", env.player.mainSkill.skillCfg, warcryName.."ExertedAttacks")
- 					if baseExerts > 0 then
- 						local extraExertions = modStore:Sum("BASE", nil, "ExtraExertedAttacks") or 0
- 						local exertMultiplier = modStore:More(nil, "ExtraExertedAttacks")
- 						env.player.modDB:NewMod("Num"..warcryName.."Exerts", "BASE", m_floor((baseExerts + extraExertions) * exertMultiplier))
-@@ -2377,71 +2381,71 @@ function calcs.perform(env, skipEHP)
- 					end
- 					if not activeSkill.skillModList:Flag(nil, "CannotShareWarcryBuffs") then
- 						local warcryPower = modDB:Override(nil, "WarcryPower") or m_max((modDB:Sum("BASE", nil, "WarcryPower") or 0) * (1 + (modDB:Sum("INC", nil, "WarcryPower") or 0)/100), (modDB:Sum("BASE", nil, "MinimumWarcryPower") or 0))
- 						for _, warcryBuff in ipairs(buff.modList) do
- 							if warcryBuff[1] and warcryBuff[1].effectType == "Warcry" and warcryBuff[1].div then
- 								warcryBuff[1].warcryPowerBonus = m_floor((warcryBuff[1].limit and m_min(warcryPower, warcryBuff[1].limit) or warcryPower) / warcryBuff[1].div)
- 							end
- 						end
- 						local full_duration = calcSkillDuration(modStore, skillCfg, activeSkill.skillData, env, enemyDB)
+@@ -2386,25 +2390,25 @@ function calcs.perform(env, skipEHP)
  						local cooldownOverride = modStore:Override(skillCfg, "CooldownRecovery")
  						local actual_cooldown = cooldownOverride or (activeSkill.skillData.cooldown  + modStore:Sum("BASE", skillCfg, "CooldownRecovery")) / calcLib.mod(modStore, skillCfg, "CooldownRecovery")
  						local uptime = modDB:Flag(nil, "Condition:WarcryMaxHit") and 1 or m_min(full_duration / actual_cooldown, 1)
@@ -6819,24 +6709,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  							local inc = skillModList:Sum("INC", skillCfg, "BuffEffect") + env.minion.modDB:Sum("INC", skillCfg, "BuffEffectOnSelf")
  							local more = skillModList:More(skillCfg, "BuffEffect") * env.minion.modDB:More(skillCfg, "BuffEffectOnSelf")
  							for _, warcryBuff in ipairs(buff.modList) do
- 								local mult = (1 + inc / 100) * more * (warcryBuff[1].warcryPowerBonus or 1) * uptime
- 								srcList:ScaleAddList({warcryBuff}, mult)
- 							end
- 							-- Special handling for the minion side to add the flat damage bonus
- 							if activeSkill.activeEffect.grantedEffect.name == "Rallying Cry" then
- 								local warcryPowerBonus = m_floor((m_min(warcryPower, 30)) / 5)
- 								local rallyingWeaponEffect = m_floor(activeSkill.skillModList:Sum("BASE", env.player.mainSkill.skillCfg, "RallyingCryAllyDamageBonusPer5Power") * warcryPowerBonus)
- 								local inc = modStore:Sum("INC", skillCfg, "BuffEffect") + env.minion.modDB:Sum("INC", skillCfg, "BuffEffectOnSelf")
- 								local rallyingBonusMoreMultiplier = 1 + (activeSkill.skillModList:Sum("BASE", env.player.mainSkill.skillCfg, "RallyingCryMinionDamageBonusMultiplier") or 0)
- 								-- Add all damage types
- 								local dmgTypeList = {"Physical", "Lightning", "Cold", "Fire", "Chaos"}
- 								for _, damageType in ipairs(dmgTypeList) do
- 									if env.player.weaponData1[damageType.."Min"] then
- 										extraWarcryModList:NewMod(damageType.."Min", "BASE", (env.player.weaponData1[damageType.."Min"] * rallyingWeaponEffect / 100), "Rallying Cry", 0, KeywordFlag.Attack, { type = "GlobalEffect", effectType = "Warcry", div = 5, limit = 30 })
- 									end
- 									if env.player.weaponData1[damageType.."Max"] then
- 										extraWarcryModList:NewMod(damageType.."Max", "BASE", (env.player.weaponData1[damageType.."Max"] * rallyingWeaponEffect / 100), "Rallying Cry", 0, KeywordFlag.Attack, { type = "GlobalEffect", effectType = "Warcry", div = 5, limit = 30 })
- 									end
+@@ -2429,10 +2433,10 @@ function calcs.perform(env, skipEHP)
  								end
  								srcList:ScaleAddList(extraWarcryModList, (1 + inc / 100) * rallyingBonusMoreMultiplier * uptime)
  							end
@@ -6849,25 +6722,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  							local inc = skillModList:Sum("INC", skillCfg, "BuffEffect")
  							local more = skillModList:More(skillCfg, "BuffEffect")
  							newModList:AddList(buff.modList)
- 							newModList:AddList(extraWarcryModList)
- 							buffExports["Warcry"][buff.name] = { effectMult = (1 + inc / 100) * more * uptime, modList = newModList }
- 						end
- 					end
- 				end
- 			elseif buff.type == "Aura" then
- 				if env.mode_buffs then
- 					-- Check for extra modifiers to apply to aura skills
- 					local extraAuraModList = { }
-@@ -2460,99 +2464,99 @@ function calcs.perform(env, skipEHP)
- 					end
- 					if not activeSkill.skillData.auraCannotAffectSelf then
- 						local inc = skillModList:Sum("INC", skillCfg, "AuraEffect", "BuffEffect", "BuffEffectOnSelf", "AuraEffectOnSelf", "AuraBuffEffect", "SkillAuraEffectOnSelf")
- 						local more = skillModList:More(skillCfg, "AuraEffect", "BuffEffect", "BuffEffectOnSelf", "AuraEffectOnSelf", "AuraBuffEffect", "SkillAuraEffectOnSelf")
- 						local mult = (1 + inc / 100) * more
- 						if modDB:Flag(nil, "AlliesAurasCannotAffectSelf") or not allyBuffs["Aura"] or not allyBuffs["Aura"][buff.name] or allyBuffs["Aura"][buff.name].effectMult / 100 <= mult then
- 							activeSkill.buffSkill = true
- 							modDB.conditions["AffectedByAura"] = true
- 							if buff.name:sub(1,4) == "Vaal" then
+@@ -2469,10 +2473,10 @@ function calcs.perform(env, skipEHP)
  								modDB.conditions["AffectedBy"..buff.name:sub(6):gsub(" ","")] = true
  							end
  							modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
@@ -6880,11 +6735,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  						end
  					end
  					if not (modDB:Flag(nil, "SelfAurasCannotAffectAllies") or modDB:Flag(nil, "SelfAurasOnlyAffectYou") or modDB:Flag(nil, "SelfAuraSkillsCannotAffectAllies") ) then
- 						if env.minion and (not env.minion.hostile or modDB:Flag(nil, "AurasAffectEnemies")) then
- 							local inc = skillModList:Sum("INC", skillCfg, "AuraEffect", "BuffEffect") + env.minion.modDB:Sum("INC", skillCfg, "BuffEffectOnSelf", "AuraEffectOnSelf")
- 							local more = skillModList:More(skillCfg, "AuraEffect", "BuffEffect") * env.minion.modDB:More(skillCfg, "BuffEffectOnSelf", "AuraEffectOnSelf")
- 							local mult = (1 + inc / 100) * more
- 							if not allyBuffs["Aura"] or  not allyBuffs["Aura"][buff.name] or allyBuffs["Aura"][buff.name].effectMult / 100 <= mult then
+@@ -2484,16 +2488,16 @@ function calcs.perform(env, skipEHP)
  								activeSkill.minionBuffSkill = true
  								env.minion.modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
  								env.minion.modDB.conditions["AffectedByAura"] = true
@@ -6904,8 +6755,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  						newModList:AddList(buff.modList)
  						newModList:AddList(extraAuraModList)
  						if buffExports["Aura"][buff.name] then
- 							buffExports["Aura"][buff.name.."_Debuff"] = buffExports["Aura"][buff.name]
- 						end
+@@ -2502,7 +2506,7 @@ function calcs.perform(env, skipEHP)
  						buffExports["Aura"][buff.name] = { effectMult = mult, modList = newModList }
  						if modDB:Flag(nil, "AurasAffectEnemies") and not activeSkill.skillModList:Flag(skillCfg, "SelfAurasAffectYouAndLinkedTarget") then
  							local newModList = {}
@@ -6914,9 +6764,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  							for _, mod in ipairs(buff.modList) do
  								t_insert(newModList, mod)
  							end
- 							for _, mod in ipairs(extraAuraModList) do
- 								t_insert(newModList, mod)
- 							end
+@@ -2512,7 +2516,7 @@ function calcs.perform(env, skipEHP)
  							buffExports["Aura"][buff.name..(buffExports["Aura"][buff.name] and "_Debuff" or "")] = { effectMult = mult, modList = newModList }
  							srcList:ScaleAddList(buff.modList, mult)
  							srcList:ScaleAddList(extraAuraModList, mult)
@@ -6925,7 +6773,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  						end
  					end
  					if env.player.mainSkill.skillFlags.totem and not (modDB:Flag(nil, "SelfAurasCannotAffectAllies") or modDB:Flag(nil, "SelfAuraSkillsCannotAffectAllies")) then
- 						activeSkill.totemBuffSkill = true
+@@ -2520,7 +2524,7 @@ function calcs.perform(env, skipEHP)
  						env.player.mainSkill.skillModList.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
  						env.player.mainSkill.skillModList.conditions["AffectedByAura"] = true
  
@@ -6934,22 +6782,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  						local inc = skillModList:Sum("INC", skillCfg, "AuraEffect", "BuffEffect", "AuraBuffEffect")
  						local more = skillModList:More(skillCfg, "AuraEffect", "BuffEffect", "AuraBuffEffect")
  						local lists = {extraAuraModList, buff.modList}
- 						local scale = (1 + inc / 100) * more
- 						scale = m_max(scale, 0)
- 
- 						for _, modList in ipairs(lists) do
- 							for _, mod in ipairs(modList) do
- 								if mod.name == "EnergyShield" or mod.name == "Armour" or mod.name == "Evasion" or mod.name:match("Resist?M?a?x?$") then
- 									local totemMod = copyTable(mod)
- 									totemMod.name = "Totem"..totemMod.name
- 									if scale ~= 1 then
- 										if type(totemMod.value) == "number" then
- 											totemMod.value = (m_floor(totemMod.value) == totemMod.value) and m_modf(round(totemMod.value * scale, 2)) or totemMod.value * scale
- 										elseif type(totemMod.value) == "table" and totemMod.value.mod then
- 											totemMod.value.mod.value = (m_floor(totemMod.value.mod.value) == totemMod.value.mod.value) and m_modf(round(totemMod.value.mod.value * scale, 2)) or totemMod.value.mod.value * scale
- 										end
- 									end
- 									srcList:AddMod(totemMod)
+@@ -2543,7 +2547,7 @@ function calcs.perform(env, skipEHP)
  								end
  							end
  						end
@@ -6958,25 +6791,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  					end
  					-- check if aura has a debuff added to it, but does not have an auraDebuff
  					if env.mode_effective and #modDB:List(skillCfg, "ExtraAuraDebuffEffect") > 0 and not (modDB:Flag(nil, "SelfAurasOnlyAffectYou") or activeSkill.skillModList:Flag(skillCfg, "SelfAurasAffectYouAndLinkedTarget")) then
- 						local auraDebuffFound = false
- 						for _, buff in ipairs(activeSkill.buffList) do
- 							if buff.type == "AuraDebuff" then
- 								auraDebuffFound = true
- 								break
- 							end
- 						end
- 						if not auraDebuffFound then
- 							activeSkill.debuffSkill = true
-@@ -2564,51 +2568,51 @@ function calcs.perform(env, skipEHP)
- 										mod.value = mod.value + value.mod.value
- 										add = false
- 										break
- 									end
- 								end
- 								if add then
- 									t_insert(extraAuraModList, copyTable(value.mod, true))
- 								end
- 							end
+@@ -2573,13 +2577,13 @@ function calcs.perform(env, skipEHP)
  							local inc = skillModList:Sum("INC", skillCfg, "AuraEffect", "BuffEffect", "DebuffEffect")
  							local more = skillModList:More(skillCfg, "AuraEffect", "BuffEffect", "DebuffEffect")
  							mult = (1 + inc / 100) * more
@@ -6992,19 +6807,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  						end
  					end
  				end
- 			elseif buff.type == "Debuff" or buff.type == "AuraDebuff" then
- 				local stackCount
- 				if buff.stackVar then
- 					stackCount = skillModList:Sum("BASE", skillCfg, "Multiplier:"..buff.stackVar)
- 					if buff.stackLimit then
- 						stackCount = m_min(stackCount, buff.stackLimit)
- 					elseif buff.stackLimitVar then
- 						stackCount = m_min(stackCount, skillModList:Sum("BASE", skillCfg, "Multiplier:"..buff.stackLimitVar))
- 					end
- 				else
- 					stackCount = activeSkill.skillData.stackCount or 1
- 				end
- 				if env.mode_effective and stackCount > 0 then
+@@ -2599,7 +2603,7 @@ function calcs.perform(env, skipEHP)
  					activeSkill.debuffSkill = true
  					enemyDB.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
  					modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
@@ -7013,25 +6816,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  					local mult = 1
  					local extraAuraModList = { }
  					if buff.type == "AuraDebuff" then
- 						for _, value in ipairs(modDB:List(skillCfg, "ExtraAuraDebuffEffect")) do
- 							local add = true
- 							for _, mod in ipairs(extraAuraModList) do
- 								if modLib.compareModParams(mod, value.mod) then
- 									mod.value = mod.value + value.mod.value
- 									add = false
- 									break
- 								end
- 							end
-@@ -2620,44 +2624,44 @@ function calcs.perform(env, skipEHP)
- 						if not (modDB:Flag(nil, "SelfAurasOnlyAffectYou")) then
- 							local inc = skillModList:Sum("INC", skillCfg, "AuraEffect", "BuffEffect", "DebuffEffect")
- 							local more = skillModList:More(skillCfg, "AuraEffect", "BuffEffect", "DebuffEffect")
- 							mult = (1 + inc / 100) * more
- 							local newModList = {}
- 							for _, mod in ipairs(buff.modList) do
- 								t_insert(newModList, mod)
- 							end
- 							for _, mod in ipairs(extraAuraModList) do
+@@ -2629,7 +2633,7 @@ function calcs.perform(env, skipEHP)
  								t_insert(newModList, mod)
  							end
  							-- A full modlist causes issues with copy table for mine auras
@@ -7040,18 +6825,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  							--newModList:AddList(buff.modList)
  							--newModList:AddList(extraAuraModList)
  							buffExports["Aura"][buff.name..(buffExports["Aura"][buff.name] and "_Debuff" or "")] = { effectMult = mult, modList = newModList }
- 							if allyBuffs["AuraDebuff"] and allyBuffs["AuraDebuff"][buff.name] and allyBuffs["AuraDebuff"][buff.name].effectMult / 100 > mult then
- 								mult = 0
- 							end
- 						end
- 					end
- 					if buff.type == "Debuff" then
- 						local inc = skillModList:Sum("INC", skillCfg, "DebuffEffect")
- 						local more = skillModList:More(skillCfg, "DebuffEffect")
- 						mult = (1 + inc / 100) * more
- 					end
- 					srcList:ScaleAddList(buff.modList, mult * stackCount)
- 					srcList:ScaleAddList(extraAuraModList, mult * stackCount)
+@@ -2648,7 +2652,7 @@ function calcs.perform(env, skipEHP)
  					if activeSkill.skillData.stackCount or buff.stackVar then
  						srcList:NewMod("Multiplier:"..buff.name.."Stack", "BASE", stackCount, buff.name)
  					end
@@ -7060,25 +6834,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  				end
  			elseif buff.type == "Curse" or buff.type == "CurseBuff" then
  				local mark = activeSkill.skillTypes[SkillType.Mark]
- 				modDB.conditions["SelfCast"..buff.name:gsub(" ","")] = not (activeSkill.skillTypes[SkillType.Triggered] or activeSkill.skillTypes[SkillType.Aura])
- 				local skipCurse = false
- 				local configVar = "balanceOfTerrorSelfCast"..buff.name:gsub(" ", "")
- 				if configVar and env.configInput[configVar] and not mark then
- 					-- User flagged this curse as Balance of Terror self-only, so don't apply it to enemies.
- 					skipCurse = true
- 				end
- 				if (not skipCurse) and (env.mode_effective and (not enemyDB:Flag(nil, "Hexproof") or modDB:Flag(nil, "CursesIgnoreHexproof") or activeSkill.skillData.ignoreHexLimit or activeSkill.skillData.ignoreHexproof) or mark) then
- 					local curse = {
-@@ -2674,39 +2678,39 @@ function calcs.perform(env, skipEHP)
- 					end
- 					local more = skillModList:More(skillCfg, "CurseEffect")
- 					local moreMark = more
- 					-- This is non-ideal, but the only More for enemy is the boss effect
- 					if not curse.isMark then
- 						more = more * enemyDB:More(nil, "CurseEffectOnSelf")
- 					end
- 					local mult = 0
- 					if not ((modDB:Flag(nil, "SelfAurasOnlyAffectYou") or activeSkill.skillModList:Flag(skillCfg, "SelfAurasAffectYouAndLinkedTarget")) and activeSkill.skillTypes[SkillType.Aura]) then --If your aura only effect you blasphemy does nothing
+@@ -2683,21 +2687,21 @@ function calcs.perform(env, skipEHP)
  						mult = (1 + inc / 100) * more
  					end
  					if buff.type == "Curse" then
@@ -7104,25 +6860,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  							local buffInc = env.minion.modDB:Sum("INC", nil, "BuffEffectOnSelf")
  							local buffMore = env.minion.modDB:More(nil, "BuffEffectOnSelf")
  							curse.minionBuffModList:ScaleAddList(temp, (1 + buffInc / 100) * buffMore)
- 						end
- 					end
- 					t_insert(curses, curse)
- 				end
- 			elseif buff.type == "Link" then
- 				local linksApplyToMinions = env.minion and modDB:Flag(nil, "Condition:CanLinkToMinions") and modDB:Flag(nil, "Condition:LinkedToMinion")
- 						and not env.minion.modDB:Flag(nil, "Condition:CannotBeDamaged") and not env.minion.mainSkill.summonSkill.skillTypes[SkillType.MinionsAreUndamagable]
- 				if env.mode_buffs and (#linkSkills < 1) and (partyTabEnableExportBuffs or linksApplyToMinions) then
- 					-- Check for extra modifiers to apply to link skills
-@@ -2723,40 +2727,40 @@ function calcs.perform(env, skipEHP)
- 						if add then
- 							t_insert(extraLinkModList, copyTable(value.mod, true))
- 							-- special handling to add this early
- 							if value.mod.name == "ParentNonUniqueFlasksAppliedToYou" then
- 								nonUniqueFlasksApplyToMinion = true
- 							end
- 						end
- 					end
- 					local inc = skillModList:Sum("INC", skillCfg, "LinkEffect", "BuffEffect")
+@@ -2732,7 +2736,7 @@ function calcs.perform(env, skipEHP)
  					local more = skillModList:More(skillCfg, "LinkEffect", "BuffEffect")
  					local mult = (1 + inc / 100) * more
  					if partyTabEnableExportBuffs then
@@ -7131,8 +6869,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  						newModList:AddList(buff.modList)
  						newModList:AddList(extraLinkModList)
  						buffExports["Link"][buff.name] = { effectMult = mult, modList = newModList }
- 					end
- 					if linksApplyToMinions then
+@@ -2741,13 +2745,13 @@ function calcs.perform(env, skipEHP)
  						activeSkill.minionBuffSkill = true
  						env.minion.modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
  						env.minion.modDB.conditions["AffectedByLink"] = true
@@ -7148,25 +6885,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  						linkSkills[1] = buff.name
  					end
  				end
- 			end
- 		end
- 		if activeSkill.skillModList:Flag(nil, "Condition:CanWither") or (activeSkill.minion and env.minion and env.minion.modDB:Flag(nil, "Condition:CanWither")) then
- 			local witherEffect = modDB:Sum("INC", nil, activeSkill.minion and "MinionWitherEffect" or "WitherEffect")
- 			if not activeSkill.minion and modDB:Flag(nil, "UnholyMight") then
- 				witherEffect = witherEffect + modDB:Sum("INC", nil, "UnholyMightAlsoWitherEffect")
- 			end
- 			local effect = m_floor(6 * (1 + witherEffect / 100))
- 			modDB:NewMod("WitherEffectStack", "MAX", effect)
-@@ -2791,54 +2795,54 @@ function calcs.perform(env, skipEHP)
- 				end
- 			end
- 				local skillModList = activeMinionSkill.skillModList
- 				local skillCfg = activeMinionSkill.skillCfg
- 				for _, buff in ipairs(activeMinionSkill.buffList) do
- 					if buff.type == "Buff" then
- 						if env.mode_buffs and activeMinionSkill.skillData.enable then
- 							local skillCfg = buff.activeSkillBuff and skillCfg
- 							local modStore = buff.activeSkillBuff and skillModList or castingMinion.modDB
+@@ -2800,12 +2804,12 @@ function calcs.perform(env, skipEHP)
  							if buff.applyAllies then
  								activeMinionSkill.buffSkill = true
  								modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
@@ -7182,18 +6901,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  								if activeMinionSkill.skillData.thisIsNotABuff then
  									buffs[buff.name].notBuff = true
  								end
- 								if partyTabEnableExportBuffs then
- 									local inc = modStore:Sum("INC", skillCfg, "BuffEffect")
- 									local more = modStore:More(skillCfg, "BuffEffect")
- 									buffExports["Aura"]["otherEffects"] = buffExports["Aura"]["otherEffects"] or { }
- 									buffExports["Aura"]["otherEffects"][buff.name] =  { effectMult = (1 + inc / 100) * more, modList = buff.modList }
- 								end
- 							end
- 							local envMinionCheck = (env.minion and (env.minion == castingMinion or buff.applyAllies))
- 							if buff.applyMinions or envMinionCheck then
- 								activeMinionSkill.minionBuffSkill = true
- 								if envMinionCheck then
- 									env.minion.modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
+@@ -2824,12 +2828,12 @@ function calcs.perform(env, skipEHP)
  								else
  									activeSkill.minion.modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
  								end
@@ -7209,25 +6917,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  								if activeMinionSkill.skillData.thisIsNotABuff then
  									buffs[buff.name].notBuff = true
  								end
- 							end
- 						end
- 					elseif buff.type == "Aura" then
- 						if env.mode_buffs and activeMinionSkill.skillData.enable then
- 							-- Check for extra modifiers to apply to aura skills
- 							local extraAuraModList = { }
- 							for _, value in ipairs(activeSkill.minion.modDB:List(skillCfg, "ExtraAuraEffect")) do
- 								local add = true
- 								for _, mod in ipairs(extraAuraModList) do
-@@ -2855,117 +2859,117 @@ function calcs.perform(env, skipEHP)
- 							if not (activeSkill.minion.modDB:Flag(nil, "SelfAurasCannotAffectAllies") or activeSkill.minion.modDB:Flag(nil, "SelfAurasOnlyAffectYou") or activeSkill.minion.modDB:Flag(nil, "SelfAuraSkillsCannotAffectAllies") or skillModList:Flag(skillCfg, "SelfAurasAffectYouAndLinkedTarget")) then
- 								if not modDB:Flag(nil, "AlliesAurasCannotAffectSelf") and not modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] then
- 									local inc = skillModList:Sum("INC", skillCfg, "AuraEffect", "BuffEffect", "BuffEffectOnPlayer", "AuraBuffEffect") + modDB:Sum("INC", skillCfg, "BuffEffectOnSelf", "AuraEffectOnSelf")
- 									local more = skillModList:More(skillCfg, "AuraEffect", "BuffEffect", "AuraBuffEffect") * modDB:More(skillCfg, "BuffEffectOnSelf", "AuraEffectOnSelf")
- 									local mult = (1 + inc / 100) * more
- 									if not allyBuffs["Aura"] or not allyBuffs["Aura"][buff.name] or allyBuffs["Aura"][buff.name].effectMult / 100 <= mult then
- 										activeMinionSkill.buffSkill = true
- 										modDB.conditions["AffectedByAura"] = true
- 										if buff.name:sub(1,4) == "Vaal" then
+@@ -2864,11 +2868,11 @@ function calcs.perform(env, skipEHP)
  											modDB.conditions["AffectedBy"..buff.name:sub(6):gsub(" ","")] = true
  										end
  										modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
@@ -7241,10 +6931,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  									end
  								end
  								if env.minion and not env.minion.modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] and (env.minion ~= activeSkill.minion or not activeSkill.skillData.auraCannotAffectSelf)  then
- 									local inc = skillModList:Sum("INC", skillCfg, "AuraEffect", "BuffEffect") + env.minion.modDB:Sum("INC", skillCfg, "BuffEffectOnSelf", "AuraEffectOnSelf")
- 									local more = skillModList:More(skillCfg, "AuraEffect", "BuffEffect") * env.minion.modDB:More(skillCfg, "BuffEffectOnSelf", "AuraEffectOnSelf")
- 									local mult = (1 + inc / 100) * more
- 									if not allyBuffs["Aura"] or  not allyBuffs["Aura"][buff.name] or allyBuffs["Aura"][buff.name].effectMult / 100 <= mult then
+@@ -2879,17 +2883,17 @@ function calcs.perform(env, skipEHP)
  										activeMinionSkill.minionBuffSkill = true
  										env.minion.modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
  										env.minion.modDB.conditions["AffectedByAura"] = true
@@ -7265,12 +6952,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  								newModList:AddList(buff.modList)
  								newModList:AddList(extraAuraModList)
  								setSpectreSource(newModList, buff.name)
- 								if buffExports["Aura"][buff.name] then
- 									buffExports["Aura"][buff.name.."_Debuff"] = buffExports["Aura"][buff.name]
- 								end
- 								buffExports["Aura"][buff.name] = { effectMult = mult, modList = newModList }
- 								if env.player.mainSkill.skillFlags.totem and not env.player.mainSkill.skillModList.conditions["AffectedBy"..buff.name:gsub(" ","")] then
- 									activeMinionSkill.totemBuffSkill = true
+@@ -2902,7 +2906,7 @@ function calcs.perform(env, skipEHP)
  									env.player.mainSkill.skillModList.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
  									env.player.mainSkill.skillModList.conditions["AffectedByAura"] = true
  
@@ -7279,23 +6961,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  									local inc = skillModList:Sum("INC", skillCfg, "AuraEffect", "BuffEffect", "AuraBuffEffect")
  									local more = skillModList:More(skillCfg, "AuraEffect", "BuffEffect", "AuraBuffEffect")
  									local lists = {extraAuraModList, buff.modList}
- 									local scale = (1 + inc / 100) * more
- 									scale = m_max(scale, 0)
- 
- 									for _, modList in ipairs(lists) do
- 										for _, mod in ipairs(modList) do
- 											if mod.name == "EnergyShield" or mod.name == "Armour" or mod.name == "Evasion" or mod.name:match("Resist?M?a?x?$") then
- 												local totemMod = copyTable(mod)
- 												totemMod.name = "Totem"..totemMod.name
- 												if scale ~= 1 then
- 													if type(totemMod.value) == "number" then
- 														totemMod.value = (m_floor(totemMod.value) == totemMod.value) and m_modf(round(totemMod.value * scale, 2)) or totemMod.value * scale
- 													elseif type(totemMod.value) == "table" and totemMod.value.mod then
- 														totemMod.value.mod.value = (m_floor(totemMod.value.mod.value) == totemMod.value.mod.value) and m_modf(round(totemMod.value.mod.value * scale, 2)) or totemMod.value.mod.value * scale
- 													end
- 												end
- 												srcList:AddMod(totemMod)
- 											end
+@@ -2926,7 +2930,7 @@ function calcs.perform(env, skipEHP)
  										end
  									end
  									setSpectreSource(srcList)
@@ -7304,11 +6970,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  								end
  							end
  						end
- 					elseif buff.type == "Curse" then
- 						if env.mode_effective and activeMinionSkill.skillData.enable and (not enemyDB:Flag(nil, "Hexproof") or activeMinionSkill.skillTypes[SkillType.Mark]) then
- 							local curse = {
- 								name = buff.name,
- 								priority = determineCursePriority(buff.name, activeMinionSkill),
+@@ -2938,7 +2942,7 @@ function calcs.perform(env, skipEHP)
  							}
  							local inc = skillModList:Sum("INC", skillCfg, "CurseEffect") + enemyDB:Sum("INC", nil, "CurseEffectOnSelf")
  							local more = skillModList:More(skillCfg, "CurseEffect") * enemyDB:More(nil, "CurseEffectOnSelf")
@@ -7317,17 +6979,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  							curse.modList:ScaleAddList(buff.modList, (1 + inc / 100) * more)
  							t_insert(minionCurses, curse)
  						end
- 					elseif buff.type == "Debuff" or buff.type == "AuraDebuff" then
- 						local stackCount
- 						if buff.stackVar then
- 							stackCount = skillModList:Sum("BASE", skillCfg, "Multiplier:"..buff.stackVar)
- 							if buff.stackLimit then
- 								stackCount = m_min(stackCount, buff.stackLimit)
- 							elseif buff.stackLimitVar then
- 								stackCount = m_min(stackCount, skillModList:Sum("BASE", skillCfg, "Multiplier:"..buff.stackLimitVar))
- 							end
- 						else
- 							stackCount = activeMinionSkill.skillData.stackCount or 1
+@@ -2956,7 +2960,7 @@ function calcs.perform(env, skipEHP)
  						end
  						if env.mode_effective and stackCount > 0 then
  							activeMinionSkill.debuffSkill = true
@@ -7336,25 +6988,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  							local mult = 1
  							if buff.type == "AuraDebuff" then
  								mult = 0
- 								if not skillModList:Flag(nil, "SelfAurasOnlyAffectYou") or skillModList:Flag(skillCfg, "SelfAurasAffectYouAndLinkedTarget") then
- 									local inc = skillModList:Sum("INC", skillCfg, "AuraEffect", "BuffEffect", "DebuffEffect")
- 									local more = skillModList:More(skillCfg, "AuraEffect", "BuffEffect", "DebuffEffect")
- 									mult = (1 + inc / 100) * more
- 									if not enemyDB.conditions["AffectedBy"..buff.name:gsub(" ","")] then
- 										buffExports["Aura"][buff.name..(buffExports["Aura"][buff.name] and "_Debuff" or "")] = { effectMult = mult, modList = buff.modList }
- 										if allyBuffs["AuraDebuff"] and allyBuffs["AuraDebuff"][buff.name] and allyBuffs["AuraDebuff"][buff.name].effectMult / 100 > mult then
- 											mult = 0
- 										end
-@@ -2978,148 +2982,148 @@ function calcs.perform(env, skipEHP)
- 							if env.minion and env.minion == activeSkill.minion then
- 								env.minion.modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
- 							end
- 							if buff.type == "Debuff" then
- 								local inc = skillModList:Sum("INC", skillCfg, "DebuffEffect")
- 								local more = skillModList:More(skillCfg, "DebuffEffect")
- 								mult = (1 + inc / 100) * more
- 							end
- 							srcList:ScaleAddList(buff.modList, mult * stackCount)
+@@ -2987,7 +2991,7 @@ function calcs.perform(env, skipEHP)
  							if activeMinionSkill.skillData.stackCount or buff.stackVar then
  								srcList:NewMod("Multiplier:"..buff.name.."Stack", "BASE", activeMinionSkill.skillData.stackCount, buff.name)
  							end
@@ -7363,11 +6997,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  						end
  					end
  				end
- 			end
- 		end
- 	end
- 	if allyBuffs["otherEffects"] then
- 		for buffName, buff in pairs(allyBuffs["otherEffects"]) do
+@@ -2999,16 +3003,16 @@ function calcs.perform(env, skipEHP)
  			modDB.conditions["AffectedBy"..buffName:gsub(" ","")] = true
  			local inc = modDB:Sum("INC", nil, "BuffEffectOnSelf", "AuraEffectOnSelf")
  			local more = modDB:More(nil, "BuffEffectOnSelf", "AuraEffectOnSelf")
@@ -7388,10 +7018,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  			end
  		end
  	end
- 	if allyBuffs["Aura"] then
- 		for auraName, aura in pairs(allyBuffs["Aura"]) do
- 			if auraName ~= "Vaal" then
- 				local auraNameCompressed = auraName:gsub(" ","")
+@@ -3019,16 +3023,16 @@ function calcs.perform(env, skipEHP)
  				if not modDB:Flag(nil, "AlliesAurasCannotAffectSelf") and not modDB.conditions["AffectedBy"..auraNameCompressed] then
  					modDB.conditions["AffectedByAura"] = true
  					modDB.conditions["AffectedBy"..auraNameCompressed] = true
@@ -7412,10 +7039,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  				end
  			end
  		end
- 		if allyBuffs["Aura"]["Vaal"] then
- 			for auraName, aura in pairs(allyBuffs["Aura"]["Vaal"]) do
- 				local auraNameCompressed = auraName:gsub(" ","")
- 				if not modDB:Flag(nil, "AlliesAurasCannotAffectSelf") and not modDB.conditions["AffectedBy"..auraNameCompressed] then
+@@ -3039,16 +3043,16 @@ function calcs.perform(env, skipEHP)
  					modDB.conditions["AffectedByAura"] = true
  					modDB.conditions["AffectedBy"..auraName:sub(6):gsub(" ","")] = true
  					modDB.conditions["AffectedBy"..auraNameCompressed] = true
@@ -7436,11 +7060,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  				end
  			end
  		end
- 	end
- 	if allyBuffs["AuraDebuff"] and env.mode_effective then
- 		for auraName, aura in pairs(allyBuffs["AuraDebuff"]) do
- 			if auraName ~= "Vaal" then
- 				local auraNameCompressed = auraName:gsub(" ","")
+@@ -3060,9 +3064,9 @@ function calcs.perform(env, skipEHP)
  				if not enemyDB.conditions["AffectedBy"..auraNameCompressed] then
  					enemyDB.conditions["AffectedBy"..auraNameCompressed] = true
  					modDB.conditions["AffectedBy"..auraNameCompressed] = true
@@ -7452,9 +7072,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  				end
  			end
  		end
- 		if allyBuffs["AuraDebuff"]["Vaal"] then
- 			for auraName, aura in pairs(allyBuffs["AuraDebuff"]["Vaal"]) do
- 				local auraNameCompressed = auraName:gsub(" ","")
+@@ -3072,9 +3076,9 @@ function calcs.perform(env, skipEHP)
  				if not enemyDB.conditions["AffectedBy"..auraNameCompressed] then
  					enemyDB.conditions["AffectedBy"..auraNameCompressed] = true
  					modDB.conditions["AffectedBy"..auraNameCompressed] = true
@@ -7466,10 +7084,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  				end
  			end
  		end
- 	end
- 	if env.partyMembers["Warcry"] and env.partyMembers["Warcry"]["Warcry"] then
- 		for warcryName, warcry in pairs(env.partyMembers["Warcry"]["Warcry"]) do
- 			local warcryNameCompressed = warcryName:gsub(" ","")
+@@ -3085,20 +3089,20 @@ function calcs.perform(env, skipEHP)
  			if not modDB.conditions["AffectedBy"..warcryNameCompressed] then
  				modDB.conditions["AffectedByWarcry"] = true
  				modDB.conditions["AffectedBy"..warcryNameCompressed] = true
@@ -7494,9 +7109,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  			end
  		end
  	end
- 	if env.partyMembers["Link"] and env.partyMembers["Link"]["Link"] then
- 		for linkName, link in pairs(env.partyMembers["Link"]["Link"]) do
- 			local linkNameCompressed = linkName:gsub(" ","")
+@@ -3108,9 +3112,9 @@ function calcs.perform(env, skipEHP)
  			if not modDB.conditions["AffectedBy"..linkNameCompressed] then
  				modDB.conditions["AffectedByLink"] = true
  				modDB.conditions["AffectedBy"..linkNameCompressed] = true
@@ -7508,25 +7121,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  			end
  		end
  	end
- 
- 	if env.mode_combat then
- 		-- This needs to be done in 2 steps to account for effects affecting life recovery from flasks
- 		-- For example Sorrow of the Divine and buffs (like flask recovery watchers eye)
- 		mergeFlasks(env.flasks, true, nonUniqueFlasksApplyToMinion)
- 	end
- 
- 	-- Process stats from alternate charges
- 	if env.mode_combat then
-@@ -3138,25 +3142,25 @@ function calcs.perform(env, skipEHP)
- 			modDB:NewMod("EnemyBrittleEffect", "MORE", effectPerAffliction, "Affliction Charges", { type = "Multiplier", var = "AfflictionCharge" } )
- 			modDB:NewMod("EnemySapEffect", "MORE", effectPerAffliction, "Affliction Charges", { type = "Multiplier", var = "AfflictionCharge" } )
- 		end
- 	end
- 
- 	-- Check for extra curses
- 	for dest, modDB in pairs({[curses] = modDB, [minionCurses] = env.minion and env.minion.modDB}) do
- 		if env.mode_combat and modDB:Flag(nil, "Condition:OnConsecratedGround") then
- 			local effect = 1 + modDB:Sum("INC", nil, "ConsecratedGroundEffect") / 100
+@@ -3147,7 +3151,7 @@ function calcs.perform(env, skipEHP)
  			modDB:NewMod("CurseEffectOnSelf", "INC", -50 * effect, "Consecrated Ground")
  		end
  		for _, value in ipairs(modDB:List(nil, "ExtraCurse")) do
@@ -7535,25 +7130,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  			local grantedEffect = env.data.skills[value.skillId]
  			if grantedEffect then
  				calcs.mergeSkillInstanceMods(env, gemModList, {
- 					grantedEffect = grantedEffect,
- 					level = value.level,
- 					quality = 0,
- 				})
- 				local curseModList = { }
- 				for _, mod in ipairs(gemModList) do
- 					for _, tag in ipairs(mod) do
- 						if tag.type == "GlobalEffect" and tag.effectType == "Curse" then
- 							t_insert(curseModList, mod)
-@@ -3172,43 +3176,43 @@ function calcs.perform(env, skipEHP)
- 						modDB.conditions["AffectedBy"..grantedEffect.name:gsub(" ","")] = true
- 						local cfg = { skillName = grantedEffect.name }
- 						local inc = modDB:Sum("INC", cfg, "CurseEffectOnSelf") + gemModList:Sum("INC", nil, "CurseEffectAgainstPlayer")
- 						local more = modDB:More(cfg, "CurseEffectOnSelf") * gemModList:More(nil, "CurseEffectAgainstPlayer")
- 						modDB:ScaleAddList(curseModList, m_max((1 + inc / 100) * more, 0))
- 					end
- 				elseif not enemyDB:Flag(nil, "Hexproof") or modDB:Flag(nil, "CursesIgnoreHexproof") then
- 					local curse = {
- 						name = grantedEffect.name,
+@@ -3181,7 +3185,7 @@ function calcs.perform(env, skipEHP)
  						fromPlayer = (dest == curses),
  						priority = determineCursePriority(grantedEffect.name),
  					}
@@ -7562,17 +7139,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  					curse.modList:ScaleAddList(curseModList, (1 + enemyDB:Sum("INC", nil, "CurseEffectOnSelf") / 100) * enemyDB:More(nil, "CurseEffectOnSelf"))
  					t_insert(dest, curse)
  				end
- 			end
- 		end
- 	end
- 	local allyCurses = {}
- 	local allyPartyCurses = env.partyMembers["Curse"]
- 	if allyPartyCurses["Curse"] then
- 		allyCurses.limit = allyPartyCurses.limit
- 	else
- 		allyPartyCurses = { Curse = {} }
- 	end
- 	for curseName, curse in pairs(allyPartyCurses["Curse"]) do
+@@ -3199,7 +3203,7 @@ function calcs.perform(env, skipEHP)
  		local newCurse = {
  			name = curseName,
  			priority = 0,
@@ -7581,25 +7148,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  		}
  		local mult = curse.effectMult / 100
  		if curse.isMark then
- 			newCurse.isMark = true
- 		else
- 			mult = mult * enemyDB:More(nil, "CurseEffectOnSelf")
- 		end
- 		newCurse.modList:ScaleAddList(curse.modList, mult)
- 		t_insert(allyCurses, newCurse)
- 	end
- 
- 
-@@ -3327,25 +3331,25 @@ function calcs.perform(env, skipEHP)
- 			t_insert(guardSlots, { name = name, modList = modList })
- 		elseif not nonVaal then
- 			t_insert(guardSlots, { name = name, modList = modList })
- 			nonVaal = true
- 		end
- 	end
- 	if nonVaal then
- 		modDB.conditions["AffectedByNonVaalGuardSkill"] = true
- 	end
+@@ -3336,7 +3340,7 @@ function calcs.perform(env, skipEHP)
  	for _, guard in ipairs(guardSlots) do
  		modDB.conditions["AffectedByGuardSkill"] = true
  		modDB.conditions["AffectedBy"..guard.name:gsub(" ","")] = true
@@ -7608,25 +7157,7 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  	end
  	output.GuardSkillActive = modDB.conditions["AffectedByGuardSkill"] or false
  
- 	-- Apply buff/debuff modifiers
- 	for _, modList in pairs(buffs) do
- 		modDB:AddList(modList)
- 		if not modList.notBuff then
- 			modDB.multipliers["BuffOnSelf"] = (modDB.multipliers["BuffOnSelf"] or 0) + 1
- 		end
- 		if env.minion then
- 			addMinionModifiers(modList, env.player.mainSkill.skillCfg, env.minion)
- 		end
-@@ -3406,25 +3410,25 @@ function calcs.perform(env, skipEHP)
- 		-- Set the life/mana reservations again as we now have increased mana from overcapped lightning resistance
- 		doActorLifeMana(env.player)
- 		doActorLifeManaReservation(env.player, true)
- 	end
- 
- 	if modDB:Flag(env.player.mainSkill.skillCfg, "Condition:CanInflictHallowingFlame") then
- 		local magnitude = modDB:Override(nil, "HallowingFlameMagnitude") or modDB:Sum("INC", nil, "HallowingFlameMagnitude")
- 		local val = m_floor(25 * (1 + magnitude / 100)) -- Hallowing flame grants Attack Hits against you gain 25% of Physical Damage as Extra Fire Damage
- 		modDB:NewMod("ExtraAura", "LIST", { mod = modLib.createMod("PhysicalDamageGainAsFire", "BASE", val, "Hallowing Flame", { type = "GlobalEffect", effectType = "Global", unscalable = true }, { type = "ActorCondition", actor = "enemy", var = "HallowingFlame" }, { type = "Multiplier", var = "HallowingFlame", actor = "enemy" }) })
+@@ -3415,7 +3419,7 @@ function calcs.perform(env, skipEHP)
  	end
  
  	-- Check for extra auras
@@ -7635,18 +7166,9 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  	for _, value in ipairs(modDB:List(nil, "ExtraAura")) do
  		local modList = { value.mod }
  		if not value.onlyAllies and not (value.fromAllies and modDB:Flag(nil, "AlliesAurasCannotAffectSelf")) then
- 			local inc = modDB:Sum("INC", nil, "BuffEffectOnSelf", "AuraEffectOnSelf")
- 			local more = modDB:More(nil, "BuffEffectOnSelf", "AuraEffectOnSelf")
- 			modDB:ScaleAddList(modList, (1 + inc / 100) * more)
- 			if not value.notBuff then
- 				modDB.multipliers["BuffOnSelf"] = (modDB.multipliers["BuffOnSelf"] or 0) + 1
- 			end
- 		end
- 		if value.fromAllies or not modDB:Flag(nil, "SelfAurasCannotAffectAllies") then
- 			if env.minion then
 diff --git a/src/Modules/CalcRelevance.lua b/src/Modules/CalcRelevance.lua
 new file mode 100644
-index 0000000000000000000000000000000000000000..bbff6c0891bdef6529fb131b6082639fbe8ef804
+index 0000000..bbff6c0
 --- /dev/null
 +++ b/src/Modules/CalcRelevance.lua
 @@ -0,0 +1,111 @@
@@ -7762,7 +7284,7 @@ index 0000000000000000000000000000000000000000..bbff6c0891bdef6529fb131b6082639f
 +
 +return calcs
 diff --git a/src/Modules/CalcSections.lua b/src/Modules/CalcSections.lua
-index e6b2284aa57a519349791ca7198785938c0c6c48..8dcf0865571872d6fc85530411019cac3036d169 100644
+index e6b2284..8dcf086 100644
 --- a/src/Modules/CalcSections.lua
 +++ b/src/Modules/CalcSections.lua
 @@ -1820,7 +1820,7 @@ return {
@@ -7811,7 +7333,7 @@ index e6b2284aa57a519349791ca7198785938c0c6c48..8dcf0865571872d6fc85530411019cac
  	{ label = "Chill Duration", { format = "{1:output:SelfChillDuration}%", { modName = { "SelfChillDuration", "SelfDebuffExpirationRate", "SelfChillDebuffExpirationRate", "SelfAilmentDuration", "SelfElementalAilmentDuration", "SelfIgniteDurationToElementalAilments" }, }, }, },
  	{ label = "Shock Duration", { format = "{1:output:SelfShockDuration}%", { modName = { "SelfShockDuration", "SelfDebuffExpirationRate", "SelfShockDebuffExpirationRate", "SelfAilmentDuration", "SelfElementalAilmentDuration", "SelfIgniteDurationToElementalAilments" }, }, }, },
 diff --git a/src/Modules/CalcSetup.lua b/src/Modules/CalcSetup.lua
-index 7030116836054fed579e2a3385b76ff48d54d15a..56627ceea25ae786fba3a83f024b1baee33e2dd3 100644
+index 7030116..56627ce 100644
 --- a/src/Modules/CalcSetup.lua
 +++ b/src/Modules/CalcSetup.lua
 @@ -119,6 +119,108 @@ function calcs.initModDB(env, modDB)
@@ -8244,7 +7766,7 @@ index 7030116836054fed579e2a3385b76ff48d54d15a..56627ceea25ae786fba3a83f024b1bae
  				end
  			end
 diff --git a/src/Modules/CalcTriggers.lua b/src/Modules/CalcTriggers.lua
-index 777890cacb2e61e4f51938053cc53adc25f3845c..58d1c53c117a6972c3cada3f3b6d15fdf44d4cb6 100644
+index 777890c..58d1c53 100644
 --- a/src/Modules/CalcTriggers.lua
 +++ b/src/Modules/CalcTriggers.lua
 @@ -526,6 +526,9 @@ local function defaultTriggerHandler(env, config)
@@ -8258,7 +7780,7 @@ index 777890cacb2e61e4f51938053cc53adc25f3845c..58d1c53c117a6972c3cada3f3b6d15fd
  					calcs.buildActiveSkill(env, env.mode, actor.mainSkill, triggeredUUID, {triggeredUUID})
  				end
 diff --git a/src/Modules/Calcs.lua b/src/Modules/Calcs.lua
-index dc12041374f31f905ab105dbf001adcfe18c60a3..ced6fbb8e7c66b0fe1027cc9f93cc38ac9c7abcf 100644
+index dc12041..ced6fbb 100644
 --- a/src/Modules/Calcs.lua
 +++ b/src/Modules/Calcs.lua
 @@ -20,6 +20,7 @@ require("Modules.CalcDefence")
@@ -8343,7 +7865,7 @@ index dc12041374f31f905ab105dbf001adcfe18c60a3..ced6fbb8e7c66b0fe1027cc9f93cc38a
  
  	-- env.limitedSkills contains a map of uuids that should be limited in calculation
 diff --git a/src/Modules/Common.lua b/src/Modules/Common.lua
-index b71053f5f24b64244e650a92158f4d6bb10bdfd9..d68f3428bb2b2d3f06edddd7fe1b7283c35a7a61 100644
+index b71053f..d68f342 100644
 --- a/src/Modules/Common.lua
 +++ b/src/Modules/Common.lua
 @@ -522,11 +522,11 @@ function mergeDB(srcDB, modDB)
@@ -8370,7 +7892,7 @@ index b71053f5f24b64244e650a92158f4d6bb10bdfd9..d68f3428bb2b2d3f06edddd7fe1b7283
  		minionDB.conditions = copyTable(env.minion.modDB.conditions)
  		minionDB.multipliers = copyTable(env.minion.modDB.multipliers)
 diff --git a/src/Modules/ConfigModBrowser.lua b/src/Modules/ConfigModBrowser.lua
-index 2408963bb6fa5bb7af4acf6c61e770e194dda985..0b0cde3bdf8a89c31348c547a2dd89b50097510e 100644
+index 2408963..0b0cde3 100644
 --- a/src/Modules/ConfigModBrowser.lua
 +++ b/src/Modules/ConfigModBrowser.lua
 @@ -264,10 +264,8 @@ function M.OpenAddModPopup(configTab, blockData)
@@ -8411,7 +7933,7 @@ index 2408963bb6fa5bb7af4acf6c61e770e194dda985..0b0cde3bdf8a89c31348c547a2dd89b5
  
  return M
 diff --git a/src/Modules/Data.lua b/src/Modules/Data.lua
-index 26afb5f4dfb24630be383305136c31ff280b0faf..6ea348bdc6a984884f2df6d89d671279012c7705 100644
+index 26afb5f..6ea348b 100644
 --- a/src/Modules/Data.lua
 +++ b/src/Modules/Data.lua
 @@ -124,12 +124,14 @@ end
@@ -8470,7 +7992,7 @@ index 26afb5f4dfb24630be383305136c31ff280b0faf..6ea348bdc6a984884f2df6d89d671279
  -- Stat descriptions
 diff --git a/src/Modules/ItemSocketControls.lua b/src/Modules/ItemSocketControls.lua
 new file mode 100644
-index 0000000000000000000000000000000000000000..5c5d7c47be149a1d1c124eeb508bff16ec3934fc
+index 0000000..5c5d7c4
 --- /dev/null
 +++ b/src/Modules/ItemSocketControls.lua
 @@ -0,0 +1,162 @@
@@ -8637,7 +8159,7 @@ index 0000000000000000000000000000000000000000..5c5d7c47be149a1d1c124eeb508bff16
 +
 +return socketControls
 diff --git a/src/Modules/Main.lua b/src/Modules/Main.lua
-index 294fb64c24b7766c4aa7f7a307a71da09d5bc14c..ba137678649df496950c11751ad609b8d8232f8f 100644
+index 294fb64..ba13767 100644
 --- a/src/Modules/Main.lua
 +++ b/src/Modules/Main.lua
 @@ -221,7 +221,7 @@ function main:Init()
