@@ -261,13 +261,6 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
     await clickItemsUntilRequest(3);
     expect(typeof releaseImport).toBe("function");
     expect(decode(await exportCode())).toBe(beforeFailure);
-  } catch (error) {
-    console.error("Release browser diagnostics:", JSON.stringify({ console: browserConsole,
-      pendingRequests: [...pendingRequests].slice(-20).map(request => request.url()),
-      startup: await page.evaluate(() => ({ ready: window.__DESKTOP_POB__?.ready,
-        frames: window.__DESKTOP_POB__?.frames, errors: window.__DESKTOP_POB__?.errors,
-        status: document.querySelector("#status")?.textContent })).catch(() => null) }));
-    throw error;
   } finally {
     // Also release on assertion failure so route cleanup cannot hang the suite.
     releaseImport?.();
@@ -300,6 +293,13 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
   expect(faults).toEqual([]);
   expect(blocked).toEqual([]);
   });
+  } catch (error) {
+    console.error("Release browser diagnostics:", JSON.stringify({ console: browserConsole,
+      pendingRequests: [...pendingRequests].slice(-20).map(request => request.url()),
+      startup: await page.evaluate(() => ({ ready: window.__DESKTOP_POB__?.ready,
+        frames: window.__DESKTOP_POB__?.frames, errors: window.__DESKTOP_POB__?.errors,
+        status: document.querySelector("#status")?.textContent })).catch(() => null) }));
+    throw error;
   } finally {
     releaseImport?.();
     await diagnostics.finish();
