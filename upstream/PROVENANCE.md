@@ -131,6 +131,11 @@ The root Deno compiler options match the driver's DOM, JSX, and Emscripten
 environment so the surrounding localhost shell can be typechecked together
 with its imported bridge and Vite configuration.
 
+The checked `browserUiDefaults` pack-time adapter changes only the initial
+`Main.showAnimations` value from true to false in the browser package. It keeps
+the prepared desktop checkout and upstream default unchanged, and PoB continues
+to load and save an explicit user choice through its existing setting fields.
+
 `Driver.attachToDOM` accepts an optional external toolbar target. The overlay
 portals its existing controls into the localhost shell header and releases the
 canvas's old toolbar gutter. The default in-canvas toolbar remains available to

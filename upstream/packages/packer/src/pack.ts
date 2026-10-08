@@ -11,6 +11,7 @@ import { Buffer } from "node:buffer";
 import { createPackages, sourceKind } from "./packages.ts";
 import { exposeExactRebuild } from "./calculation-adapter.ts";
 import { guardJewelInflate, sparseTimelessSeeds } from "./timeless-adapter.ts";
+import { disableAnimationsByDefault } from "./ui-defaults-adapter.ts";
 import { applyGemHoverPatch } from "../../../../scripts/patches/gem-hover-patch.mjs";
 import { applyItemComparisonPatch } from "../../../../scripts/patches/item-comparison-patch.mjs";
 import { applyJewelSpecPatch } from "../../../../scripts/patches/jewel-spec-patch.mjs";
@@ -84,6 +85,8 @@ for (const entry of entries) {
       : newContent;
     const adapted = relPath === "Modules/Build.lua"
       ? new TextEncoder().encode(exposeExactRebuild(new TextDecoder().decode(newContent)))
+      : relPath === "Modules/Main.lua"
+      ? new TextEncoder().encode(disableAnimationsByDefault(new TextDecoder().decode(newContent), pin.adapters.browserUiDefaults))
       : relPath === "Classes/GemSelectControl.lua"
       ? new TextEncoder().encode(applyStatusTextPatch(
         applyGemHoverPatch(new TextDecoder().decode(newContent), Buffer.from(gemHoverPatch), pin.adapters.gemDropdownHover),

@@ -12,6 +12,7 @@ import { transformImportTabHostPatch } from '../patches/importtab-host-patch.mjs
 import { transformPreferredExportSitePatch } from '../patches/preferred-export-site-patch.mjs';
 import { transformNodePowerPatch } from '../patches/node-power-patch.mjs';
 import { transformStatusTextPatch } from '../patches/status-text-patch.mjs';
+import { disableAnimationsByDefault } from '../../upstream/packages/packer/src/ui-defaults-adapter.ts';
 import { sha256, validateSourceLedger } from './source-ledger.mjs';
 import { classifyPatch, parseDriftPatch } from './drift-patch.mjs';
 
@@ -87,7 +88,16 @@ export function analyzeDrift({ pin, patches, baseFiles, targetFiles, prStates = 
   for (const [name, adapter] of Object.entries(pin.adapters).filter(([, adapter]) => !adapter.patchFile)) {
     const paths = Object.keys(adapter.resultBlobHashes);
     entries.push(entry(name, paths, { classification: paths.some(path => changed.has(path)) ? 'touched-applies' : 'untouched' }));
-    if (identities && prepared) identityOutput.adapters[name] = { resultBlobHashes: hashes(prepared, paths) };
+    if (identities && prepared) {
+      if (name === 'browserUiDefaults' && paths.every(path => typeof current[path] === 'string')) {
+        const output = { ...current };
+        for (const path of paths) output[path] = disableAnimationsByDefault(current[path], adapter);
+        identityOutput.adapters[name] = { sourceBlobHashes: hashes(current, paths), resultBlobHashes: hashes(output, paths) };
+        current = output;
+      } else {
+        identityOutput.adapters[name] = { resultBlobHashes: hashes(prepared, paths) };
+      }
+    }
   }
   const counts = Object.fromEntries(classes.map(value => [value, entries.filter(item => item.classification === value).length]));
   return { entries, counts, ...(identities ? { identities: identityOutput } : {}) };

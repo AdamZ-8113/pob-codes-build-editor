@@ -76,6 +76,7 @@ const inputHash = sha256(Buffer.concat([
   await readFile(join(appDir, 'upstream/packages/packer/src/packages.ts')),
   await readFile(join(appDir, 'upstream/packages/packer/src/calculation-adapter.ts')),
   await readFile(join(appDir, 'upstream/packages/packer/src/timeless-adapter.ts')),
+  await readFile(join(appDir, 'upstream/packages/packer/src/ui-defaults-adapter.ts')),
   await readFile(join(appDir, 'upstream/packages/packer/src/timeless-seeds.lua')),
   await readFile(join(appDir, 'upstream/packages/packer/src/timeless-inflate.lua')),
   await readFile(join(appDir, 'scripts/patches/gem-hover-patch.mjs')),

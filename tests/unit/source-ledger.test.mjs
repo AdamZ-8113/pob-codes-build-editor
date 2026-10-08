@@ -18,6 +18,20 @@ test("desktop PoB overlay ledger owns six ordered PRs, relevance pruning and sev
   assert.equal(pin.adapters.calculationOnlyJewelSpecs.preparedSourceBlobHashes["src/Classes/ItemsTab.lua"], pin.adapters.limitedUniqueItemComparisons.sourceBlobHashes["src/Classes/ItemsTab.lua"]);
   assert.equal(pin.adapters.calculationOnlyJewelSpecs.sourceBlobHashes["src/Classes/ItemsTab.lua"], pin.adapters.limitedUniqueItemComparisons.resultBlobHashes["src/Classes/ItemsTab.lua"]);
   assert.equal(pin.adapters.preferredExportSite.sourceBlobHashes["src/Classes/ImportTab.lua"], pin.adapters.importTabHostCapabilities.resultBlobHashes["src/Classes/ImportTab.lua"]);
+  assert.equal(pin.adapters.browserUiDefaults.sourceBlobHashes["src/Modules/Main.lua"], pin.adapters.calculationScheduling.resultBlobHashes["src/Modules/Main.lua"]);
+});
+
+test("browser UI defaults adapter rejects changed Main.lua identities", async () => {
+  const pin = JSON.parse(await readFile(join(appDir, "source-pin.json"), "utf8"));
+  for (const mutate of [
+    candidate => { candidate.adapters.browserUiDefaults.version = 2; },
+    candidate => { candidate.adapters.browserUiDefaults.sourceBlobHashes["src/Modules/Main.lua"] = "0".repeat(40); },
+    candidate => { candidate.adapters.browserUiDefaults.resultBlobHashes["src/Modules/Other.lua"] = "0".repeat(40); },
+  ]) {
+    const candidate = structuredClone(pin);
+    mutate(candidate);
+    await assert.rejects(validateSourceLedger(appDir, Buffer.from(JSON.stringify(candidate))), /Browser UI defaults adapter identity changed/);
+  }
 });
 
 test("bundled PoB changes document covers every overlay and adapter identity", async () => {

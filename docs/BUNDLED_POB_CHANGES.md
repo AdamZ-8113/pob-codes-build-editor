@@ -81,6 +81,7 @@ result locks or build transforms instead of standalone patch files.
 | Adapter identity | Change carried by the build |
 | --- | --- |
 | `calculationScheduling` | Stages eligible numeric-control rebuilds and flushes at every calculation/export boundary; synchronous mode remains available. |
+| `browserUiDefaults` | Defaults Show Animations off for new browser sessions while preserving the saved setting and upstream desktop default. |
 | `uniqueComparisonDelay` | Delays expensive unique-item stat differences until a stable hover and cancels on input or revision changes. |
 | `sparseTimelessSeeds` | Materializes requested Timeless records sparsely while preserving PoB's binary decoding and remapping. |
 | `uniqueSortDelegation` | Adds the checked per-candidate batch hook used by bounded helper workers, with PoB's filtering, scoring, and final order unchanged. |
