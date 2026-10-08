@@ -23,6 +23,7 @@ export function rpcErrorMetadata(cause: unknown): RpcErrorMetadata {
 
 const HEADER_BYTES = 16;
 const RPC_TIMEOUT_MS = 120_000;
+const MAX_REUSABLE_CAPACITY = 4 * 1024 * 1024;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 
@@ -34,15 +35,17 @@ export function prepareFetchHeaders(headers: Record<string, string>) {
   return { ...headers, "Content-Type": "application/x-www-form-urlencoded" };
 }
 
-export function createRpcClient(port: MessagePort, reuseBuffer = false) {
+export function createRpcClient(port: MessagePort, reuseBuffer = true) {
   let requestId = 0;
   let reusable: SharedArrayBuffer | undefined;
   return <T>(operation: string, args: unknown[] = [], data?: Uint8Array, capacity = 1024 * 1024): RpcResult<T> => {
     // This client blocks until the broker finishes. Returned data is copied,
-    // so helper-only clients can safely reuse their bounded transport buffer.
+    // so all sequential clients can safely reuse their bounded transport buffer.
     const shared = reuseBuffer && reusable && reusable.byteLength >= HEADER_BYTES + capacity
       ? reusable : new SharedArrayBuffer(HEADER_BYTES + capacity);
-    if (reuseBuffer) reusable = shared;
+    // Large HTTP responses keep their existing capacity but must not inflate
+    // the retained buffer used by thousands of small filesystem operations.
+    if (reuseBuffer && capacity <= MAX_REUSABLE_CAPACITY) reusable = shared;
     const control = new Int32Array(shared, 0, HEADER_BYTES / Int32Array.BYTES_PER_ELEMENT);
     control.fill(0);
     port.postMessage({ operation, args: [++requestId, ...args], data, shared } satisfies RpcRequest);

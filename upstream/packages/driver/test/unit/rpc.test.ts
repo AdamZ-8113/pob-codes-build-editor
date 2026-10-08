@@ -2,7 +2,7 @@ import { assertEquals, assertThrows } from "@std/assert";
 import { environmentErrorCategory, markEnvironmentError } from "../../src/js/error.ts";
 import { createRpcClient, prepareFetchHeaders, restoreRpcError, rpcErrorMetadata } from "../../src/js/rpc.ts";
 
-Deno.test('helper RPC reuses transport storage without changing previously returned bytes', () => {
+Deno.test('default RPC reuses transport storage without changing previously returned bytes', () => {
   const buffers: SharedArrayBuffer[] = [];
   let value = 0;
   const port = { postMessage(request: {shared: SharedArrayBuffer}) {
@@ -14,13 +14,17 @@ Deno.test('helper RPC reuses transport storage without changing previously retur
     bytes.set(metadata); bytes.set([value], metadata.length);
     Atomics.store(control,1,metadata.length); Atomics.store(control,2,1); Atomics.store(control,0,1);
   }} as MessagePort;
-  const call = createRpcClient(port, true);
+  const call = createRpcClient(port);
   const first = call('read'); const second = call('read');
   assertEquals(buffers[0] === buffers[1], true);
   assertEquals(first.data, new Uint8Array([1])); assertEquals(second.data, new Uint8Array([2]));
   call('read', [], undefined, 2 * 2 ** 20);
   assertEquals(buffers[1] === buffers[2], false);
   call('read'); assertEquals(buffers[2] === buffers[3], true);
+  call('fetch', [], undefined, 64 * 2 ** 20);
+  assertEquals(buffers[4].byteLength, 64 * 2 ** 20 + 16);
+  call('read'); assertEquals(buffers[3] === buffers[5], true);
+  assertEquals(first.data, new Uint8Array([1]));
 });
 
 Deno.test("fetch headers reject POESESSID without forwarding it", () => {

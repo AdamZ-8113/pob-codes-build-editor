@@ -348,13 +348,18 @@ calculated scores are never cached by this integration. Scores use 17-digit
 strings across JSON to retain full double precision.
 
 Each helper gets a dedicated broker port restricted to immutable root reads
-and its own file descriptors. Shared verified lazy archives are reused;
-helper RPC retains one reusable SharedArrayBuffer instead of allocating one
-for every read. Helpers have no user storage, network, clipboard, OAuth or
+and its own file descriptors. Shared verified lazy archives are reused.
+Helpers have no user storage, network, clipboard, OAuth or
 subscript access. Crash, timeout, stale work and memory retirement return to
 the original serial path. Import can restart retired helpers; terminal payload
 integrity failures close the whole pool and preserve the existing session
 failure behavior.
+
+Main, subscript and helper RPC clients reuse transport storage across synchronous
+requests. Replies copy metadata and binary data before the next call. Retained
+payload capacity is bounded at 4 MiB; larger HTTP responses use disposable buffers.
+This reduces startup and reload allocation churn while preserving the shared
+memory protocol and its existing 120-second deadline.
 
 Whole-browser acceptance uses a 6 GiB hard budget and 5.5 GiB admission ceiling.
 Each helper may reserve up to 1 GiB of Wasm memory, subject to the aggregate
