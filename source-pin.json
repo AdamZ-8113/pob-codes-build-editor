@@ -142,17 +142,17 @@
       "patchSha256": "2f92e663de676fe184bc3211c7f8f22d03ca2d35ac07a4b28b7c86650af3d78f",
       "preparedSourceBlobHashes": {
         "src/Classes/GemSelectControl.lua": "e1a243fcca307e80188764d8fa91a5e675eaccfa",
-        "src/Classes/TreeTab.lua": "08fa400a455fb971773b3e0ada2f493332b5637c",
+        "src/Classes/TreeTab.lua": "36c9557ac046535b44fc01157b04b15035295959",
         "src/Modules/ToastNotification.lua": "2c95af2cdaf4f75f1c4d9be79bd1c178f2a4c6ee"
       },
       "sourceBlobHashes": {
         "src/Classes/GemSelectControl.lua": "850bd569f3d1ddbfe1e4c3b5a0a9bf1795c3a016",
-        "src/Classes/TreeTab.lua": "08fa400a455fb971773b3e0ada2f493332b5637c",
+        "src/Classes/TreeTab.lua": "36c9557ac046535b44fc01157b04b15035295959",
         "src/Modules/ToastNotification.lua": "2c95af2cdaf4f75f1c4d9be79bd1c178f2a4c6ee"
       },
       "resultBlobHashes": {
         "src/Classes/GemSelectControl.lua": "f615370179f418b79d2ab2dfbe48e2a28bd82c7d",
-        "src/Classes/TreeTab.lua": "3087f38bf2292bb1f86e533993fe46579c2c4c20",
+        "src/Classes/TreeTab.lua": "c4eaac23aaf75f01d1f413c58913ae01aa3256b6",
         "src/Modules/ToastNotification.lua": "4a466741e7dc3e0457b11f05814796c860b2cb01"
       }
     }
@@ -163,9 +163,9 @@
       "number": 10360,
       "url": "https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10360",
       "base": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
-      "head": "44062f75d922e387be6d7c7eff8dedc18ee8f669",
+      "head": "dddd929e190e46af36dd185f842ef53726c1d28a",
       "patchFile": "patches/upstream/pr-10360.diff",
-      "patchSha256": "f6d1942a7552fab012bd7447d7394750c009cc6b7702f620dfd2bad6fab1dddf",
+      "patchSha256": "00992c03ae333f3522eb454ed5e136bb23874427ada365744c02f27a2f00318b",
       "files": [
         "spec/System/TestGemSocketQuality_spec.lua",
         "spec/System/TestImport_spec.lua",
@@ -427,10 +427,10 @@
   ],
   "compositePatch": {
     "patchFile": "patches/pob-pr-composite.patch",
-    "patchSha256": "257c1a7bcec07830913584e3e8f43e2160fdbd8a04908173de9904db25bd49ae",
+    "patchSha256": "fef5c4f1ddf92234bded84fb95640905afc1479f63bc2d883013efcc84dc182c",
     "baseRevision": "a431f3a28823270acbdd6864c644f93678581f1e",
     "upstreamBase": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
-    "resultTree": "cc9f00cf79e0b34a10cbf74bee0d77121c5892a8",
+    "resultTree": "be02a4d0fdde4fa194fceac935b744988f4ce5af",
     "files": [
       "spec/System/TestGemSocketQuality_spec.lua",
       "spec/System/TestImport_spec.lua",
@@ -506,7 +506,7 @@
       "src/Classes/SkillListControl.lua": "1d6683433c8f0942d1f8cb31868b4b030c7985f4",
       "src/Classes/SkillsTab.lua": "79574c523fa6a5990f83eaa3c85e4ced869b5563",
       "src/Classes/Tooltip.lua": "bfee2e5190c316da7fae8b7f0a1c0f44812da94f",
-      "src/Classes/TreeTab.lua": "08fa400a455fb971773b3e0ada2f493332b5637c",
+      "src/Classes/TreeTab.lua": "36c9557ac046535b44fc01157b04b15035295959",
       "src/Modules/AddImplicitPopup.lua": "41ee8c0e083be3c6453fad6389027a6f4b26fa9d",
       "src/Modules/Build.lua": "b90a6525a96a355caafbc9e78c186e635ce59ebd",
       "src/Modules/CalcActiveSkill.lua": "0beb9bf1a560f236accfbde13386e609d309f4cf",

@@ -40,10 +40,11 @@ applied after #10373, followed by #10381. Those three PRs overlap in
 `useClusterPower` gating, #10313's stage options, #10381's context-aware cache
 keys, and all specs. The composite also includes the required local relevance
 patch described below. PR #10360 is recorded through head
-`44062f75d922e387be6d7c7eff8dedc18ee8f669`, including its always-visible node
-power controls and heat-map-gated Power Report action. The composite SHA-256 is
-`257c1a7bcec07830913584e3e8f43e2160fdbd8a04908173de9904db25bd49ae`
-and its result tree is `cc9f00cf79e0b34a10cbf74bee0d77121c5892a8`.
+`dddd929e190e46af36dd185f842ef53726c1d28a`, including its always-visible node
+power controls and heat-map-gated Power Report action without metric selection
+enabling the heat map. The composite SHA-256 is
+`fef5c4f1ddf92234bded84fb95640905afc1479f63bc2d883013efcc84dc182c`
+and its result tree is `be02a4d0fdde4fa194fceac935b744988f4ce5af`.
 
 The maintainer-supplied 2026-09-30 gem-dropdown hover patch is preserved in
 `../patches/gem-dropdown-hover-tooltip.patch` (SHA-256

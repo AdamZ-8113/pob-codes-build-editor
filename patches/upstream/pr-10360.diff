@@ -4643,7 +4643,7 @@ index 0a806c0..bfee2e5 100644
  				SetDrawColor(self.color)
  			else
 diff --git a/src/Classes/TreeTab.lua b/src/Classes/TreeTab.lua
-index 842b3b4..08fa400 100644
+index 842b3b4..36c9557 100644
 --- a/src/Classes/TreeTab.lua
 +++ b/src/Classes/TreeTab.lua
 @@ -196,9 +196,8 @@ function TreeTabClass:TreeTab(build)
@@ -4717,6 +4717,14 @@ index 842b3b4..08fa400 100644
  	if self.showConvert then
  		local height = viewPort.width < convertMaxWidth and (bottomDrawerHeight + linesHeight) or 0
  		SetDrawColor(0.05, 0.05, 0.05)
+@@ -1045,7 +1048,6 @@ function TreeTabClass:OpenMasteryPopup(node, viewPort)
+ end
+ 
+ function TreeTabClass:SetPowerCalc(powerStat)
+-	self.viewer.showHeatMap = true
+ 	self.build.buildFlag = true
+ 	self.build.calcsTab.powerBuildFlag = true
+ 	self.build.calcsTab.powerStat = powerStat
 diff --git a/src/Modules/AddImplicitPopup.lua b/src/Modules/AddImplicitPopup.lua
 index b324c47..41ee8c0 100644
 --- a/src/Modules/AddImplicitPopup.lua
