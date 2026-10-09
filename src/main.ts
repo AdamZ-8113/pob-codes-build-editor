@@ -395,7 +395,7 @@ function createPayloadProgressOverlay() {
       render(progress, "Loading Path of Building..", stageText, true);
     },
     update(event: PayloadProgress) {
-      if (event.reason === "prefetch") return;
+      if (event.reason === "prefetch" || event.reason === "comparison") return;
       const ratio = event.totalBytes ? event.loadedBytes / event.totalBytes : 0;
       const loadingAtStartup = !startupComplete;
       const progress = loadingAtStartup
@@ -413,15 +413,16 @@ function createPayloadProgressOverlay() {
         this.error(event.message ?? `${event.label} could not be loaded`);
         return;
       }
-      clearTimeout(dismissTimer);
       pendingDemand = () => render(progress, "Loading PoB Data..", stageText, true);
       if (!demandVisible && demandTimer === undefined && event.phase !== "ready") {
         demandTimer = setTimeout(() => {
           demandTimer = undefined;
           demandVisible = true;
+          clearTimeout(dismissTimer);
           pendingDemand?.();
         }, 150);
       } else if (demandVisible) {
+        clearTimeout(dismissTimer);
         render(progress, "Loading PoB Data..", stageText, event.phase !== "ready");
       }
       if (event.phase === "ready") {

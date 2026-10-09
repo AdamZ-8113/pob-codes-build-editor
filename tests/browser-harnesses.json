@@ -2,6 +2,7 @@
   "ci": [
     "test-about-dialog.mjs",
     "test-input-latency.mjs",
+    "test-item-comparisons.mjs",
     "test-payload-browser.mjs",
     "test-startup-paths.mjs",
     "test-unique-database.mjs"

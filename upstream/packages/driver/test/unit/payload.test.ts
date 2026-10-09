@@ -7,6 +7,30 @@ const gameVersions = {
   data: new TextEncoder().encode('treeVersionList = { "3_28", "3_29" }'),
 };
 
+Deno.test('comparison requests are quiet, coalesce, and promote to demand when the UI needs the same data', async () => {
+  const {manifest, archives} = await createPackages(payloadEntries(), 'a'.repeat(40));
+  const jewel = manifest.packages.find(pkg => pkg.id === 'timeless-lethalpride-zip')!;
+  let release!: () => void;
+  const gate = new Promise<void>(resolve => { release = resolve; });
+  const events: {reason: string; phase: string}[] = [];
+  let requests = 0;
+  const payload = await loadPayload('/payload', (async (url: string) => {
+    if (url.endsWith('manifest.json')) return Response.json(manifest);
+    const hash = url.split('/').at(-1)!.slice(0, -4);
+    if (hash === jewel.sha256) { requests++; await gate; }
+    return new Response(archives.get(hash));
+  }) as typeof fetch, {onProgress: event => { events.push(event); }});
+  events.length = 0;
+  const path = '/root/Data/TimelessJewelData/LethalPride.zip';
+  const comparison = payload.controller!.ensurePath(path, 'comparison');
+  assertEquals(events.map(e => e.reason), ['comparison']);
+  const demanded = payload.controller!.ensurePath(path);
+  release();
+  await Promise.all([comparison, demanded]);
+  assertEquals(requests, 1);
+  assertEquals(events.at(-1), {...events.at(-1), reason: 'demand', phase: 'ready'});
+});
+
 function payloadEntries() {
   return [
     gameVersions,

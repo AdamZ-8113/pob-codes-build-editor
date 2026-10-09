@@ -53,6 +53,7 @@ try {
   for (let index = 0; index < families.length; index++) {
     await search(families[index]);
     let state = await profile();
+    const completed = state.samples.uniqueComparisons.completed;
     assert.ok(state.samples.uniqueDbCount > 0, `Database contains ${families[index]}`);
     const [x,y,w] = state.samples.uniqueDbBounds;
     const p = await point(x + w / 2, y + 8);
@@ -60,14 +61,15 @@ try {
     await page.mouse.move(p.x, p.y);
     await flush();
     const deadline = Date.now() + 30_000;
-    while (!((await profile()).samples.timelessLoadedMask & (1 << index))) {
+    while ((await profile()).samples.uniqueComparisons.completed <= completed) {
       assert.deepEqual(await page.evaluate(() => window.__DESKTOP_POB__.errors), []);
       assert.ok(Date.now() < deadline, `Timed out waiting for family ${index + 1}`);
       await page.waitForTimeout(20);
     }
     state = await profile();
     assert.deepEqual(await page.evaluate(() => window.__DESKTOP_POB__.errors), []);
-    assert.ok(state.samples.timelessLoadedMask & (1 << index), `Hover must load family ${index + 1}`);
+    assert.equal(state.samples.itemComparisons.failed, 0, `Background comparison must succeed for family ${index + 1}`);
+    assert.ok(state.samples.uniqueComparisons.comparisonHeaders > 0, `Hover must compare family ${index + 1}`);
     const frames = await page.evaluate(() => window.__DESKTOP_POB__.frameSamples);
     hovered.push({ family: index + 1, maxFrameMs: Math.max(0, ...frames.map(frame => frame.duration)),
       luaKiB: state.samples.luaKiB, wasmBytes: state.wasmBytes });
@@ -86,8 +88,8 @@ try {
   assert.deepEqual(await page.evaluate(() => window.__DESKTOP_POB__.errors), []);
   assert.deepEqual(faults, []);
   const after = await profile();
-  assert.equal(after.samples.timelessLoadedMask, 2047, "All eleven exact jewel-family tables remain loaded");
-  const report = { allElevenFamiliesLoaded: true, scrollSteps: 120, statsUnchanged: true, faults,
+  assert.equal(after.samples.timelessLoadedMask, before.samples.timelessLoadedMask, "Hover datasets stay off the UI worker");
+  const report = { allElevenFamiliesCompared: true, scrollSteps: 120, statsUnchanged: true, faults,
     before: { luaKiB: before.samples.luaKiB, wasmBytes: before.wasmBytes }, hovered,
     after: { luaKiB: after.samples.luaKiB, wasmBytes: after.wasmBytes } };
   if (outputFile) await writeFile(outputFile, JSON.stringify(report, null, 2) + "\n");

@@ -82,7 +82,8 @@ try {
   });
   const settled = await profile();
   phases.settled = settled.samples;
-  assert.ok(settled.samples.timelessLoadedMask & 1, "Stable hover executes original Glorious Vanity comparison");
+  assert.equal(settled.samples.timelessLoadedMask, before.samples.timelessLoadedMask, "Stable hover keeps Glorious Vanity data off the UI worker");
+  assert.ok(settled.samples.itemComparisons.completed > 0, "Stable hover completes an original comparison in the helper");
   assert.ok(settled.samples.uniqueComparisons.comparisonHeaders > 0);
   assert.ok(settled.samples.uniqueComparisons.numericLines > 0, "Settled tooltip contains calculated numeric comparisons");
   await page.mouse.move(outside.x, outside.y);

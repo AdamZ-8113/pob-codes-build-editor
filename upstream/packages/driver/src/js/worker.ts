@@ -15,6 +15,7 @@ import { startRuntime } from "./startup.ts";
 import { InputFrameBoundary } from "./input-frame.ts";
 import { FrameDemand } from "./frame-demand.ts";
 import type { HelperJob } from './helper-pool.ts';
+import type { ItemComparisonJob, TooltipOperation } from './item-comparison.ts';
 
 const setSentryWasmCodeFile = registerSentryWasm(self);
 const debugWasmUrl = new URL("../../dist/debug/driver.wasm", import.meta.url).href;
@@ -158,10 +159,12 @@ export class DriverWorker {
     openUrl: MainCallbacks["openUrl"],
     filesystemReady: () => Promise<void>,
     sortRequest: (job: HelperJob | null, requestId?: number) => Promise<unknown[] | null>,
+    comparisonRequest: (job: ItemComparisonJob | null) => Promise<TooltipOperation[] | null>,
     gcPause = 400,
     itemTooltipCacheMode = 1,
     nativeTextWidthCacheEnabled = true,
     nodePowerHelpers = false,
+    itemComparisonsEnabled = true,
   ) {
     this.onDiagnostic = onDiagnostic;
     this.nodePowerHelpersEnabled = build === 'release' && nodePowerHelpers;
@@ -202,7 +205,33 @@ export class DriverWorker {
     this.module = module;
     let sortSequence = 0;
     const sortReplies = new Map<number, string>();
+    let comparisonSequence = 0;
+    let comparisonReply: string | undefined;
     Object.assign(module, {
+      itemComparisonsEnabled,
+      cancelItemComparison: () => {
+        comparisonSequence++;
+        comparisonReply = undefined;
+        void comparisonRequest(null).catch(() => {});
+      },
+      beginItemComparison: (text: string) => {
+        const id = ++comparisonSequence;
+        comparisonReply = undefined;
+        const job = {...JSON.parse(text), uiBytes: module.HEAPU8.buffer.byteLength};
+        const finish = (operations: TooltipOperation[] | null) => {
+          if (id !== comparisonSequence) return;
+          comparisonReply = JSON.stringify(operations);
+          this.invalidate();
+        };
+        void comparisonRequest(job).then(finish, () => finish(null));
+        return id;
+      },
+      pollItemComparison: (id: number) => {
+        if (id !== comparisonSequence) return 'null';
+        const reply = comparisonReply;
+        comparisonReply = undefined;
+        return reply;
+      },
       runtimeGCPause: gcPause,
       runtimeItemTooltipCacheMode: itemTooltipCacheMode,
       nativeTextWidthCacheEnabled,

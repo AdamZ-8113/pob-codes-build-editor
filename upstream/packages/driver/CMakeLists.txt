@@ -15,6 +15,7 @@ add_custom_command(
         COMMAND ${CMAKE_COMMAND} -E echo "Writing boot.lua to boot.c"
         COMMAND ${CMAKE_COMMAND} -DDRIVER_SOURCE_DIR=${CMAKE_CURRENT_SOURCE_DIR} -P ${CMAKE_CURRENT_SOURCE_DIR}/gen_boot_c.cmake
         DEPENDS gc-policy.lua test/lua/gc-policy.lua
+        DEPENDS item-comparison-workers.lua test/lua/item-comparison-workers.lua
         DEPENDS boot.lua helper-boot.lua node-power-workers.lua test/lua/node-power-workers.lua unique-sort-workers.lua test/lua/unique-sort-workers.lua item-tooltip-cache.lua runtime-profile.lua calculation-scheduler.lua unique-comparison-delay.lua gen_boot_c.cmake test/lua/item-tooltip-cache.lua test/lua/runtime-profile.lua test/lua/calculation-scheduler.lua test/lua/unique-comparison-delay.lua ../packer/src/timeless-seeds.lua test/lua/timeless-seeds.lua ../packer/src/timeless-inflate.lua test/lua/timeless-inflate.lua
 )
 

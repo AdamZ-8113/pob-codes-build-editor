@@ -1,6 +1,7 @@
 import * as zenfs from "@zenfs/core";
 import { isLocalUserStorageOperation, markEnvironmentError } from "./error.ts";
 import type { RpcResult } from "./rpc.ts";
+import type { PayloadProgressReason } from './payload.ts';
 
 const FILESYSTEM_OPERATIONS = new Set([
   "readdir",
@@ -23,7 +24,7 @@ export class FilesystemRpcHandler {
   private localUserFds = new Set<number>();
   private cloudDirectory: string | undefined;
   private traceEnabled = false;
-  private payloadGate: { ensurePath(path: string): Promise<void>; packageIdForPath(path: string): string | undefined } | undefined;
+  private payloadGate: { ensurePath(path: string, reason?: PayloadProgressReason): Promise<void>; packageIdForPath(path: string): string | undefined } | undefined;
   private readonly rootPaths = new Map<string, number>();
   private readonly operations: Record<string, number> = {};
   private readonly writeNamespaces = { root: 0, user: 0 };
@@ -48,7 +49,7 @@ export class FilesystemRpcHandler {
     this.payloadGate = undefined;
   }
 
-  setPayloadGate(gate?: { ensurePath(path: string): Promise<void>; packageIdForPath(path: string): string | undefined }) {
+  setPayloadGate(gate?: { ensurePath(path: string, reason?: PayloadProgressReason): Promise<void>; packageIdForPath(path: string): string | undefined }) {
     this.payloadGate = gate;
   }
 
@@ -56,10 +57,10 @@ export class FilesystemRpcHandler {
     return FILESYSTEM_OPERATIONS.has(operation);
   }
 
-  async handle(operation: string, args: unknown[], data?: Uint8Array): Promise<RpcResult> {
+  async handle(operation: string, args: unknown[], data?: Uint8Array, reason: PayloadProgressReason = 'demand'): Promise<RpcResult> {
     this.operations[operation] = (this.operations[operation] ?? 0) + 1;
     try {
-      const result = await this.handleOperation(operation, args, data);
+      const result = await this.handleOperation(operation, args, data, reason);
       // Only successful immutable payload lookups; never user paths or contents.
       const path = args[0];
       if (this.traceEnabled && ["open", "stat", "lstat", "readdir"].includes(operation)
@@ -76,7 +77,7 @@ export class FilesystemRpcHandler {
     }
   }
 
-  private async handleOperation(operation: string, args: unknown[], data?: Uint8Array): Promise<RpcResult> {
+  private async handleOperation(operation: string, args: unknown[], data?: Uint8Array, reason: PayloadProgressReason = 'demand'): Promise<RpcResult> {
     const fs = zenfs.fs;
     switch (operation) {
       case "readdir": {
@@ -98,7 +99,7 @@ export class FilesystemRpcHandler {
       case "open": {
         const path = args[0] as string;
         if (path.startsWith("/root/") && this.payloadGate?.packageIdForPath(path)) {
-          await this.payloadGate.ensurePath(path);
+          await this.payloadGate.ensurePath(path, reason);
         }
         const fd = (await fs.promises.open(args[0] as string, args[1] as string, args[2] as number | undefined)).fd;
         const namespace = path.startsWith("/root/") ? "root" : path.startsWith("/user/") ? "user" : undefined;
@@ -195,4 +196,3 @@ export class FilesystemRpcHandler {
 function serializeStat(stat: zenfs.Stats) {
   return { mode: stat.mode, size: stat.size };
 }
-

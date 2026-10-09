@@ -26,11 +26,27 @@ type BrokerCallbacks = {
 };
 
 class AsyncBroker {
-  private helperPorts = new Map<number, { port: MessagePort; access: HelperAccess }>();
-  async attachHelper(id: number, port: MessagePort) {
+  private helperPorts = new Map<number, { port: MessagePort; access: HelperAccess; purpose: 'demand' | 'comparison' }>();
+  setHelperPurpose(id: number, purpose: 'demand' | 'comparison') {
+    const helper = this.helperPorts.get(id);
+    if (!helper) throw new Error('Helper port unavailable');
+    helper.purpose = purpose;
+  }
+  async attachHelper(id: number, port: MessagePort, onFailure?: () => void | Promise<void>) {
     if (this.payloadFailed || this.helperPorts.has(id)) throw new Error('Helper port unavailable');
-    const access = new HelperAccess((operation, args, data) => this.handle(operation, args, data));
-    this.helperPorts.set(id, { port, access });
+    const access = new HelperAccess(async (operation, args, data) => {
+      if (this.helperPorts.get(id)?.purpose !== 'comparison') return this.handle(operation, args, data);
+      try {
+        return await this.filesystem.handle(operation, args, data, 'comparison');
+      } catch (error) {
+        if (!(error instanceof PayloadLoadError)) throw error;
+        // Terminate the helper before returning any failed asset read to Lua.
+        // A hover failure must neither stop the UI nor enter PoB regeneration.
+        try { await onFailure?.(); } catch { /* Still withhold the failed read. */ }
+        return await new Promise<never>(() => {});
+      }
+    });
+    this.helperPorts.set(id, { port, access, purpose: 'demand' });
     exposeRpcPort(port, (operation, args, data) => access.handle(operation, args, data));
   }
   async detachHelper(id: number) {

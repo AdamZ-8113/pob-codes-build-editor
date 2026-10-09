@@ -1,10 +1,51 @@
 import { assertEquals, assert } from '@std/assert';
 import { HelperPool, type UniqueJob } from '../../src/js/helper-pool.ts';
+import { isTooltipOperations, type ItemComparisonJob } from '../../src/js/item-comparison.ts';
 
 const job = (identity = 'build-A:1', count = 180): UniqueJob => ({ identity, xml: identity,
   sortMode: 'TotalDPS', weaponSet: false, uiBytes: 2 ** 30,
   items: Array.from({length: count}, (_, i) => ({key: String(i), raw: 'candidate-' + i})) });
 const tick = () => new Promise(resolve => setTimeout(resolve, 0));
+
+Deno.test('item comparisons reuse one member, preserve operations, and separate snapshot identities', async () => {
+  const h = harness();
+  const operations = [{name: 'AddLine', args: [14, '^7+12.34 Life']}, {name: 'AddSeparator', args: [10]}];
+  const comparison: ItemComparisonJob = {identity: 'public:1', xml: 'public snapshot', uiBytes: 2 ** 30,
+    item: {raw: 'public candidate'}, options: {slotOnlyTooltips: false}};
+  try {
+    await h.pool.start(3);
+    h.setBehavior((w, r) => w.reply(r, r.job?.kind === 'comparison' && r.job.item ? operations : undefined));
+    assertEquals(await h.pool.runComparison(comparison), operations);
+    assertEquals(h.workers.filter(w => w.requests.some((r: any) => r.job?.item)).length, 1);
+    const imports = h.workers[0].requests.filter((r: any) => r.job?.xml).length;
+    assertEquals(await h.pool.runComparison({...comparison, item: {raw: 'another candidate'}}), operations);
+    assertEquals(h.workers[0].requests.filter((r: any) => r.job?.xml).length, imports);
+    assertEquals((await h.pool.run(job('public:1', 30)))?.length, 30);
+    assertEquals(await h.pool.runComparison(comparison), operations);
+    assertEquals(h.workers[0].requests.filter((r: any) => r.job?.xml).length, imports + 2);
+  } finally { h.pool.close(); }
+});
+
+Deno.test('item comparisons start one member on demand and discard cancelled results', async () => {
+  const h = harness();
+  const comparison: ItemComparisonJob = {identity: 'public:1', xml: 'public snapshot', uiBytes: 2 ** 30,
+    item: {raw: 'public candidate', id: 1}, options: {}};
+  try {
+    let release: (() => void) | undefined;
+    h.setBehavior((w, r) => r.job?.item ? release = () => w.reply(r, []) : w.reply(r));
+    const result = h.pool.runComparison(comparison);
+    for (let i = 0; i < 20 && !release; i++) await tick();
+    assert(release);
+    assertEquals(h.workers.length, 1);
+    h.pool.cancelComparison(); release();
+    assertEquals(await result, null);
+    h.setBehavior((w, r) => w.reply(r, r.job?.item ? [] : undefined));
+    assertEquals(await h.pool.runComparison(comparison), []);
+    assert(isTooltipOperations([]));
+    assertEquals(isTooltipOperations([{name: 'Clear', args: [true]}]), false);
+    assertEquals(isTooltipOperations([{name: 'AddLine', args: [14, {text: 'bad'}]}]), false);
+  } finally { h.pool.close(); }
+});
 
 Deno.test('node-power jobs preserve numeric fields, separate hydration kinds, and reject malformed results', async () => {
   const h = harness();

@@ -31,6 +31,7 @@ function getRuntimeProfile(reset)
     if getCalculationSchedulingProfile then result = result:sub(1,-2) .. ',"scheduler":' .. getCalculationSchedulingProfile() .. '}' end
     if getUniqueComparisonProfile then result = result:sub(1,-2) .. ',"uniqueComparisons":' .. getUniqueComparisonProfile() .. '}' end
     if getItemTooltipCacheProfile then result = result:sub(1,-2) .. ',"itemTooltipCache":' .. getItemTooltipCacheProfile() .. '}' end
+    if getItemComparisonProfile then result = result:sub(1,-2) .. ',"itemComparisons":' .. getItemComparisonProfile() .. '}' end
     if activeTab and activeTab.nodePowerStatus then
         result = result:sub(1,-2) .. ',"powerReport":' .. require('dkjson').encode(activeTab.nodePowerStatus) .. '}'
     end
@@ -53,6 +54,24 @@ function getRuntimeProfile(reset)
             return table.concat(values, ',')
         end)
         if ok then result = result:sub(1,-2) .. ',"uniqueDbBounds":[' .. bounds .. '],"uniqueDbCount":' .. #(db.list or {}) .. '}' end
+    end
+    local itemList = activeBuild and activeBuild.itemsTab and activeBuild.itemsTab.controls.itemList
+    if itemList and itemList.controls and itemList.controls.search and itemList.GetPos then
+        local ok, details = pcall(function()
+            local x,y = itemList:GetPos(); local w,h = itemList:GetSize()
+            local sx,sy = itemList.controls.search:GetPos(); local sw,sh = itemList.controls.search:GetSize()
+            local hash, lines, pending = 5381, 0, false
+            for _, line in ipairs(itemList.tooltip and itemList.tooltip.lines or {}) do
+                local text = type(line) == 'table' and line.text or ''
+                lines = lines + 1
+                pending = pending or text:find('Calculating comparison...', 1, true) ~= nil
+                for i = 1, #text do hash = (hash * 33 + text:byte(i)) % 4294967296 end
+                hash = (hash * 33 + 10) % 4294967296
+            end
+            return require('dkjson').encode({bounds={x,y,w,h,sx,sy,sw,sh}, hash=hash, lines=lines,
+                pending=pending, hovered=itemList.hoverValue ~= nil})
+        end)
+        if ok then result = result:sub(1,-2) .. ',"itemListTooltip":' .. details .. '}' end
     end
     if reset then
         samples = { MAIN = {}, CALCS = {}, heatmap = {} }

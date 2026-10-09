@@ -21,12 +21,14 @@ import type { PayloadProgress } from "./payload.ts";
 // @ts-types="./vite-worker.d.ts"
 import WorkerObject from "./worker.ts?worker";
 import { HelperPool, type HelperJob } from './helper-pool.ts';
+import type { ItemComparisonJob } from './item-comparison.ts';
 import { runtimeGcPause } from './gc-policy.ts';
 // @ts-types="./vite-worker.d.ts"
 import HelperWorker from './calc-helper.ts?worker';
 
 type AsyncBroker = {
-  attachHelper(id: number, port: MessagePort): Promise<void>;
+  attachHelper(id: number, port: MessagePort, onFailure?: () => void): Promise<void>;
+  setHelperPurpose(id: number, purpose: 'demand' | 'comparison'): Promise<void>;
   detachHelper(id: number): Promise<void>;
   getFilesystemProfile(): {
     operations: Record<string, number>;
@@ -164,11 +166,13 @@ export class Driver {
       this.broker = Comlink.wrap<AsyncBroker>(brokerWorker);
       this.helpers = new HelperPool(
         () => new HelperWorker(),
-        (id, port) => this.broker!.attachHelper(id, Comlink.transfer(port, [port])),
+        (id, port) => this.broker!.attachHelper(id, Comlink.transfer(port, [port]),
+          Comlink.proxy(() => this.helpers?.failMember(id))),
         id => this.broker?.detachHelper(id) ?? Promise.resolve(),
         ready => { void this.driverWorker?.configureUniqueHelpers(ready ? this.helpers?.profile().ready ?? 0 : 0).catch(() => {}); },
         15000, runtimeGcPause(location.search, 'helper'),
         (event, data, level) => this.diagnostic('worker', event, data, level),
+        (id, purpose) => this.broker!.setHelperPurpose(id, purpose),
       );
       const channel = new MessageChannel();
       const eventChannel = new MessageChannel();
@@ -217,11 +221,16 @@ export class Driver {
               }
             }) ?? Promise.resolve(null);
           }),
+          Comlink.proxy((job: ItemComparisonJob | null) => {
+            if (!job) { this.helpers?.cancelComparison(); return Promise.resolve(null); }
+            return this.helpers?.runComparison(job) ?? Promise.resolve(null);
+          }),
           runtimeGcPause(location.search, 'ui'),
           new URLSearchParams(location.search).get('tooltipCache') === 'off' ? -1
             : new URLSearchParams(location.search).get('tooltipCache') === 'calculator' ? 0 : 1,
           new URLSearchParams(location.search).get('textWidthCache') !== 'off',
           this.nodePowerHelpers,
+          new URLSearchParams(location.search).get('itemComparisons') !== '0',
         ),
       ]);
     } catch (error) {

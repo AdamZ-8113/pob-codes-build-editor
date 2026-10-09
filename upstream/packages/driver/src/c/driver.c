@@ -38,6 +38,28 @@ static int UniqueSortAvailable(lua_State *L) {
     lua_pushinteger(L, EM_ASM_INT({ return Module.uniqueSortAvailable ? Module.uniqueSortAvailable() : 0; }));
     return 1;
 }
+static int ItemComparisonsEnabled(lua_State *L) {
+    lua_pushboolean(L, EM_ASM_INT({ return Module.itemComparisonsEnabled ? 1 : 0; }));
+    return 1;
+}
+static int CancelItemComparison(lua_State *L) {
+    EM_ASM({ if (Module.cancelItemComparison) Module.cancelItemComparison(); });
+    return 0;
+}
+static int BeginItemComparison(lua_State *L) {
+    int id = EM_ASM_INT({ return Module.beginItemComparison(UTF8ToString($0)); }, luaL_checkstring(L, 1));
+    lua_pushinteger(L, id); return 1;
+}
+static int PollItemComparison(lua_State *L) {
+    char *result = (char *)EM_ASM_PTR({
+        var value = Module.pollItemComparison($0);
+        if (value === undefined) return 0;
+        var size = lengthBytesUTF8(value) + 1;
+        var ptr = _malloc(size); stringToUTF8(value, ptr, size); return ptr;
+    }, luaL_checkinteger(L, 1));
+    if (result) { lua_pushstring(L, result); free(result); } else lua_pushnil(L);
+    return 1;
+}
 static int NodePowerAvailable(lua_State *L) {
     lua_pushinteger(L, EM_ASM_INT({ return Module.nodePowerAvailable ? Module.nodePowerAvailable() : 0; }));
     return 1;
@@ -284,6 +306,10 @@ int init() {
     // Open standard libraries
     luaL_openlibs(GL);
     lua_register(GL, "BeginUniqueSort", BeginUniqueSort);
+    lua_register(GL, "ItemComparisonsEnabled", ItemComparisonsEnabled);
+    lua_register(GL, "BeginItemComparison", BeginItemComparison);
+    lua_register(GL, "PollItemComparison", PollItemComparison);
+    lua_register(GL, "CancelItemComparison", CancelItemComparison);
     lua_register(GL, "GetRuntimeGCPause", GetRuntimeGCPause);
     lua_register(GL, "GetRuntimeItemTooltipCacheMode", GetRuntimeItemTooltipCacheMode);
     lua_register(GL, "UniqueSortAvailable", UniqueSortAvailable);

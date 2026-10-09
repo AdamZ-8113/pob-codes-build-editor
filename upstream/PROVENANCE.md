@@ -418,6 +418,29 @@ only to hash-verified in-memory acceptance packages, compares full tooltip text
 and complete canonical exports, and records frame CPU rather than GPU latency.
 The operation cache requires no pinned PoB source or calculator arithmetic changes.
 
+Item-list hover tooltips now schedule `ItemsTab:AddItemStatDifferences` on one existing
+helper-pool member through `item-comparison-workers.lua`. The immutable snapshot
+includes the build epoch/revision, raw candidate (including selected variants),
+owned item identity, comparison slot and numeric formatting options. The helper
+calls PoB's original method and returns validated primitive tooltip operations;
+up to 64 completed results are retained per revision. The unique database keeps
+its existing 150 ms transient-hover delay; no longer delay is introduced.
+The pool serializes comparisons with its other jobs, discards superseded results,
+can start one member when parallel sorting is disabled, and retains the existing
+memory admission limits. Cold helper startup and snapshot hydration remain
+first-comparison costs. `itemComparisons=0` selects the original synchronous path
+for diagnostic parity checks and existing UI-calculator profiling.
+Explicit item editing panels retain their original comparison/refresh path.
+
+Comparison file requests use a separate payload progress reason, resolved by the
+same manifest and integrity checks as other reads. They do not display the global
+loading overlay. A terminal comparison payload failure retires its helper before
+Lua can receive a failed read; ordinary UI demand failures retain their existing
+fatal behavior. A UI demand for the same in-flight package promotes its progress
+back to the foreground. The native adapter tests and browser comparison harness
+cover stale replies, exact tooltip parity, unchanged player stats and continued
+input handling while a jewel download is deliberately held open.
+
 The runtime-memory adaptation embeds `gc-policy.lua` before both boot paths.
 The driver supplies role-specific pause values (UI 100, helper 400); choosing
 400 leaves `collectgarbage` unwrapped. Other values intercept only `setpause`,

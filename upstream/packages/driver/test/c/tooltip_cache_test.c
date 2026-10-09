@@ -21,6 +21,8 @@ extern const char *node_power_lua;
 extern const char *node_power_test_lua;
 extern const char *gc_policy_lua;
 extern const char *gc_policy_test_lua;
+extern const char *item_comparison_lua;
+extern const char *item_comparison_test_lua;
 
 int main(void) {
     lua_State *L = luaL_newstate();
@@ -51,6 +53,9 @@ int main(void) {
             if (lua_pcall(L, 1, 0, 0) != LUA_OK) goto failure;
             if (luaL_dostring(L, node_power_test_lua) != LUA_OK) goto failure;
             if (luaL_dostring(L, node_power_lua) != LUA_OK) goto failure;
+            if (lua_pcall(L, 1, 0, 0) != LUA_OK) goto failure;
+            if (luaL_dostring(L, item_comparison_test_lua) != LUA_OK) goto failure;
+            if (luaL_dostring(L, item_comparison_lua) != LUA_OK) goto failure;
             if (lua_pcall(L, 1, 0, 0) != LUA_OK) goto failure;
             lua_close(L);
             puts("Item tooltip cache regression tests passed");

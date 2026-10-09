@@ -8,7 +8,7 @@ import {
 } from "../../../../payload-manifest.ts";
 import { rejectWrites } from "./fs.ts";
 
-export type PayloadProgressReason = "startup" | "demand" | "prefetch";
+export type PayloadProgressReason = "startup" | "demand" | "prefetch" | "comparison";
 export type PayloadProgressPhase = "download" | "verify" | "ready" | "error";
 export type PayloadProgress = {
   reason: PayloadProgressReason;
@@ -20,6 +20,7 @@ export type PayloadProgress = {
 };
 
 export type PayloadProfile = {
+  requestReasons: { id: string; reason: PayloadProgressReason }[];
   loadedPackages: string[];
   packagesBeforeReady: number;
   bytesBeforeReady: number;
@@ -126,7 +127,7 @@ class LazyPackage {
     this.promote(reason);
     if (!this.inFlight) {
       this.inFlight = this.load().catch((error) => {
-        if (this.activeReason === "prefetch") this.inFlight = undefined;
+        if (this.activeReason === "prefetch" || this.activeReason === "comparison") this.inFlight = undefined;
         throw error;
       });
     }
@@ -134,12 +135,12 @@ class LazyPackage {
   }
 
   private promote(reason: PayloadProgressReason) {
-    const priority: Record<PayloadProgressReason, number> = { prefetch: 0, startup: 1, demand: 2 };
+    const priority: Record<PayloadProgressReason, number> = { prefetch: 0, comparison: 1, startup: 2, demand: 3 };
     if (priority[reason] > priority[this.activeReason]) this.activeReason = reason;
   }
 
   private async load(): Promise<void> {
-    const deadline = performance.now() + (this.activeReason === "demand" ? DEMAND_TIMEOUT_MS : Number.POSITIVE_INFINITY);
+    const deadline = performance.now() + (this.activeReason === "demand" || this.activeReason === "comparison" ? DEMAND_TIMEOUT_MS : Number.POSITIVE_INFINITY);
     let lastError: unknown;
     for (let attempt = 0; attempt <= RETRY_BACKOFF_MS.length; attempt++) {
       if (attempt) await delayWithinDeadline(RETRY_BACKOFF_MS[attempt - 1], deadline, this.entry.id);
@@ -249,11 +250,11 @@ export class PayloadController {
     }));
   }
 
-  async ensurePath(rootPath: string) {
+  async ensurePath(rootPath: string, reason: PayloadProgressReason = 'demand') {
     const pkg = this.paths.get(normalizeRootPath(rootPath));
     if (!pkg) return;
     if (!this.packageOpens.includes(pkg.entry.id)) this.packageOpens.push(pkg.entry.id);
-    await pkg.ensure("demand");
+    await pkg.ensure(reason);
   }
 
   packageIdForPath(rootPath: string): string | undefined {
@@ -291,6 +292,8 @@ export class PayloadController {
       bytes: loaded.reduce((total, pkg) => total + pkg.entry.bytes, 0),
     };
     return {
+      requestReasons: [...this.packages.values()].filter(pkg => pkg.inFlight)
+        .map(pkg => ({id: pkg.entry.id, reason: pkg.activeReason})),
       loadedPackages: loaded.map((pkg) => pkg.entry.id),
       packagesBeforeReady: snapshot.packages,
       bytesBeforeReady: snapshot.bytes,

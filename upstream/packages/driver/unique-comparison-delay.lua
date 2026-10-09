@@ -88,7 +88,10 @@ return function(build)
                 end
             end
             local result = table.pack(previous(tab, targetTooltip, targetItem, ...))
-            if tab == items and targetTooltip == tooltip and targetItem == item then stats.completed = stats.completed + 1 end
+            if tab == items and targetTooltip == tooltip and targetItem == item then
+                stats.pending = result[1] == 'pending'
+                if not stats.pending then stats.completed = stats.completed + 1 end
+            end
             return table.unpack(result, 1, result.n)
         end
         local result = table.pack(pcall(originalTooltip, self, tooltip, index, item, ...))

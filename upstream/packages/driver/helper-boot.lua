@@ -30,7 +30,7 @@ function helperCall(text)
         loadBuildFromXML(job.xml, 'Calculation helper')
         assert(not __mainObject__.promptMsg, 'Helper import failed')
         local started = GetTime()
-        while job.kind ~= 'nodePower' and __mainObject__.main.uniqueDB.loading do
+        while job.kind ~= 'nodePower' and job.kind ~= 'comparison' and __mainObject__.main.uniqueDB.loading do
             runCallback('OnFrame')
             assert(GetTime() - started < 15000, 'Helper unique database timeout')
         end
@@ -41,6 +41,35 @@ function helperCall(text)
         return json.encode({ready=true})
     end
     assert(loadedIdentity == job.identity, 'Stale helper build')
+    if job.kind == 'comparison' then
+        assert(loadedKind == 'comparison', 'Missing comparison snapshot')
+        for _, name in ipairs({'slotOnlyTooltips', 'showThousandsSeparators', 'thousandsSeparator', 'decimalSeparator'}) do
+            main[name] = job.options[name]
+        end
+        local item = job.item.id and build.itemsTab.items[job.item.id]
+        if item then
+            assert(item:BuildRaw() == job.item.raw, 'Stale comparison item')
+        else
+            assert(not job.item.id, 'Missing comparison item')
+            item = new('Item'):Item(job.item.raw)
+        end
+        assert(item.base, 'Comparison item could not be parsed')
+        local operations = setmetatable({}, {__jsontype = 'array'})
+        local tooltip = {}
+        for _, name in ipairs({'AddLine', 'AddSeparator'}) do
+            tooltip[name] = function(_, ...)
+                local args = {...}
+                assert(#args == select('#', ...), 'Unsupported comparison arguments')
+                for _, value in ipairs(args) do
+                    assert(type(value) == 'string' or type(value) == 'number' or type(value) == 'boolean',
+                        'Unsupported comparison operation')
+                end
+                operations[#operations + 1] = {name = name, args = args}
+            end
+        end
+        build.itemsTab:AddItemStatDifferences(tooltip, item, item.base, job.slot)
+        return json.encode(operations)
+    end
     if job.kind == 'nodePower' then
         assert(loadedKind == job.kind and build.calcsTab.EvaluateNodePowerItem, 'Missing node-power seam')
         local selected

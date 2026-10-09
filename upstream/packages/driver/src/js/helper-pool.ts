@@ -1,3 +1,5 @@
+import { isTooltipOperations, type ItemComparisonJob, type TooltipOperation } from './item-comparison.ts';
+
 export type UniqueJob = { identity: string; xml: string; sortMode: string; weaponSet: boolean;
   items: { key: string; raw: string }[]; uiBytes: number };
 export type NodePowerItem = { addNodes?: { id?: number; effect?: number; cluster?: string }[];
@@ -23,6 +25,8 @@ export class HelperPool {
   private members: Member[] = [];
   private sequence = 0;
   private generation = 0;
+  private comparisonGeneration = 0;
+  private startupFinished: Promise<void> = Promise.resolve();
   private closed = false;
   private starting = false;
   private armed = false;
@@ -40,7 +44,8 @@ export class HelperPool {
     private detach: (id: number) => Promise<void>,
     private availability: (ready: boolean) => void = () => {},
     private timeoutMs = 15000, private gcPause = 400,
-    private onDiagnostic: HelperDiagnostic = () => {}) {}
+    private onDiagnostic: HelperDiagnostic = () => {},
+    private setPurpose: (id: number, purpose: 'demand' | 'comparison') => Promise<void> = async () => {}) {}
   profile() { return { requested: this.requested, ready: this.members.filter(m => m.bytes).length,
     state: this.closed ? 'closed' : this.starting ? 'booting' : this.members.length ? 'ready'
       : this.armed ? 'armed' : this.requested ? 'retired' : 'disabled',
@@ -62,6 +67,8 @@ export class HelperPool {
     if (this.closed || this.starting || this.members.length || !Number.isInteger(count) || count < 1) return;
     this.prepare(count);
     this.starting = true;
+    let finishStartup!: () => void;
+    this.startupFinished = new Promise(resolve => { finishStartup = resolve; });
     this.starts++;
     this.bootStartedAt = performance.now();
     this.onDiagnostic('helpers-starting', {count: this.requested});
@@ -102,12 +109,13 @@ export class HelperPool {
       this.startupMs = performance.now() - this.bootStartedAt;
       this.bootStartedAt = undefined;
       this.starting = false;
+      finishStartup();
     }
   }
-  private send(member: Member, data: Record<string, unknown>, transfer: Transferable[] = []): Promise<unknown> {
+  private send(member: Member, data: Record<string, unknown>, transfer: Transferable[] = [], timeout = this.timeoutMs): Promise<unknown> {
     return new Promise((resolve, reject) => {
       const id = ++this.sequence;
-      const timer = setTimeout(() => { member.pending.delete(id); reject(new Error('Helper timeout')); }, this.timeoutMs);
+      const timer = setTimeout(() => { member.pending.delete(id); reject(new Error('Helper timeout')); }, timeout);
       member.pending.set(id, { resolve: value => { clearTimeout(timer); resolve(value); },
         reject: error => { clearTimeout(timer); reject(error); } });
       try { member.worker.postMessage({ ...data, id }, transfer); }
@@ -139,6 +147,48 @@ export class HelperPool {
     });
   }
   cancel() { this.generation++; }
+  cancelComparison() { this.comparisonGeneration++; }
+  failMember(id: number) {
+    if (this.members.some(member => member.id === id)) this.retire();
+  }
+  runComparison(job: ItemComparisonJob): Promise<TooltipOperation[] | null> {
+    const generation = ++this.comparisonGeneration;
+    const run = async () => {
+      await this.startupFinished;
+      if (this.closed || generation !== this.comparisonGeneration) return null;
+      if (this.admissionFailure(job.uiBytes)) return null;
+      // Reuse one admitted member, including on devices where parallel sorting
+      // is disabled. Never allocate a fourth interpreter for hover work.
+      if (!this.members.length) await this.start(1);
+      if (this.closed || generation !== this.comparisonGeneration || !this.members.length) return null;
+      if (this.admissionFailure(job.uiBytes)) { this.retire(); return null; }
+      const member = this.members[0];
+      try {
+        await this.setPurpose(member.id, 'comparison');
+        const identity = `comparison:${job.identity}`;
+        if (member.identity !== identity) {
+          await this.send(member, {job: {kind: 'comparison', identity: job.identity, xml: job.xml}}, [], 120_000);
+          member.identity = identity;
+        }
+        if (generation !== this.comparisonGeneration) return null;
+        const result = await this.send(member, {job: {kind: 'comparison', identity: job.identity,
+          item: job.item, slot: job.slot, options: job.options}}, [], 120_000);
+        if (generation !== this.comparisonGeneration) return null;
+        if (!isTooltipOperations(result)) throw new Error('Invalid item comparison result');
+        // A validated result remains usable after retiring its interpreter.
+        // Release large retained jewel tables before admitting another job.
+        if (this.admissionFailure(job.uiBytes)) this.retire();
+        return result;
+      } catch {
+        // Never fall back to a blocking comparison on the UI worker.
+        this.retire();
+        return null;
+      }
+    };
+    const result = this.tail.then(run, run);
+    this.tail = result;
+    return result;
+  }
   run(job: HelperJob, onProgress: (completed: number) => void = () => {}): Promise<unknown[] | null> {
     const nodePower = 'kind' in job && job.kind === 'nodePower';
     const identity = `${nodePower ? 'nodePower' : 'unique'}:${job.identity}`;
@@ -153,6 +203,7 @@ export class HelperPool {
       if (bootFailure) { this.reportFallback(bootFailure); this.retire(); return null; }
       try {
         await Promise.all(this.members.map(async member => {
+          await this.setPurpose(member.id, 'demand');
           if (member.identity !== identity) {
             await this.send(member, { job: { identity: job.identity, xml: job.xml, ...(nodePower ? {kind: 'nodePower'} : {}) } });
             member.identity = identity;
@@ -195,6 +246,7 @@ export class HelperPool {
   }
   private retire() {
     this.generation++;
+    this.comparisonGeneration++;
     this.armed = false;
     if (this.members.length) {
       this.recycled++;
