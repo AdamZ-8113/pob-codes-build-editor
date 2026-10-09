@@ -12,6 +12,8 @@ try {
   page.on("pageerror", error => faults.push(error.message));
   await page.goto("http://127.0.0.1:3010");
   await page.waitForFunction(() => window.__DESKTOP_POB__?.ready, null, { timeout: 120_000 });
+  assert.equal(await page.locator('[contenteditable="true"]').evaluate(element => getComputedStyle(element).cursor), "default",
+    "PoB canvas uses the arrow cursor instead of the editable-text I-beam");
   for (const width of [1600, 721, 720, 390, 320]) {
     await page.setViewportSize({width,height:900});
     await page.waitForTimeout(250);

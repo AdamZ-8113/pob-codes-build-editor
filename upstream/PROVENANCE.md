@@ -144,7 +144,8 @@ portals its existing controls into the localhost shell header and releases the
 canvas's old toolbar gutter. The default in-canvas toolbar remains available to
 other hosts. Header mode opens zoom controls downward and fullscreen includes
 the shell so its exit control remains reachable. Native PoB controls and
-calculations are unchanged.
+calculations are unchanged. The editable canvas host explicitly retains the
+default arrow cursor so its keyboard-input surface does not expose a text I-beam.
 
 The pinned PoB beta uses `+=` in `Modules/Main.lua`. The vendored Lua lexer and
 parser implement that statement directly in Lua bytecode; packaged PoB source is

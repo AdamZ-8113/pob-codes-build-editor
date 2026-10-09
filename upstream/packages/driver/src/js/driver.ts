@@ -404,6 +404,7 @@ export class Driver {
     container.focus();
     container.style.outline = "none";
     container.style.caretColor = "transparent";
+    container.style.cursor = "default";
 
     document.addEventListener("fullscreenchange", () => this.handleFullscreenChange());
 
