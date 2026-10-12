@@ -60,7 +60,7 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
     throw new Error("Power-report environment-reuse source overlay identity or composition changed");
   }
   const local = pin.overlays.filter((entry) => entry.kind === "local-patch" && entry.applicationStage !== "source-composite");
-  if (JSON.stringify(local.map((overlay) => overlay.id)) !== JSON.stringify(["gem-dropdown-hover", "limited-unique-item-comparisons", "importtab-host-capabilities", "preferred-export-site", "calculation-only-jewel-specs", "node-power-delegation", "compact-status-text", "build-list-pending-folders"]) ||
+  if (JSON.stringify(local.map((overlay) => overlay.id)) !== JSON.stringify(["gem-dropdown-hover", "limited-unique-item-comparisons", "importtab-host-capabilities", "preferred-export-site", "calculation-only-jewel-specs", "node-power-delegation", "compact-status-text", "power-node-depth-default", "build-list-pending-folders"]) ||
       local.some((overlay) => overlay.applicationStage !== "pack-time")) {
     throw new Error("Desktop PoB local overlay ownership changed");
   }
@@ -158,8 +158,19 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
       Object.values(compactStatus.resultBlobHashes).some((hash) => !/^[a-f0-9]{40}$/.test(hash))) {
     throw new Error("Compact status-text overlay identities differ");
   }
+  const powerNodeDepth = pin.adapters.powerNodeDepthDefault;
+  const powerNodeDepthOverlay = local[7];
+  const treeTabPath = "src/Classes/TreeTab.lua";
+  if (powerNodeDepth?.version !== 1 || powerNodeDepth.patchFile !== powerNodeDepthOverlay.patchFile ||
+      powerNodeDepth.patchSha256 !== powerNodeDepthOverlay.patchSha256 ||
+      powerNodeDepth.preparedSourceBlobHashes?.[treeTabPath] !== compactStatus.preparedSourceBlobHashes[treeTabPath] ||
+      powerNodeDepth.sourceBlobHashes?.[treeTabPath] !== compactStatus.resultBlobHashes[treeTabPath] ||
+      !/^[a-f0-9]{40}$/.test(powerNodeDepth.resultBlobHashes?.[treeTabPath] ?? "") ||
+      Object.keys(powerNodeDepth.sourceBlobHashes).length !== 1 || Object.keys(powerNodeDepth.resultBlobHashes).length !== 1) {
+    throw new Error("Power-node depth-default overlay identities differ");
+  }
   const pendingFolders = pin.adapters.buildListPendingFolders;
-  const pendingOverlay = local[7];
+  const pendingOverlay = local[8];
   const buildListHelpersPath = "src/Modules/BuildListHelpers.lua";
   if (pendingFolders?.version !== 1 || pendingFolders.patchFile !== pendingOverlay.patchFile ||
       pendingFolders.patchSha256 !== pendingOverlay.patchSha256 ||

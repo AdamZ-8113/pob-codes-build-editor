@@ -7,9 +7,9 @@ import { validateSourceLedger } from "../../scripts/build/source-ledger.mjs";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
-test("desktop PoB overlay ledger owns six ordered PRs, two Power Report optimizations and eight pack-time local patches", async () => {
+test("desktop PoB overlay ledger owns six ordered PRs, two Power Report optimizations and nine pack-time local patches", async () => {
   const { pin, compositeBytes } = await validateSourceLedger(appDir);
-  assert.deepEqual(pin.overlays.map((entry) => entry.number ?? entry.id), [10360, 10371, 10372, 10373, 10313, 10381, "power-report-relevance-pruning", "power-report-environment-reuse", "gem-dropdown-hover", "limited-unique-item-comparisons", "importtab-host-capabilities", "preferred-export-site", "calculation-only-jewel-specs", "node-power-delegation", "compact-status-text", "build-list-pending-folders"]);
+  assert.deepEqual(pin.overlays.map((entry) => entry.number ?? entry.id), [10360, 10371, 10372, 10373, 10313, 10381, "power-report-relevance-pruning", "power-report-environment-reuse", "gem-dropdown-hover", "limited-unique-item-comparisons", "importtab-host-capabilities", "preferred-export-site", "calculation-only-jewel-specs", "node-power-delegation", "compact-status-text", "power-node-depth-default", "build-list-pending-folders"]);
   assert.equal(pin.compositePatch.files.includes("src/Classes/GemSelectControl.lua"), true);
   assert.equal(compositeBytes.includes(Buffer.from("GemSelectControl.lua")), true);
   assert.equal(pin.compositePatch.resultBlobHashes["src/Classes/GemSelectControl.lua"], pin.adapters.gemDropdownHover.sourceBlobHashes["src/Classes/GemSelectControl.lua"]);
@@ -18,6 +18,8 @@ test("desktop PoB overlay ledger owns six ordered PRs, two Power Report optimiza
   assert.equal(pin.adapters.calculationOnlyJewelSpecs.preparedSourceBlobHashes["src/Classes/ItemsTab.lua"], pin.adapters.limitedUniqueItemComparisons.sourceBlobHashes["src/Classes/ItemsTab.lua"]);
   assert.equal(pin.adapters.calculationOnlyJewelSpecs.sourceBlobHashes["src/Classes/ItemsTab.lua"], pin.adapters.limitedUniqueItemComparisons.resultBlobHashes["src/Classes/ItemsTab.lua"]);
   assert.equal(pin.adapters.preferredExportSite.sourceBlobHashes["src/Classes/ImportTab.lua"], pin.adapters.importTabHostCapabilities.resultBlobHashes["src/Classes/ImportTab.lua"]);
+  assert.equal(pin.adapters.powerNodeDepthDefault.preparedSourceBlobHashes["src/Classes/TreeTab.lua"], pin.adapters.compactStatusText.preparedSourceBlobHashes["src/Classes/TreeTab.lua"]);
+  assert.equal(pin.adapters.powerNodeDepthDefault.sourceBlobHashes["src/Classes/TreeTab.lua"], pin.adapters.compactStatusText.resultBlobHashes["src/Classes/TreeTab.lua"]);
   assert.equal(pin.adapters.browserUiDefaults.sourceBlobHashes["src/Modules/Main.lua"], pin.adapters.calculationScheduling.resultBlobHashes["src/Modules/Main.lua"]);
 });
 

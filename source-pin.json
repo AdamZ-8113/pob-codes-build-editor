@@ -156,6 +156,20 @@
         "src/Modules/ToastNotification.lua": "4a466741e7dc3e0457b11f05814796c860b2cb01"
       }
     },
+    "powerNodeDepthDefault": {
+      "version": 1,
+      "patchFile": "patches/power-node-depth-default.patch",
+      "patchSha256": "57937ea6b4ad35f9a264c70b0e5d4745a419bdf985d24d69d4248c2e167c6b4e",
+      "preparedSourceBlobHashes": {
+        "src/Classes/TreeTab.lua": "36c9557ac046535b44fc01157b04b15035295959"
+      },
+      "sourceBlobHashes": {
+        "src/Classes/TreeTab.lua": "c4eaac23aaf75f01d1f413c58913ae01aa3256b6"
+      },
+      "resultBlobHashes": {
+        "src/Classes/TreeTab.lua": "73bcbc12bea60884b753e41f852dea9ab011758e"
+      }
+    },
     "buildListPendingFolders": {
       "version": 1,
       "patchFile": "patches/build-list-pending-folders.patch",
@@ -474,6 +488,19 @@
       "applicationStage": "pack-time",
       "upstreamPr": null,
       "lastObserved": "2026-10-08"
+    },
+    {
+      "kind": "local-patch",
+      "id": "power-node-depth-default",
+      "sourceBase": "a431f3a28823270acbdd6864c644f93678581f1e",
+      "patchFile": "patches/power-node-depth-default.patch",
+      "patchSha256": "57937ea6b4ad35f9a264c70b0e5d4745a419bdf985d24d69d4248c2e167c6b4e",
+      "files": [
+        "src/Classes/TreeTab.lua"
+      ],
+      "applicationStage": "pack-time",
+      "upstreamPr": null,
+      "lastObserved": "2026-10-12"
     },
     {
       "kind": "local-patch",

@@ -21,6 +21,7 @@ import { applyUniqueSortPatch } from "../../../../scripts/patches/unique-sort-pa
 import { applyImportTabHostPatch } from "../../../../scripts/patches/importtab-host-patch.mjs";
 import { applyPreferredExportSitePatch } from "../../../../scripts/patches/preferred-export-site-patch.mjs";
 import { applyBuildListPendingPatch } from "../../../../scripts/patches/build-list-pending-patch.mjs";
+import { applyPowerNodeDepthPatch } from "../../../../scripts/patches/power-node-depth-patch.mjs";
 import { sha256, stalePackageHashes, validatePayloadManifest } from "../../../payload-manifest.ts";
 
 const [source, destination] = Deno.args;
@@ -39,6 +40,7 @@ const uniqueSortPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.
 const importTabHostPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.importTabHostCapabilities.patchFile}`, import.meta.url));
 const preferredExportSitePatch = await Deno.readFile(new URL(`../../../../${pin.adapters.preferredExportSite.patchFile}`, import.meta.url));
 const buildListPendingPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.buildListPendingFolders.patchFile}`, import.meta.url));
+const powerNodeDepthPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.powerNodeDepthDefault.patchFile}`, import.meta.url));
 await ensureDir(payloadDir);
 await zstd.init();
 
@@ -94,7 +96,14 @@ for (const entry of entries) {
         applyGemHoverPatch(new TextDecoder().decode(newContent), Buffer.from(gemHoverPatch), pin.adapters.gemDropdownHover),
         Buffer.from(statusTextPatch), pin.adapters.compactStatusText, `src/${relPath}`,
       ))
-      : relPath === "Classes/TreeTab.lua" || relPath === "Modules/ToastNotification.lua"
+      : relPath === "Classes/TreeTab.lua"
+      ? new TextEncoder().encode(applyPowerNodeDepthPatch(
+        applyStatusTextPatch(
+          new TextDecoder().decode(newContent), Buffer.from(statusTextPatch), pin.adapters.compactStatusText, `src/${relPath}`,
+        ),
+        Buffer.from(powerNodeDepthPatch), pin.adapters.powerNodeDepthDefault,
+      ))
+      : relPath === "Modules/ToastNotification.lua"
       ? new TextEncoder().encode(applyStatusTextPatch(
         new TextDecoder().decode(newContent), Buffer.from(statusTextPatch), pin.adapters.compactStatusText, `src/${relPath}`,
       ))

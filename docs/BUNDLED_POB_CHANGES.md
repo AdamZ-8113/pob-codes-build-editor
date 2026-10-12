@@ -83,6 +83,7 @@ These patches are applied after the upstream-plus-local source composite, in thi
 | `calculation-only-jewel-specs` (`calculationOnlyJewelSpecs`) | Carries the calculation-only temporary jewel-spec portion of [PoB #9863](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/9863), plus the local omission of unused `nodeCopy.power` tables in those temporary clones. |
 | `node-power-delegation` (`nodePowerDelegation`) | Adds the checked batch seam used by bounded browser helpers while retaining serial fallback, PoB calculations, context-aware cache keys, and merge order. |
 | `compact-status-text` (`compactStatusText`) | Fits three browser-constrained status messages into PoB's ordinary control text without changing other typography. |
+| `power-node-depth-default` (`powerNodeDepthDefault`) | Defaults the node-power search depth to 5 while retaining the existing 10, 15, All, and Custom choices. |
 | `build-list-pending-folders` (`buildListPendingFolders`) | Keeps tokened, incomplete browser folder imports out of PoB's recursive build scan until the broker removes the exact pending sentinel. |
 
 ## Other checked PoB source adapters

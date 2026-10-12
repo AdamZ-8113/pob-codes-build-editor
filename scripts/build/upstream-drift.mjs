@@ -12,6 +12,7 @@ import { transformImportTabHostPatch } from '../patches/importtab-host-patch.mjs
 import { transformPreferredExportSitePatch } from '../patches/preferred-export-site-patch.mjs';
 import { transformNodePowerPatch } from '../patches/node-power-patch.mjs';
 import { transformStatusTextPatch } from '../patches/status-text-patch.mjs';
+import { transformPowerNodeDepthPatch } from '../patches/power-node-depth-patch.mjs';
 import { disableAnimationsByDefault } from '../../upstream/packages/packer/src/ui-defaults-adapter.ts';
 import { sha256, validateSourceLedger } from './source-ledger.mjs';
 import { classifyPatch, parseDriftPatch } from './drift-patch.mjs';
@@ -26,6 +27,7 @@ export const PACK_STAGES = [
   ['preferredExportSite', transformPreferredExportSitePatch],
   ['nodePowerDelegation', transformNodePowerPatch],
   ['compactStatusText', transformStatusTextPatch],
+  ['powerNodeDepthDefault', transformPowerNodeDepthPatch],
 ];
 const classes = ['untouched', 'touched-applies', 'conflict', 'absorbed', 'partial'];
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
