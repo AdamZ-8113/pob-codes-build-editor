@@ -159,15 +159,18 @@
     "powerNodeDepthDefault": {
       "version": 1,
       "patchFile": "patches/power-node-depth-default.patch",
-      "patchSha256": "57937ea6b4ad35f9a264c70b0e5d4745a419bdf985d24d69d4248c2e167c6b4e",
+      "patchSha256": "05e999a1b6b939341f10910ebed33075a3a12ba9dde4fcb5c659df28b21f791c",
       "preparedSourceBlobHashes": {
-        "src/Classes/TreeTab.lua": "36c9557ac046535b44fc01157b04b15035295959"
+        "src/Classes/TreeTab.lua": "36c9557ac046535b44fc01157b04b15035295959",
+        "src/Classes/CalcsTab.lua": "9375d43f3daab9d0de11b762d23bfec4d8bcbae7"
       },
       "sourceBlobHashes": {
-        "src/Classes/TreeTab.lua": "c4eaac23aaf75f01d1f413c58913ae01aa3256b6"
+        "src/Classes/TreeTab.lua": "c4eaac23aaf75f01d1f413c58913ae01aa3256b6",
+        "src/Classes/CalcsTab.lua": "74128c3ef8daf1be6632ec4d8caf7b6dc54b5792"
       },
       "resultBlobHashes": {
-        "src/Classes/TreeTab.lua": "73bcbc12bea60884b753e41f852dea9ab011758e"
+        "src/Classes/TreeTab.lua": "4eb96ae4afb0a3a9dd47e60779894ef14dd75b26",
+        "src/Classes/CalcsTab.lua": "94980c237f7e879c1b62951c5363afc48ca09aee"
       }
     },
     "buildListPendingFolders": {
@@ -494,9 +497,10 @@
       "id": "power-node-depth-default",
       "sourceBase": "a431f3a28823270acbdd6864c644f93678581f1e",
       "patchFile": "patches/power-node-depth-default.patch",
-      "patchSha256": "57937ea6b4ad35f9a264c70b0e5d4745a419bdf985d24d69d4248c2e167c6b4e",
+      "patchSha256": "05e999a1b6b939341f10910ebed33075a3a12ba9dde4fcb5c659df28b21f791c",
       "files": [
-        "src/Classes/TreeTab.lua"
+        "src/Classes/TreeTab.lua",
+        "src/Classes/CalcsTab.lua"
       ],
       "applicationStage": "pack-time",
       "upstreamPr": null,

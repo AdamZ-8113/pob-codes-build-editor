@@ -161,12 +161,17 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
   const powerNodeDepth = pin.adapters.powerNodeDepthDefault;
   const powerNodeDepthOverlay = local[7];
   const treeTabPath = "src/Classes/TreeTab.lua";
+  const calcsTabPath = "src/Classes/CalcsTab.lua";
+  const powerNodeDepthPaths = [treeTabPath, calcsTabPath];
   if (powerNodeDepth?.version !== 1 || powerNodeDepth.patchFile !== powerNodeDepthOverlay.patchFile ||
       powerNodeDepth.patchSha256 !== powerNodeDepthOverlay.patchSha256 ||
       powerNodeDepth.preparedSourceBlobHashes?.[treeTabPath] !== compactStatus.preparedSourceBlobHashes[treeTabPath] ||
       powerNodeDepth.sourceBlobHashes?.[treeTabPath] !== compactStatus.resultBlobHashes[treeTabPath] ||
-      !/^[a-f0-9]{40}$/.test(powerNodeDepth.resultBlobHashes?.[treeTabPath] ?? "") ||
-      Object.keys(powerNodeDepth.sourceBlobHashes).length !== 1 || Object.keys(powerNodeDepth.resultBlobHashes).length !== 1) {
+      powerNodeDepth.preparedSourceBlobHashes?.[calcsTabPath] !== pin.compositePatch.resultBlobHashes[calcsTabPath] ||
+      powerNodeDepth.sourceBlobHashes?.[calcsTabPath] !== pin.adapters.nodePowerDelegation.resultBlobHashes[calcsTabPath] ||
+      powerNodeDepthPaths.some(path => !/^[a-f0-9]{40}$/.test(powerNodeDepth.resultBlobHashes?.[path] ?? "")) ||
+      JSON.stringify(Object.keys(powerNodeDepth.sourceBlobHashes)) !== JSON.stringify(powerNodeDepthPaths) ||
+      JSON.stringify(Object.keys(powerNodeDepth.resultBlobHashes)) !== JSON.stringify(powerNodeDepthPaths)) {
     throw new Error("Power-node depth-default overlay identities differ");
   }
   const pendingFolders = pin.adapters.buildListPendingFolders;

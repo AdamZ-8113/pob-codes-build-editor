@@ -1,13 +1,24 @@
 diff --git a/src/Classes/TreeTab.lua b/src/Classes/TreeTab.lua
-index c4eaac23aaf75f01d1f413c58913ae01aa3256b6..73bcbc12bea60884b753e41f852dea9ab011758e 100644
+index c4eaac23aaf75f01d1f413c58913ae01aa3256b6..4eb96ae4afb0a3a9dd47e60779894ef14dd75b26 100644
 --- a/src/Classes/TreeTab.lua
 +++ b/src/Classes/TreeTab.lua
-@@ -239,6 +239,8 @@ function TreeTabClass:TreeTab(build)
+@@ -239,6 +239,7 @@ function TreeTabClass:TreeTab(build)
  			end
  		end
  	end)
 +	self.controls.nodePowerMaxDepthSelect.selIndex = 2
-+	self.build.calcsTab.nodePowerMaxDepth = 5
  	self.controls.nodePowerMaxDepthSelect.tooltipText = "Limit of Node distance to search (lower = faster)"
  
  	-- Control for setting max node depth by custom value
+diff --git a/src/Classes/CalcsTab.lua b/src/Classes/CalcsTab.lua
+index 74128c3ef8daf1be6632ec4d8caf7b6dc54b5792..94980c237f7e879c1b62951c5363afc48ca09aee 100644
+--- a/src/Classes/CalcsTab.lua
++++ b/src/Classes/CalcsTab.lua
+@@ -27,6 +27,7 @@ function CalcsTabClass:CalcsTab(build)
+ 	self:Control()
+ 
+ 	self.build = build
++	self.nodePowerMaxDepth = 5
+ 
+ 	self.calcs = require("Modules.Calcs")
+ 

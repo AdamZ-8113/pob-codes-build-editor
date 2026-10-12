@@ -20,6 +20,8 @@ test("desktop PoB overlay ledger owns six ordered PRs, two Power Report optimiza
   assert.equal(pin.adapters.preferredExportSite.sourceBlobHashes["src/Classes/ImportTab.lua"], pin.adapters.importTabHostCapabilities.resultBlobHashes["src/Classes/ImportTab.lua"]);
   assert.equal(pin.adapters.powerNodeDepthDefault.preparedSourceBlobHashes["src/Classes/TreeTab.lua"], pin.adapters.compactStatusText.preparedSourceBlobHashes["src/Classes/TreeTab.lua"]);
   assert.equal(pin.adapters.powerNodeDepthDefault.sourceBlobHashes["src/Classes/TreeTab.lua"], pin.adapters.compactStatusText.resultBlobHashes["src/Classes/TreeTab.lua"]);
+  assert.equal(pin.adapters.powerNodeDepthDefault.preparedSourceBlobHashes["src/Classes/CalcsTab.lua"], pin.compositePatch.resultBlobHashes["src/Classes/CalcsTab.lua"]);
+  assert.equal(pin.adapters.powerNodeDepthDefault.sourceBlobHashes["src/Classes/CalcsTab.lua"], pin.adapters.nodePowerDelegation.resultBlobHashes["src/Classes/CalcsTab.lua"]);
   assert.equal(pin.adapters.browserUiDefaults.sourceBlobHashes["src/Modules/Main.lua"], pin.adapters.calculationScheduling.resultBlobHashes["src/Modules/Main.lua"]);
 });
 

@@ -101,14 +101,17 @@ for (const entry of entries) {
         applyStatusTextPatch(
           new TextDecoder().decode(newContent), Buffer.from(statusTextPatch), pin.adapters.compactStatusText, `src/${relPath}`,
         ),
-        Buffer.from(powerNodeDepthPatch), pin.adapters.powerNodeDepthDefault,
+        Buffer.from(powerNodeDepthPatch), pin.adapters.powerNodeDepthDefault, `src/${relPath}`,
       ))
       : relPath === "Modules/ToastNotification.lua"
       ? new TextEncoder().encode(applyStatusTextPatch(
         new TextDecoder().decode(newContent), Buffer.from(statusTextPatch), pin.adapters.compactStatusText, `src/${relPath}`,
       ))
       : relPath === "Classes/CalcsTab.lua"
-      ? new TextEncoder().encode(applyNodePowerPatch(new TextDecoder().decode(newContent), Buffer.from(nodePowerPatch), pin.adapters.nodePowerDelegation))
+      ? new TextEncoder().encode(applyPowerNodeDepthPatch(
+        applyNodePowerPatch(new TextDecoder().decode(newContent), Buffer.from(nodePowerPatch), pin.adapters.nodePowerDelegation),
+        Buffer.from(powerNodeDepthPatch), pin.adapters.powerNodeDepthDefault, `src/${relPath}`,
+      ))
       : relPath === "Classes/ItemDBControl.lua"
       ? new TextEncoder().encode(applyUniqueSortPatch(new TextDecoder().decode(newContent), Buffer.from(uniqueSortPatch), pin.adapters.uniqueSortDelegation))
       : relPath === "Classes/ItemsTab.lua"
