@@ -36,3 +36,23 @@ Deno.test("manifest-owned root opens await the payload gate while metadata stays
   await handler.handle("close", [opened.value]);
 });
 
+Deno.test("only mutating local-user operations require the shared import lock", async () => {
+  await configure({ mounts: { "/": InMemory } });
+  await fs.promises.mkdir("/user/Path of Building/Builds/Cloud", { recursive: true });
+  await fs.promises.writeFile("/user/local.xml", "local");
+  const handler = new FilesystemRpcHandler();
+  handler.reset("/user/Path of Building/Builds/Cloud");
+  assertEquals(handler.requiresLocalWriteLock("open", ["/user/local.xml", "r"]), false);
+  assertEquals(handler.requiresLocalWriteLock("open", ["/user/local.xml", "w+"]), true);
+  assertEquals(handler.requiresLocalWriteLock("mkdir", ["/root/not-user"]), false);
+  assertEquals(handler.requiresLocalWriteLock("mkdir", ["/user/local"]), true);
+  assertEquals(handler.requiresLocalWriteLock("unlink", ["/user/Path of Building/Builds/Cloud/build.xml"]), false);
+  assertEquals(handler.requiresLocalWriteLock("rename", ["/user/a", "/user/b"]), true);
+  assertEquals(handler.requiresLocalWriteLock("rename", ["/user/a", "/root/b"]), true);
+  assertEquals(handler.requiresLocalWriteLock("rename", ["/user/Path of Building/Builds/Cloud/a", "/root/b"]), false);
+  const opened = await handler.handle("open", ["/user/local.xml", "r+"]);
+  assertEquals(handler.requiresLocalWriteLock("write", [opened.value, 0]), true);
+  assertEquals(handler.requiresLocalWriteLock("ftruncate", [opened.value, 0]), true);
+  await handler.handle("close", [opened.value]);
+});
+

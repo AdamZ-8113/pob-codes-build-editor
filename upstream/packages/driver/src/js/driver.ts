@@ -25,6 +25,13 @@ import type { ItemComparisonJob } from './item-comparison.ts';
 import { runtimeGcPause } from './gc-policy.ts';
 // @ts-types="./vite-worker.d.ts"
 import HelperWorker from './calc-helper.ts?worker';
+import type {
+  BuildFolderImportFile,
+  BuildFolderImportResult,
+  BuildFolderRecoveryResult,
+  BuildListState,
+  InternalBuildFolderImportResult,
+} from "./build-folder-import.ts";
 
 type AsyncBroker = {
   attachHelper(id: number, port: MessagePort, onFailure?: () => void): Promise<void>;
@@ -38,6 +45,9 @@ type AsyncBroker = {
   };
   markPayloadReady(): Promise<void>;
   startPayloadPrefetch(): Promise<void>;
+  importBuildFolder(files: BuildFolderImportFile[], buildPath: string, subPath: string): Promise<InternalBuildFolderImportResult>;
+  finalizeBuildFolderImport(token: string): Promise<void>;
+  recoverBuildFolderImports(buildPath: string): Promise<BuildFolderRecoveryResult>;
   start(
     port: MessagePort,
     eventPort: MessagePort,
@@ -72,6 +82,7 @@ export type DriverLifecycleCallbacks = {
   onDiagnostic?: (diagnostic: DriverDiagnostic) => void;
   onPayloadProgress?: (progress: PayloadProgress) => void;
   onDebugReport?: (action: DebugReportAction) => Promise<void>;
+  onBuildListState?: (state: BuildListState) => void;
 };
 
 export class Driver {
@@ -92,6 +103,9 @@ export class Driver {
   private driverWorker: AsyncDriverWorker | undefined;
   private overlayManager: ReactOverlayManager | undefined;
   private canvasManager: CanvasManager | undefined;
+  private nativeInputShield: HTMLDivElement | undefined;
+  private currentBuildListState: BuildListState | undefined;
+  private readonly recoveredBuildPaths = new Set<string>();
   private panModeEnabled = false;
   private orientationChangeHandler: (() => void) | undefined;
   private windowResizeHandler: (() => void) | undefined;
@@ -106,6 +120,7 @@ export class Driver {
   private pendingClipboardAction: Promise<void> = Promise.resolve();
   private readonly backgroundPromises: BackgroundPromiseOwner;
   private readonly mouseMoves: LatestValueDispatcher<MouseState>;
+  private readonly fullscreenChangeHandler = () => this.handleFullscreenChange();
 
   private diagnostic(
     phase: DriverDiagnostic["phase"],
@@ -210,6 +225,7 @@ export class Driver {
           Comlink.proxy((url) => {
             window.open(url, "_blank");
           }),
+          Comlink.proxy((state: BuildListState) => this.handleBuildListState(state)),
           Comlink.proxy(() => filesystemReady),
           Comlink.proxy((job: HelperJob | null, requestId?: number) => {
             if (!job) { this.helpers?.cancel(); return Promise.resolve(null); }
@@ -371,9 +387,20 @@ export class Driver {
       },
     });
 
-    const { canvas, container } = this.canvasManager.attachToDOM(root);
+    const { canvas, container, sceneOverlayViewport, sceneOverlayRoot } = this.canvasManager.attachToDOM(root);
     root.style.position = "relative";
     root.appendChild(container);
+    this.nativeInputShield = document.createElement("div");
+    this.nativeInputShield.dataset.driverNativeInputShield = "";
+    this.nativeInputShield.style.cssText = `
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    `;
+    sceneOverlayViewport.prepend(this.nativeInputShield);
+    sceneOverlayRoot.style.zIndex = "1";
+    root.appendChild(sceneOverlayViewport);
 
     const offscreenCanvas = canvas.transferControlToOffscreen();
     await this.driverWorker?.setCanvas(Comlink.transfer(offscreenCanvas, [offscreenCanvas]));
@@ -406,7 +433,7 @@ export class Driver {
     container.style.caretColor = "transparent";
     container.style.cursor = "default";
 
-    document.addEventListener("fullscreenchange", () => this.handleFullscreenChange());
+    document.addEventListener("fullscreenchange", this.fullscreenChangeHandler);
 
     this.setupOrientationAndResizeHandlers();
 
@@ -547,7 +574,7 @@ export class Driver {
     this.mouseMoves.discardPending();
     this.canvasManager?.detachFromDOM();
     this.overlayManager?.destroy();
-    document.removeEventListener("fullscreenchange", () => this.handleFullscreenChange());
+    document.removeEventListener("fullscreenchange", this.fullscreenChangeHandler);
     this.cleanupOrientationAndResizeHandlers();
     if (this.root) {
       for (const child of [...this.root.children]) {
@@ -557,7 +584,9 @@ export class Driver {
     this.eventHandler?.destroy();
     this.mouseHandler?.destroy();
     this.keyboardHandler?.destroy();
+    this.nativeInputShield = undefined;
     this.canvasManager = undefined;
+    this.root = undefined;
   }
 
   copy(text: string) {
@@ -599,6 +628,59 @@ export class Driver {
     const profile = await this.driverWorker?.getRuntimeProfile();
     if (profile && profile.wasmBytes <= 2 * 2 ** 30 && !this.payloadFailed) this.startHelpers();
     return this.driverWorker?.loadBuildFromCode(code);
+  }
+
+  getSceneOverlayRoot(): HTMLElement | undefined {
+    return this.canvasManager?.getSceneOverlayRoot() ?? undefined;
+  }
+
+  async importBuildFolder(
+    files: BuildFolderImportFile[],
+    expectedState: BuildListState,
+  ): Promise<BuildFolderImportResult> {
+    const current = this.currentBuildListState;
+    if (!current || current.mode !== "LIST" || current.buildPath !== expectedState.buildPath ||
+        current.subPath !== expectedState.subPath) {
+      const error = new Error("The build destination changed while the folder chooser was open.");
+      error.name = "BuildFolderImportDestinationChanged";
+      throw error;
+    }
+    this.setNativeInputEnabled(false);
+    let internal: InternalBuildFolderImportResult | undefined;
+    try {
+      const recovery = await this.broker?.recoverBuildFolderImports(current.buildPath);
+      if (recovery?.revealed) await this.driverWorker?.refreshBuildList();
+      internal = await this.broker?.importBuildFolder(files, current.buildPath, current.subPath);
+      if (!internal) throw new Error("Browser storage is not ready.");
+      await this.driverWorker?.refreshBuildList();
+      const { token: _token, ...result } = internal;
+      return result;
+    } finally {
+      if (internal) await this.broker?.finalizeBuildFolderImport(internal.token).catch(() => {});
+      this.setNativeInputEnabled(true);
+    }
+  }
+
+  private setNativeInputEnabled(enabled: boolean): void {
+    const container = this.canvasManager?.getCanvasContainer();
+    if (container) container.inert = !enabled;
+    if (this.nativeInputShield) this.nativeInputShield.style.pointerEvents = enabled ? "none" : "auto";
+    if (!enabled) this.domKeyboardState?.releasePhysicalKeys();
+  }
+
+  private handleBuildListState(state: BuildListState): void {
+    this.currentBuildListState = state;
+    this.lifecycleCallbacks.onBuildListState?.(state);
+    if (!state.buildPath || this.recoveredBuildPaths.has(state.buildPath)) return;
+    this.recoveredBuildPaths.add(state.buildPath);
+    void this.broker?.recoverBuildFolderImports(state.buildPath).then(async result => {
+      if (result.revealed) await this.driverWorker?.refreshBuildList();
+      if (result.quarantined) this.diagnostic("worker", "build-folder-recovery-quarantined", {
+        count: result.quarantined,
+      }, "error");
+    }).catch(error => {
+      this.diagnostic("worker", "build-folder-recovery-error", { errorName: errorName(error) }, "error");
+    });
   }
 
   async getBuildCode(): Promise<string> {

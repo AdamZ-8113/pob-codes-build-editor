@@ -110,6 +110,26 @@ static int OnOAuthLogout(lua_State *L) {
     return 0;
 }
 
+static int HostBuildListState(lua_State *L) {
+    const char *mode = luaL_checkstring(L, 1);
+    const char *sub_path = luaL_checkstring(L, 2);
+    const char *build_path = luaL_checkstring(L, 3);
+    double virtual_width = luaL_checknumber(L, 4);
+    double virtual_height = luaL_checknumber(L, 5);
+    double ui_scale = luaL_checknumber(L, 6);
+    EM_ASM({
+        Module.onBuildListState({
+            mode: UTF8ToString($0),
+            subPath: UTF8ToString($1),
+            buildPath: UTF8ToString($2),
+            virtualWidth: $3,
+            virtualHeight: $4,
+            uiScale: $5,
+        });
+    }, mode, sub_path, build_path, virtual_width, virtual_height, ui_scale);
+    return 0;
+}
+
 static int push_callback(lua_State *L, const char *name) {
     lua_getfield(L, LUA_REGISTRYINDEX, "uicallbacks");
     lua_getfield(L, -1, name);
@@ -332,6 +352,9 @@ int init() {
 
     lua_pushcclosure(L, OnOAuthLogout, 0);
     lua_setglobal(L, "OnOAuthLogout");
+
+    lua_pushcclosure(L, HostBuildListState, 0);
+    lua_setglobal(L, "HostBuildListState");
 
     // Callbacks
     lua_newtable(L);
@@ -606,6 +629,21 @@ int load_build_from_code(const char *code) {
         return 1;
     }
     return 0;
+}
+
+EMSCRIPTEN_KEEPALIVE
+int refresh_build_list(void) {
+    if (!GL) return -1;
+    lua_getglobal(GL, "refreshBuildList");
+    if (!lua_isfunction(GL, -1)) { lua_pop(GL, 1); return -1; }
+    if (lua_pcall(GL, 0, 1, 0) != LUA_OK) {
+        OnError(GL);
+        lua_pop(GL, 1);
+        return -1;
+    }
+    int refreshed = lua_toboolean(GL, -1);
+    lua_pop(GL, 1);
+    return refreshed;
 }
 
 static char *s_build_code = NULL;

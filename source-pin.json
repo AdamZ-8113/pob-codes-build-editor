@@ -155,6 +155,17 @@
         "src/Classes/TreeTab.lua": "c4eaac23aaf75f01d1f413c58913ae01aa3256b6",
         "src/Modules/ToastNotification.lua": "4a466741e7dc3e0457b11f05814796c860b2cb01"
       }
+    },
+    "buildListPendingFolders": {
+      "version": 1,
+      "patchFile": "patches/build-list-pending-folders.patch",
+      "patchSha256": "65bf9126353e9fa60a1961f250997b68f09acd8303f13cd5c7545f70757145dc",
+      "sourceBlobHashes": {
+        "src/Modules/BuildListHelpers.lua": "b6fb906d28cf9406577f1a53edcb3304f6c5cfe7"
+      },
+      "resultBlobHashes": {
+        "src/Modules/BuildListHelpers.lua": "6c43043282a4ad064a49528e485def0f8353a8f4"
+      }
     }
   },
   "overlays": [
@@ -463,6 +474,19 @@
       "applicationStage": "pack-time",
       "upstreamPr": null,
       "lastObserved": "2026-10-08"
+    },
+    {
+      "kind": "local-patch",
+      "id": "build-list-pending-folders",
+      "sourceBase": "a431f3a28823270acbdd6864c644f93678581f1e",
+      "patchFile": "patches/build-list-pending-folders.patch",
+      "patchSha256": "65bf9126353e9fa60a1961f250997b68f09acd8303f13cd5c7545f70757145dc",
+      "files": [
+        "src/Modules/BuildListHelpers.lua"
+      ],
+      "applicationStage": "pack-time",
+      "upstreamPr": null,
+      "lastObserved": "2026-10-12"
     }
   ],
   "compositePatch": {

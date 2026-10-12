@@ -8,6 +8,7 @@
     "test-unique-database.mjs"
   ],
   "localOnly": {
+    "test-build-folder-import.mjs": "Feature-specific real-OPFS transaction and injected-failure acceptance; run while changing the import commit or recovery protocol.",
     "test-report-progress.mjs": "Power-report toast lifecycle and item-sort percentages with real helpers and delayed replies; requires a built dev runtime and desktop helper admission.",
     "test-browser.mjs": "Linux shadow runs time out reloading after the native OPFS save despite passing the editing/save checks; manual until reload lifecycle synchronization is repaired.",
     "test-calculation-scheduling.mjs": "Four-fixture profiling took 4.8–10 minutes on Linux shadow runners, close to the harness deadline; manual until a bounded functional subset is separated.",

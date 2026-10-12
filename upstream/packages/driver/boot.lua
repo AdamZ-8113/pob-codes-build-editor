@@ -145,6 +145,7 @@ dofile("Launch.lua")
 -- pob-web related custom code
 --
 local mainObject = GetMainObject()
+local buildListHost
 flushCalculations = calculationScheduler.flush
 configureCalculationScheduling = calculationScheduler.configure
 getCalculationSchedulingProfile = calculationScheduler.profile
@@ -177,6 +178,11 @@ end
 local onInit = mainObject["OnInit"]
 mainObject["OnInit"] = function(self)
     onInit(self)
+    -- The desktop app opens an unnamed build by default. The browser build
+    -- starts at its local build selector instead; explicit build imports can
+    -- still transition to BUILD after startup through the normal bridge.
+    self.main:SetMode("LIST")
+    buildListHost = createBuildListHost(self.main, HostBuildListState, RequestFrames, GetScreenScale)
     self.main.controls.checkUpdate.shown = function()
         return false
     end
@@ -190,6 +196,7 @@ mainObject["OnInit"] = function(self)
         if not result[1] then calculationScheduler.cancel(); error(result[2], 0) end
         calculationScheduler.afterFrame()
         updateUniqueComparisonVisibility()
+        buildListHost:observe()
         return table.unpack(result, 2, result.n)
     end
     local initBuild = buildMode.Init
@@ -210,6 +217,10 @@ mainObject["OnInit"] = function(self)
         installUniqueSortWorkers(build)
         installNodePowerWorkers(build)
     end
+end
+
+function refreshBuildList()
+    return buildListHost and buildListHost:refresh() or false
 end
 
 local function runCallback(name, ...)

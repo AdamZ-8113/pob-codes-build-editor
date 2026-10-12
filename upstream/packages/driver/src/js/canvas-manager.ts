@@ -64,6 +64,8 @@ export interface CanvasState {
 export class CanvasManager {
   private canvas: HTMLCanvasElement | null = null;
   private canvasContainer: HTMLDivElement | null = null;
+  private sceneOverlayViewport: HTMLDivElement | null = null;
+  private sceneOverlayRoot: HTMLDivElement | null = null;
   private root: HTMLElement | null = null;
 
   private currentStyleWidth: number;
@@ -139,11 +141,46 @@ export class CanvasManager {
     return container;
   }
 
-  attachToDOM(root: HTMLElement): { canvas: HTMLCanvasElement; container: HTMLDivElement } {
+  createSceneOverlay(): { viewport: HTMLDivElement; root: HTMLDivElement } {
+    const viewport = document.createElement("div");
+    viewport.dataset.driverSceneOverlayViewport = "";
+    viewport.style.cssText = `
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      overflow: hidden;
+      pointer-events: none;
+    `;
+    const root = document.createElement("div");
+    root.dataset.driverSceneOverlay = "";
+    root.style.cssText = `
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: ${this.currentStyleWidth}px;
+      height: ${this.currentStyleHeight}px;
+      transform-origin: 0 0;
+      pointer-events: none;
+    `;
+    viewport.append(root);
+    this.sceneOverlayViewport = viewport;
+    this.sceneOverlayRoot = root;
+    return { viewport, root };
+  }
+
+  attachToDOM(root: HTMLElement): {
+    canvas: HTMLCanvasElement;
+    container: HTMLDivElement;
+    sceneOverlayViewport: HTMLDivElement;
+    sceneOverlayRoot: HTMLDivElement;
+  } {
     this.root = root;
 
     const canvas = this.createCanvas();
     const container = this.createCanvasContainer();
+    const { viewport: sceneOverlayViewport, root: sceneOverlayRoot } = this.createSceneOverlay();
 
     const rootRect = root.getBoundingClientRect();
     this.updateCanvasSize(rootRect.width, rootRect.height);
@@ -153,7 +190,7 @@ export class CanvasManager {
     this.setupResizeObserver();
     window.addEventListener("resize", this.handleWindowResize);
 
-    return { canvas, container };
+    return { canvas, container, sceneOverlayViewport, sceneOverlayRoot };
   }
 
   detachFromDOM() {
@@ -162,6 +199,8 @@ export class CanvasManager {
     this.resizeObserver = null;
     this.canvas = null;
     this.canvasContainer = null;
+    this.sceneOverlayViewport = null;
+    this.sceneOverlayRoot = null;
     this.root = null;
     this.lastNotifiedRenderingSize = undefined;
   }
@@ -200,10 +239,18 @@ export class CanvasManager {
     if (isPortrait) {
       this.canvasContainer.style.bottom = `${toolbarSize}px`;
       this.canvasContainer.style.right = "0";
+      if (this.sceneOverlayViewport) {
+        this.sceneOverlayViewport.style.bottom = `${toolbarSize}px`;
+        this.sceneOverlayViewport.style.right = "0";
+      }
       this._containerHeight = Math.max(0, this._containerHeight - toolbarSize);
     } else {
       this.canvasContainer.style.right = `${toolbarSize}px`;
       this.canvasContainer.style.bottom = "0";
+      if (this.sceneOverlayViewport) {
+        this.sceneOverlayViewport.style.right = `${toolbarSize}px`;
+        this.sceneOverlayViewport.style.bottom = "0";
+      }
       this._containerWidth = Math.max(0, this._containerWidth - toolbarSize);
     }
 
@@ -256,6 +303,10 @@ export class CanvasManager {
 
   getCanvasContainer(): HTMLDivElement | null {
     return this.canvasContainer;
+  }
+
+  getSceneOverlayRoot(): HTMLDivElement | null {
+    return this.sceneOverlayRoot;
   }
 
   get transform(): ViewportTransform {
@@ -405,10 +456,14 @@ export class CanvasManager {
   }
 
   private updateCanvasStyleSize() {
-    if (!this.canvas) return;
-
-    this.canvas.style.width = `${this.currentStyleWidth}px`;
-    this.canvas.style.height = `${this.currentStyleHeight}px`;
+    if (this.canvas) {
+      this.canvas.style.width = `${this.currentStyleWidth}px`;
+      this.canvas.style.height = `${this.currentStyleHeight}px`;
+    }
+    if (this.sceneOverlayRoot) {
+      this.sceneOverlayRoot.style.width = `${this.currentStyleWidth}px`;
+      this.sceneOverlayRoot.style.height = `${this.currentStyleHeight}px`;
+    }
   }
 
   private notifyStateChange(containerWidth: number, containerHeight: number) {
@@ -483,7 +538,8 @@ export class CanvasManager {
   }
 
   private _updateCanvasTransform() {
-    if (!this.canvas) return;
-    this.canvas.style.transform = this.generateTransformCSS();
+    const transform = this.generateTransformCSS();
+    if (this.canvas) this.canvas.style.transform = transform;
+    if (this.sceneOverlayRoot) this.sceneOverlayRoot.style.transform = transform;
   }
 }

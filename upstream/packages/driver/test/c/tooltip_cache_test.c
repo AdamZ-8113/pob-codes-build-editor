@@ -23,6 +23,8 @@ extern const char *gc_policy_lua;
 extern const char *gc_policy_test_lua;
 extern const char *item_comparison_lua;
 extern const char *item_comparison_test_lua;
+extern const char *build_list_host_lua;
+extern const char *build_list_host_test_lua;
 
 int main(void) {
     lua_State *L = luaL_newstate();
@@ -39,6 +41,9 @@ int main(void) {
             if (luaL_dostring(L, calculation_scheduler_lua) != LUA_OK) goto failure;
             lua_setglobal(L, "calculationScheduler");
             if (luaL_dostring(L, calculation_scheduler_test_lua) != LUA_OK) goto failure;
+            if (luaL_dostring(L, build_list_host_lua) != LUA_OK) goto failure;
+            lua_setglobal(L, "createBuildListHost");
+            if (luaL_dostring(L, build_list_host_test_lua) != LUA_OK) goto failure;
             if (luaL_dostring(L, timeless_seeds_test_lua) != LUA_OK) goto failure;
             if (luaL_dostring(L, timeless_seeds_lua) != LUA_OK) goto failure;
             if (lua_pcall(L, 1, 0, 0) != LUA_OK) goto failure;

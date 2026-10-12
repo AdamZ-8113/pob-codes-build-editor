@@ -16,6 +16,7 @@ import { InputFrameBoundary } from "./input-frame.ts";
 import { FrameDemand } from "./frame-demand.ts";
 import type { HelperJob } from './helper-pool.ts';
 import type { ItemComparisonJob, TooltipOperation } from './item-comparison.ts';
+import type { BuildListState } from "./build-folder-import.ts";
 
 const setSentryWasmCodeFile = registerSentryWasm(self);
 const debugWasmUrl = new URL("../../dist/debug/driver.wasm", import.meta.url).href;
@@ -53,6 +54,7 @@ export type HostCallbacks = {
 type MainCallbacks = {
   copy: (text: string) => void;
   openUrl: (url: string) => void;
+  onBuildListState: (state: BuildListState) => void;
 };
 
 type Imports = {
@@ -63,6 +65,7 @@ type Imports = {
   applyBuildConfiguration: (request: string) => string;
   flushCalculations: () => number;
   configureCalculationScheduling: (enabled: number) => number;
+  refreshBuildList: () => number;
   onFrame: () => number;
   sentryTestCrash: () => void;
   onKeyUp: (name: string, doubleClick: number) => void;
@@ -157,6 +160,7 @@ export class DriverWorker {
     onDiagnostic: (diagnostic: DriverDiagnostic) => void,
     copy: MainCallbacks["copy"],
     openUrl: MainCallbacks["openUrl"],
+    onBuildListState: MainCallbacks["onBuildListState"],
     filesystemReady: () => Promise<void>,
     sortRequest: (job: HelperJob | null, requestId?: number) => Promise<unknown[] | null>,
     comparisonRequest: (job: ItemComparisonJob | null) => Promise<TooltipOperation[] | null>,
@@ -180,6 +184,7 @@ export class DriverWorker {
     this.mainCallbacks = {
       copy,
       openUrl,
+      onBuildListState,
     };
 
     const wasmUrl = build === "release" ? releaseWasmUrl : debugWasmUrl;
@@ -431,6 +436,13 @@ export class DriverWorker {
     this.invalidate();
   }
 
+  async refreshBuildList(): Promise<boolean> {
+    const status = this.imports?.refreshBuildList();
+    if (status === undefined || status < 0) throw new Error("refreshBuildList failed");
+    if (status > 0) this.invalidate();
+    return status > 0;
+  }
+
   async getBuildCode(): Promise<string> {
     this.flushInput();
     const code = this.imports?.getBuildCode();
@@ -524,6 +536,7 @@ export class DriverWorker {
       applyBuildConfiguration: module.cwrap("apply_build_configuration", "string", ["string"]),
       flushCalculations: module.cwrap("flush_calculations", "number", []),
       configureCalculationScheduling: module.cwrap("configure_calculation_scheduling", "number", ["number"]),
+      refreshBuildList: module.cwrap("refresh_build_list", "number", []),
       onFrame: module.cwrap("on_frame", "number", []),
       sentryTestCrash: module.cwrap("sentry_test_crash", null, []),
       onKeyUp: module.cwrap("on_key_up", "number", ["string", "number"]),
@@ -584,6 +597,10 @@ export class DriverWorker {
         this.textMetrics?.measureCursorIndex(size, font, text, cursorX, cursorY) ?? 0,
       copy: (text: string) => this.mainCallbacks?.copy(text),
       openUrl: (url: string) => this.mainCallbacks?.openUrl(url),
+      onBuildListState: (state: Omit<BuildListState, "pixelRatio">) => this.mainCallbacks?.onBuildListState({
+        ...state,
+        pixelRatio: this.screenSize.pixelRatio,
+      }),
     };
   }
 

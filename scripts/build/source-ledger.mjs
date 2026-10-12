@@ -60,7 +60,7 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
     throw new Error("Power-report environment-reuse source overlay identity or composition changed");
   }
   const local = pin.overlays.filter((entry) => entry.kind === "local-patch" && entry.applicationStage !== "source-composite");
-  if (JSON.stringify(local.map((overlay) => overlay.id)) !== JSON.stringify(["gem-dropdown-hover", "limited-unique-item-comparisons", "importtab-host-capabilities", "preferred-export-site", "calculation-only-jewel-specs", "node-power-delegation", "compact-status-text"]) ||
+  if (JSON.stringify(local.map((overlay) => overlay.id)) !== JSON.stringify(["gem-dropdown-hover", "limited-unique-item-comparisons", "importtab-host-capabilities", "preferred-export-site", "calculation-only-jewel-specs", "node-power-delegation", "compact-status-text", "build-list-pending-folders"]) ||
       local.some((overlay) => overlay.applicationStage !== "pack-time")) {
     throw new Error("Desktop PoB local overlay ownership changed");
   }
@@ -157,6 +157,17 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
       compactStatus.sourceBlobHashes[compactPaths[1]] !== pin.compositePatch.resultBlobHashes[compactPaths[1]] ||
       Object.values(compactStatus.resultBlobHashes).some((hash) => !/^[a-f0-9]{40}$/.test(hash))) {
     throw new Error("Compact status-text overlay identities differ");
+  }
+  const pendingFolders = pin.adapters.buildListPendingFolders;
+  const pendingOverlay = local[7];
+  const buildListHelpersPath = "src/Modules/BuildListHelpers.lua";
+  if (pendingFolders?.version !== 1 || pendingFolders.patchFile !== pendingOverlay.patchFile ||
+      pendingFolders.patchSha256 !== pendingOverlay.patchSha256 ||
+      pendingFolders.sourceBlobHashes?.[buildListHelpersPath] !== "b6fb906d28cf9406577f1a53edcb3304f6c5cfe7" ||
+      !/^[a-f0-9]{40}$/.test(pendingFolders.resultBlobHashes?.[buildListHelpersPath] ?? "") ||
+      Object.keys(pendingFolders.sourceBlobHashes).length !== 1 ||
+      Object.keys(pendingFolders.resultBlobHashes).length !== 1) {
+    throw new Error("Build-list pending-folder overlay identities differ");
   }
   const compositeBytes = await readFile(join(appDir, pin.compositePatch.patchFile));
   if (sha256(compositeBytes) !== pin.compositePatch.patchSha256) throw new Error("PoB PR composite patch SHA-256 mismatch");

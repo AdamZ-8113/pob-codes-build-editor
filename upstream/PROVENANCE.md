@@ -491,6 +491,17 @@ progress toast to PoB's ordinary 16-unit control text. Other toast headings and
 control typography are unchanged. Exact source/result identities keep this
 browser-only presentation adjustment separate from the prepared checkout.
 
+The October 12 `build-list-pending-folders` adapter is retained in
+`../patches/build-list-pending-folders.patch` and checked by
+`../scripts/patches/build-list-pending-patch.mjs`. It changes only
+`Modules/BuildListHelpers.lua`: a folder containing the exact
+`.pob-codes-import.pending` sentinel is neither displayed nor recursively
+scanned. The broker owns that marker, its random ownership token, and a private
+recovery manifest; successful sequential writes become visible by removing the
+marker. This is a browser failure-containment seam, not a change to build XML,
+sorting, filtering, or normal desktop folders. Source/result blob identities
+and the pack-time overlay ledger guard drift.
+
 Delegation uses the authoritative `data.powerStatList` entries for every node
 metric, including Full DPS, Offence/Defence, defensive and minion metrics.
 Standard, All and nonnegative integer custom depths are eligible, with at least

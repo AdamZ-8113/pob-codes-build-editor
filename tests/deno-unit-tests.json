@@ -1,6 +1,7 @@
 {
   "driver": [
     "bc7.test.ts",
+    "build-folder-import.test.ts",
     "canvas-manager.test.ts",
     "clipboard.test.ts",
     "command-reuse.test.ts",

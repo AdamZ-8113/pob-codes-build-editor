@@ -18,6 +18,14 @@ import { TruncatingWebAccess } from "./web-access.ts";
 import { HelperAccess } from './helper-access.ts';
 // @ts-types="./vite-worker.d.ts"
 import SubWorkerObject from "./sub.ts?worker";
+import {
+  BuildFolderImporter,
+  BuildFolderImportError,
+  type BuildFolderImportFile,
+  type BuildFolderRecoveryResult,
+  type InternalBuildFolderImportResult,
+  LocalUserStorageLock,
+} from "./build-folder-import.ts";
 
 type BrokerCallbacks = {
   fetch: (url: string, headers: Record<string, string>, body?: string) => Promise<unknown>;
@@ -26,6 +34,9 @@ type BrokerCallbacks = {
 };
 
 class AsyncBroker {
+  private readonly localUserStorageLock = new LocalUserStorageLock();
+  private buildFolderImporter: BuildFolderImporter | undefined;
+  private userDirectoryHandle: FileSystemDirectoryHandle | undefined;
   private helperPorts = new Map<number, { port: MessagePort; access: HelperAccess; purpose: 'demand' | 'comparison' }>();
   setHelperPurpose(id: number, purpose: 'demand' | 'comparison') {
     const helper = this.helperPorts.get(id);
@@ -105,6 +116,7 @@ class AsyncBroker {
     let userFileSystem: Awaited<ReturnType<typeof zenfs.resolveMountConfig<typeof TruncatingWebAccess>>>;
     try {
       const userDirectory = await navigator.storage.getDirectory();
+      this.userDirectoryHandle = userDirectory;
       userFileSystem = await zenfs.resolveMountConfig({
         backend: TruncatingWebAccess,
         handle: userDirectory,
@@ -118,6 +130,26 @@ class AsyncBroker {
       mounts: {
         "/root": rootFileSystem,
         "/user": userFileSystem,
+      },
+    });
+    this.buildFolderImporter = new BuildFolderImporter({
+      fs: {
+        exists: path => zenfs.promises.exists(path),
+        mkdir: async path => { await zenfs.promises.mkdir(path); },
+        readdir: path => zenfs.promises.readdir(path),
+        readFile: async path => new Uint8Array(await zenfs.promises.readFile(path)),
+        writeFile: async (path, data, exclusive = false) => {
+          await zenfs.promises.writeFile(path, data, { flag: exclusive ? "wx" : "w" });
+        },
+        unlink: async path => { await zenfs.promises.unlink(path); },
+        rmdir: async path => { await zenfs.promises.rmdir(path); },
+      },
+      withLock: operation => this.localUserStorageLock.run(operation),
+      liveDirectoryExists: path => this.liveDirectoryExists(path),
+      estimateStorage: () => navigator.storage.estimate(),
+      randomToken: () => {
+        const bytes = crypto.getRandomValues(new Uint8Array(16));
+        return [...bytes].map(value => value.toString(16).padStart(2, "0")).join("");
       },
     });
     const settingsPath = `/user/${config.userDirectory}/Settings.xml`;
@@ -142,10 +174,55 @@ class AsyncBroker {
 
   private async handle(operation: string, args: unknown[], data?: Uint8Array): Promise<RpcResult> {
     try {
-      if (this.filesystem.handles(operation)) return await this.filesystem.handle(operation, args, data);
+      if (this.filesystem.handles(operation)) {
+        const invoke = () => this.filesystem.handle(operation, args, data);
+        return this.filesystem.requiresLocalWriteLock(operation, args)
+          ? await this.localUserStorageLock.run(invoke)
+          : await invoke();
+      }
       return await this.handleOperation(operation, args, data);
     } catch (error) {
       if (error instanceof PayloadLoadError) return await this.failPayload(error);
+      throw error;
+    }
+  }
+
+  async importBuildFolder(
+    files: BuildFolderImportFile[],
+    buildPath: string,
+    subPath: string,
+  ): Promise<InternalBuildFolderImportResult> {
+    if (!this.localUserStorageLock.available) {
+      throw new BuildFolderImportError("unsupported", "Folder import is unavailable in this browser.");
+    }
+    if (!this.buildFolderImporter) throw new BuildFolderImportError("storage", "Browser storage is not ready.");
+    return await this.buildFolderImporter.import(files, buildPath, subPath, this.cloudDirectory);
+  }
+
+  async finalizeBuildFolderImport(token: string): Promise<void> {
+    await this.buildFolderImporter?.finalize(token);
+  }
+
+  async recoverBuildFolderImports(buildPath: string): Promise<BuildFolderRecoveryResult> {
+    if (!this.buildFolderImporter || !this.localUserStorageLock.available) {
+      return { revealed: 0, cleaned: 0, quarantined: 0 };
+    }
+    return await this.buildFolderImporter.recover(buildPath, this.cloudDirectory);
+  }
+
+  private async liveDirectoryExists(path: string): Promise<boolean> {
+    const root = this.userDirectoryHandle;
+    if (!root || (path !== "/user" && !path.startsWith("/user/"))) return false;
+    let handle = root;
+    try {
+      for (const segment of path.split("/").filter(Boolean).slice(1)) {
+        handle = await handle.getDirectoryHandle(segment);
+      }
+      return true;
+    } catch (error) {
+      if (error instanceof DOMException && (error.name === "NotFoundError" || error.name === "TypeMismatchError")) {
+        return false;
+      }
       throw error;
     }
   }

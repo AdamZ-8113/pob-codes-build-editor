@@ -173,10 +173,21 @@ timings to the correct repetition. The test retains its 240-second finite budget
 startup and each functional phase have their own smaller deadline.
 
 The host keeps `PoB Codes Import2 Preview v1` as its configured `userDirectory`
-for settings/cloud lookup. Native PoB currently writes browser saves under the
-OPFS directory `Path of Building/Builds`; the candidate test preserves and checks
-that existing layout. Any future directory correction requires an explicit
-migration of users' saved files.
+for settings/cloud lookup; that value is not the build root. Native PoB supplies
+its authoritative `main.buildPath` through the build-list state bridge. Only a
+normalized `/app/user/...` path is translated to the broker's local `/user/...`
+mount; cloud and out-of-mount paths are rejected.
+
+Folder snapshot import is broker-owned and serialized with native `/user`
+mutations through one origin-scoped Web Lock. It writes files sequentially to
+an exclusively reserved final directory, hides the directory from the checked
+`BuildListHelpers` scanner with `.pob-codes-import.pending`, and records a
+tokened private recovery manifest. Removing the sentinel is the visibility
+commit. Recovery deletes only manifest-owned files and empty directories;
+unknown entries are preserved and keep the folder quarantined. The Lua/C/worker
+bridge exports LIST mode, subpath, native build path, virtual dimensions and UI
+scale, and exposes PoB's existing `BuildList()` refresh. Generated boot/Wasm and
+packed payload outputs must still be regenerated from these authored sources.
 
 All automated browser runs are headless. Ordinary local tests must not be aimed
 at production. `npm run test:e2e:production-smoke` is the explicit live-site

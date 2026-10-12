@@ -57,6 +57,25 @@ export class FilesystemRpcHandler {
     return FILESYSTEM_OPERATIONS.has(operation);
   }
 
+  requiresLocalWriteLock(operation: string, args: unknown[]): boolean {
+    const writePathOperations = new Set(["mkdir", "unlink", "rmdir", "truncate"]);
+    if (operation === "open") {
+      return typeof args[1] === "string" && /[wa+]/.test(args[1]) &&
+        isLocalUserStorageOperation(operation, args, this.localUserFds, this.cloudDirectory);
+    }
+    if (operation === "rename") {
+      const isLocalPath = (value: unknown) => typeof value === "string" &&
+        (value === "/user" || value.startsWith("/user/")) &&
+        (!this.cloudDirectory || (value !== this.cloudDirectory && !value.startsWith(`${this.cloudDirectory}/`)));
+      return isLocalPath(args[0]) || isLocalPath(args[1]);
+    }
+    if (writePathOperations.has(operation)) {
+      return isLocalUserStorageOperation(operation, args, this.localUserFds, this.cloudDirectory);
+    }
+    return (operation === "write" || operation === "ftruncate") &&
+      isLocalUserStorageOperation(operation, args, this.localUserFds, this.cloudDirectory);
+  }
+
   async handle(operation: string, args: unknown[], data?: Uint8Array, reason: PayloadProgressReason = 'demand'): Promise<RpcResult> {
     this.operations[operation] = (this.operations[operation] ?? 0) + 1;
     try {

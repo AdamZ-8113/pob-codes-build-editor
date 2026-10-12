@@ -1,0 +1,30 @@
+diff --git a/src/Modules/BuildListHelpers.lua b/src/Modules/BuildListHelpers.lua
+index 0000000..0000000 100644
+--- a/src/Modules/BuildListHelpers.lua
++++ b/src/Modules/BuildListHelpers.lua
+@@ -78,14 +78,20 @@ local function ScanFolder(subPath)
+ 		for _, folder in ipairs(subFolders) do
+ 			local folderName = folder.name
+ 			local nextSubPath = currentSubPath .. folderName .. "/"
+-			t_insert(list, {
+-				folderName = folderName,
+-				subPath = currentSubPath,
+-				fullFileName = main.buildPath..currentSubPath..folderName,
+-				modified = folder.modified
+-			})
+-			scanDir(nextSubPath)
++			local pending = io.open(main.buildPath..nextSubPath..".pob-codes-import.pending", "r")
++			if pending then
++				pending:close()
++			else
++				t_insert(list, {
++					folderName = folderName,
++					subPath = currentSubPath,
++					fullFileName = main.buildPath..currentSubPath..folderName,
++					modified = folder.modified
++				})
++				scanDir(nextSubPath)
++			end
+ 		end
+ 	end
+

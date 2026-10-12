@@ -121,6 +121,14 @@ Auth0-backed bridge for Path of Exile OAuth, but that application and its login
 session are not part of this isolated static editor. Optional telemetry remains
 disabled unless explicitly configured.
 
+On the native build-selection screen, **Import Folder** copies lower-case
+`.xml` builds and their nested folder layout into PoB's currently configured
+browser-local build path. The browser may describe folder selection as an
+upload, but the selected files are not sent by this feature. The copy remains
+local to this browser profile and device; it is not linked to the original
+folder, synchronized across devices, or stored under the Driver settings
+`userDirectory`.
+
 ## License and attribution
 
 The project is distributed under the [MIT License](LICENSE). It includes work

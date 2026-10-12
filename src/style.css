@@ -1,3 +1,4 @@
+@font-face { font-family: "PoB Liberation Sans"; src: url("/LiberationSans-Regular.woff") format("woff"); font-style: normal; font-weight: 400; font-display: swap; }
 :root { --control-h: 30px; --control-h-compact: 29px; --text-accent: #af8040; --text-dim: #8f8f8f; --text-main: #c8c8c8; --bg-panel: #111111; --border-panel: #2a2a2a; --build-page-side-padding: clamp(16px, 4vw, 100px); --header-side-min: 384px; }
 html, body { margin: 0; height: 100%; overflow: hidden; background: #161616; color: #c8c8c8; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", "Helvetica Neue", Arial, sans-serif; }
 body { display: flex; flex-direction: column; }
@@ -58,6 +59,20 @@ button:focus-visible, a:focus-visible, textarea:focus-visible { outline: 2px sol
 @keyframes payload-progress-pulse { 50% { opacity: .8; } }
 @media (prefers-reduced-motion: reduce) { .payload-progress-square[data-active] { animation: none; } }
 #window { flex: 1; min-height: 0; width: 100%; overflow: hidden; }
+.pob-build-folder-layer { position: absolute; inset: 0 auto auto 0; transform-origin: 0 0; pointer-events: none; }
+.pob-build-folder-import { position: absolute; box-sizing: border-box; padding: 8px; overflow: hidden; border: 1px solid #777; border-radius: 0; background: #000; color: #eee; font: 400 14px/16px "PoB Liberation Sans", "Liberation Sans", Arial, sans-serif; pointer-events: auto; }
+.pob-build-folder-import[hidden] { display: none; }
+.pob-build-folder-import p { margin: 0 0 10px; color: #b8b8b8; }
+.pob-build-folder-import .pob-build-folder-source-hint { color: #999; }
+.pob-build-folder-import .pob-build-folder-source-hint code { display: block; margin-top: 5px; padding: 4px 6px; border: 1px solid #555; background: #111; color: #eee; font: 400 12px/15px Consolas, "Liberation Mono", monospace; overflow-wrap: anywhere; user-select: text; cursor: text; }
+.pob-build-folder-import .pob-build-folder-destination { margin-top: 10px; color: #eee; overflow-wrap: anywhere; }
+.pob-build-folder-import .pob-build-folder-status { min-height: 36px; margin-bottom: 0; color: #aaa; overflow-wrap: anywhere; }
+.pob-build-folder-import .pob-build-folder-button { display: block; height: 20px; margin: 10px 0 0; padding: 0 8px; border: 1px solid #777; border-radius: 0; background: #000; box-shadow: none; color: #fff; font: inherit; line-height: 18px; }
+.pob-build-folder-import .pob-build-folder-button:hover:not(:disabled) { border-color: #aaa; background: #202020; }
+.pob-build-folder-import .pob-build-folder-button:active:not(:disabled) { background: #555; }
+.pob-build-folder-import .pob-build-folder-button:focus-visible { outline: 1px solid #fff; outline-offset: 1px; box-shadow: none; }
+.pob-build-folder-import .pob-build-folder-button:disabled { border-color: #555; background: #111; color: #777; opacity: 1; }
+.pob-build-folder-input { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); border: 0; white-space: nowrap; }
 dialog { color: #eee; background: #202020; border: 1px solid #777; border-radius: 5px; width: min(680px, 85vw); }
 dialog::backdrop { background: #0009; }
 dialog h1 { font-size: 20px; }

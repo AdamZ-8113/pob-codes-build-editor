@@ -20,6 +20,7 @@ import { applyStatusTextPatch } from "../../../../scripts/patches/status-text-pa
 import { applyUniqueSortPatch } from "../../../../scripts/patches/unique-sort-patch.mjs";
 import { applyImportTabHostPatch } from "../../../../scripts/patches/importtab-host-patch.mjs";
 import { applyPreferredExportSitePatch } from "../../../../scripts/patches/preferred-export-site-patch.mjs";
+import { applyBuildListPendingPatch } from "../../../../scripts/patches/build-list-pending-patch.mjs";
 import { sha256, stalePackageHashes, validatePayloadManifest } from "../../../payload-manifest.ts";
 
 const [source, destination] = Deno.args;
@@ -37,6 +38,7 @@ const statusTextPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.
 const uniqueSortPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.uniqueSortDelegation.patchFile}`, import.meta.url));
 const importTabHostPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.importTabHostCapabilities.patchFile}`, import.meta.url));
 const preferredExportSitePatch = await Deno.readFile(new URL(`../../../../${pin.adapters.preferredExportSite.patchFile}`, import.meta.url));
+const buildListPendingPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.buildListPendingFolders.patchFile}`, import.meta.url));
 await ensureDir(payloadDir);
 await zstd.init();
 
@@ -109,6 +111,12 @@ for (const entry of entries) {
         applyImportTabHostPatch(new TextDecoder().decode(newContent), Buffer.from(importTabHostPatch), pin.adapters.importTabHostCapabilities),
         Buffer.from(preferredExportSitePatch),
         pin.adapters.preferredExportSite,
+      ))
+      : relPath === "Modules/BuildListHelpers.lua"
+      ? new TextEncoder().encode(applyBuildListPendingPatch(
+        new TextDecoder().decode(newContent),
+        Buffer.from(buildListPendingPatch),
+        pin.adapters.buildListPendingFolders,
       ))
       : relPath === "Modules/DataLegionLookUpTableHelper.lua"
       ? new TextEncoder().encode(sparseTimelessSeeds(new TextDecoder().decode(newContent), timelessSeedHelper))

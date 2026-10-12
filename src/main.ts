@@ -13,6 +13,9 @@ import { createDebugReportV1, sanitizeDiagnosticV1 } from "./debug-report.ts";
 import type { SanitizedDiagnosticV1 } from "./debug-report.ts";
 import { runtimeStatusNotice } from "./runtime-status.ts";
 import type { RuntimeStatusNotice } from "./runtime-status.ts";
+import { createBuildFolderImportSidecar } from "./build-folder-import.ts";
+import type { BuildFolderImportSidecar } from "./build-folder-import.ts";
+import type { BuildListState } from "../upstream/packages/driver/src/js/build-folder-import.ts";
 declare const __IMPORT2_PREVIEW__: boolean;
 declare const __IMPORT2_PAYLOAD_PREFIX__: string;
 declare const __DESKTOP_DEV_LAN_HOSTS__: string[];
@@ -43,6 +46,8 @@ const payloadProgress = createPayloadProgressOverlay();
 let driver: Driver | undefined;
 let configuration: ReturnType<typeof createConfigurationBridgeV1> | undefined;
 let buildTransfer: ReturnType<typeof createBuildTransferV1> | undefined;
+let buildFolderImport: BuildFolderImportSidecar | undefined;
+let buildListState: BuildListState | undefined;
 let ready = false;
 let frames = 0;
 let lastStats: unknown;
@@ -221,6 +226,10 @@ async function main() {
     },
     onPayloadProgress: (progress) => payloadProgress.update(progress),
     onDebugReport: handleDebugReport,
+    onBuildListState: (state) => {
+      buildListState = state;
+      buildFolderImport?.update(state);
+    },
   });
   configuration = createConfigurationBridgeV1({
     getBuildCode: () => driver!.getBuildCode(), loadBuildFromCode: code => driver!.loadBuildFromCode(code),
@@ -258,6 +267,8 @@ async function main() {
   if (options.get("synchronousCalculations") === "1") await driver.configureCalculationScheduling(false);
   if (options.get("renderReuse") === "0") await driver.configureRenderReuse(false);
   await driver.attachToDOM(element("window"), element("editor-accessibility"));
+  buildFolderImport = createBuildFolderImportSidecar(driver);
+  if (buildListState) buildFolderImport.update(buildListState);
   const deadline = performance.now() + 90_000;
   while (!hasDrawn) {
     if (errors.length) throw new Error(errors[errors.length - 1]);
@@ -296,6 +307,7 @@ Object.defineProperty(window, "__DESKTOP_POB__", { value: {
   configureCalculationScheduling: (enabled: boolean) => driver!.configureCalculationScheduling(enabled),
   configureRenderReuse: (enabled: boolean) => driver!.configureRenderReuse(enabled),
   get frameSamples() { return [...frameSamples]; },
+  get buildListState() { return buildListState ? { ...buildListState } : undefined; },
   clearFrameSamples: () => { frameSamples.length = 0; },
   loadBuildFromCode,
   applyConfiguration: (request: ConfigurationRequestV1) => configuration!.apply(request),
@@ -304,7 +316,7 @@ Object.defineProperty(window, "__DESKTOP_POB__", { value: {
   shareBuild: () => buildTransfer!.share(), retryShare: () => buildTransfer!.retry(),
   getBuildCode: exportBuildCode, flushInput: () => driver!.flushInput(),
 } });
-window.addEventListener("pagehide", () => { driver?.detachFromDOM(); driver?.destory(true); });
+window.addEventListener("pagehide", () => { buildFolderImport?.destroy(); driver?.detachFromDOM(); driver?.destory(true); });
 void main().catch(report);
 
 function debugBrowserIdentity(userAgent: string, platform: string) {
