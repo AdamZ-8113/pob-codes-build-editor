@@ -2,7 +2,7 @@
 
 PoB Codes Build Editor runs Path of Building's original Lua interface and
 calculation engine locally in a browser worker. The public build is available at
-[pob.codes/import2](https://pob.codes/import2/).
+[pob.codes/browserpob](https://pob.codes/browserpob/).
 
 This project is a fork of [atty303/pob-web](https://github.com/atty303/pob-web),
 not a clean-room implementation. It combines that browser runtime with a pinned

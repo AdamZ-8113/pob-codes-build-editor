@@ -1,3 +1,5 @@
+import { publicConfig } from "../../scripts/lib/public-config.mjs";
+const basePath = publicConfig().basePath;
 import { expect, test } from "@playwright/test";
 import { readFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
@@ -76,7 +78,7 @@ test("pagehide releases runtime workers when graceful shutdown cannot reply", as
       terminate() { state.terminated++; super.terminate(); }
     };
   });
-  await page.goto("/import2/?helpers=0");
+  await page.goto(`${basePath}/?helpers=0`);
   await ready(page);
   const state = await page.evaluate(() => {
     window.__SHUTDOWN_TEST__.block = true;
@@ -167,7 +169,7 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
 
   try {
   await diagnostics.phase("startup and immutable release identity", 120_000, async () => {
-  const response = await page.goto("/import2/");
+  const response = await page.goto(`${basePath}/`);
   expect(response.status()).toBe(200);
   expect(response.headers()["cross-origin-opener-policy"]).toBe("same-origin");
   expect(response.headers()["cross-origin-embedder-policy"]).toBe("require-corp");
@@ -176,8 +178,8 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
   expect(await page.evaluate(() => crossOriginIsolated)).toBe(true);
   expect(await page.evaluate(async () => (await window.__DESKTOP_POB__.getRuntimeProfile()).filesystem.payload.packagesBeforeReady)).toBeGreaterThan(0);
   expect(await page.title()).toContain("PoB Codes Build Editor");
-  const metadata = await (await context.request.get(`${origin}/import2/release.json`)).json();
-  prefix = `/import2/releases/${metadata.current}/`;
+  const metadata = await (await context.request.get(`${origin}${basePath}/release.json`)).json();
+  prefix = `${basePath}/releases/${metadata.current}/`;
   expect(metadata.current).toMatch(/^[a-f0-9]{24}$/);
   const shellScript = await page.locator("script[type=module]").getAttribute("src");
   expect(shellScript.startsWith(`${prefix}shell/`)).toBe(true);
@@ -355,7 +357,7 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
     path: "/api/poe/import-character", body: { accountName: `FixtureAccount#${discriminator}`, characterName: "FixtureDuelist", realm: "pc" },
   })));
   expect(assetPaths.some(path => path.startsWith(`${prefix}payload/`))).toBe(true);
-  expect(assetPaths.every(path => path === "/import2/" || path.startsWith(prefix))).toBe(true);
+  expect(assetPaths.every(path => path === `${basePath}/` || path.startsWith(prefix))).toBe(true);
   expect(await page.evaluate(() => window.__DESKTOP_POB__.errors)).toEqual([]);
   expect(faults).toEqual([]);
   expect(blocked).toEqual([]);
@@ -379,5 +381,17 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
   } finally {
     releaseImport?.();
     await diagnostics.finish();
+  }
+});
+
+
+test("canonical document redirects and static prefix boundaries", async ({ request }) => {
+  for (const path of [basePath, "/import2", "/import2/"]) {
+    const response = await request.get(`${origin}${path}`, { maxRedirects: 0 });
+    expect(response.status()).toBe(308);
+    expect(response.headers().location).toBe(`${basePath}/`);
+  }
+  for (const path of [`${basePath}0`, "/import20", `${basePath}/missing.js`, `${basePath}/releases/missing/app.js.map`]) {
+    expect((await request.get(`${origin}${path}`)).status()).toBe(404);
   }
 });

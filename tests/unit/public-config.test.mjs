@@ -21,3 +21,8 @@ test("public API and telemetry configuration accepts only the owned production e
   assert.throws(() => publicConfig({ PUBLIC_API_BASE_URL: "https://pob.codes/api" }), /api\.pob\.codes/);
   assert.throws(() => publicConfig({ PUBLIC_TELEMETRY_ENDPOINT: "https://example.com/analytics/events" }), /api\.pob\.codes/);
 });
+
+
+test("canonical Browser PoB base path is the public default", () => {
+  assert.equal(publicConfig({}).basePath, "/browserpob");
+});

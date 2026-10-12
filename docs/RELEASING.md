@@ -135,7 +135,12 @@ Production deployment belongs to a separate private operator workflow. It must:
 - Verify the live generation and isolation headers, then run committed headless
   production smoke on a separate runner without deployment credentials.
 
-The private operator owns `/import2*`. The public artifact may include an
+The private operator owns `/browserpob*` and the legacy `/import2*` route.
+The canonical document is `/browserpob/`; `/import2` and `/import2/` return
+HTTP 308 to it. The private operator retains exact predecessor generation bytes
+and maps only verified immutable generation paths across prefixes. Never use an
+unproven blanket wildcard redirect or relabel an old recovery archive.
+Boundary misses such as `/browserpob0` and `/import20` remain static 404s. The public artifact may include an
 `/import/` landing asset for future integration; its presence does not authorize
 publishing that route or changing the main application.
 

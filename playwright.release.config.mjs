@@ -1,3 +1,5 @@
+import { publicConfig } from "./scripts/lib/public-config.mjs";
+const basePath = publicConfig().basePath;
 import { defineConfig } from "@playwright/test";
 
 // Deliberately fixed to loopback: this suite must never use a live deployment.
@@ -23,7 +25,7 @@ export default defineConfig({
   },
   webServer: {
     command: "node scripts/release/serve-test-release.mjs",
-    url: "http://127.0.0.1:3011/import2/",
+    url: `http://127.0.0.1:3011${basePath}/`,
     reuseExistingServer: false,
     timeout: 15_000,
   },

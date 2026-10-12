@@ -1,3 +1,5 @@
+import { publicConfig } from "../lib/public-config.mjs";
+const publicRuntime = publicConfig();
 import { readFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { fileSha256, inventoryFiles, jsonBytes, sha256 } from "./release-common.mjs";
@@ -7,6 +9,7 @@ const root = value("root", ".runtime/import2-release");
 const recordFile = value("record", ".runtime/release-record.json");
 const inventoryFile = value("inventory", ".runtime/release-inventory.json");
 const record = JSON.parse(await readFile(recordFile, "utf8"));
+if (record.deployment.basePath !== publicRuntime.basePath) throw new Error("Release record has the wrong canonical prefix");
 const inventoryBytes = await readFile(inventoryFile);
 const inventory = JSON.parse(inventoryBytes);
 if (record.inventorySha256 !== sha256(inventoryBytes)) throw new Error("Release inventory hash does not match the release record");
@@ -20,10 +23,10 @@ if (record.contractVersion >= 2 &&
 }
 const actual = await inventoryFiles(root);
 if (JSON.stringify(actual) !== JSON.stringify(inventory.files)) throw new Error("Release file inventory is incomplete or contains changed bytes");
-const release = JSON.parse(await readFile(join(root, "import2/release.json"), "utf8"));
+const release = JSON.parse(await readFile(join(root, `${publicRuntime.basePath.slice(1)}/release.json`), "utf8"));
 if (release.current !== record.generation || (release.retained[0] ?? null) !== record.predecessor) throw new Error("Release pointer metadata disagrees with the release record");
 if (record.contractVersion >= 2) {
-  const currentLegal = join(root, "import2/releases", record.generation, "legal");
+  const currentLegal = join(root, `${publicRuntime.basePath.slice(1)}/releases`, record.generation, "legal");
   if (record.pob.license.sha256 !== await fileSha256(join(currentLegal, "PATH_OF_BUILDING_LICENSE.md")) ||
       record.pob.license.provenanceSha256 !== await fileSha256(join(currentLegal, "PATH_OF_BUILDING_LICENSE.provenance.json"))) {
     throw new Error("Deployable Path of Building license differs from the release record");

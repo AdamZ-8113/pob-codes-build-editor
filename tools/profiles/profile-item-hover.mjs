@@ -70,7 +70,7 @@ try {
   }
   let seededRuntimeRequests=0;
   if(deterministicSeed)await context.route(production
-    ? /^https:\/\/pob\.codes\/import2\/releases\/[a-f0-9]{24}\/shell\/assets\/driver-[\w-]+\.js(?:\?.*)?$/
+    ? /^https:\/\/pob\.codes\/browserpob\/releases\/[a-f0-9]{24}\/shell\/assets\/driver-[\w-]+\.js(?:\?.*)?$/
     : '**/dist/release/driver.mjs*',async route=>{
    const body=runtimeDirectory?await readFile(join(resolve(runtimeDirectory),'driver.mjs'),'utf8'):await (await route.fetch()).text();
    // Lua seeds table hashes from time(NULL). Fix wall-clock time so equally

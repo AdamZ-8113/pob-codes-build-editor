@@ -1,3 +1,4 @@
+import { publicConfig } from "../../scripts/lib/public-config.mjs";
 import { spawn, spawnSync } from 'node:child_process';
 import { readFile, mkdir, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
@@ -33,7 +34,7 @@ for (const item of cases.filter(item => !selected || selected.includes(item.name
   const file = join(output, item.name + '.json');
   console.log('Coverage:', item.name);
   await new Promise((accept, reject) => {
-    const command = ['tools/profiles/profile-heatmap.mjs', `--origin=${option('origin','http://127.0.0.1:3011/import2/')}`,
+    const command = ['tools/profiles/profile-heatmap.mjs', `--origin=${option('origin',`http://127.0.0.1:3011${publicConfig().basePath}/`)}`,
       `--browser=${option('browser','chromium')}`, `--build-file=fixtures/${item.fixture}`, `--metric=${item.metric}`, `--depth=${item.depth}`,
       '--rounds=1', '--warm=0', '--direct', '--report=shown', '--baseline-query=helpers=0',
       '--candidate-query=helpers=3&nodePowerHelpers=1', '--noise-floor=none', `--out=${file}`];

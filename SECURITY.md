@@ -10,7 +10,7 @@ Do not open public issues, pull requests, or discussions for vulnerabilities.
 
 ## Supported versions
 
-Fixes are made for the live deployment at <https://pob.codes/import2/> and the
+Fixes are made for the live deployment at <https://pob.codes/browserpob/> and the
 latest `main`. Older releases are not patched.
 
 ## Scope
@@ -36,7 +36,7 @@ Calculation bugs and other non-security issues in Path of Building belong
 upstream at PathOfBuildingCommunity/PathOfBuilding, and runtime issues that are
 not specific to this fork belong at atty303/pob-web, both as normal issues.
 Report security issues in either project privately to that project; if one also
-affects pob.codes/import2, you can report it here as well.
+affects pob.codes/browserpob, you can report it here as well.
 
 ## What to include
 

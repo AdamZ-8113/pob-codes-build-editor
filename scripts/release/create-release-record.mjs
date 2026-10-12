@@ -1,3 +1,5 @@
+import { publicConfig } from "../lib/public-config.mjs";
+const publicRuntime = publicConfig();
 import { execFileSync } from "node:child_process";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -5,7 +7,7 @@ import { fileSha256, inventoryFiles, jsonBytes, sha256 } from "./release-common.
 
 const root = resolve(".runtime/import2-release");
 const runtime = resolve(".runtime");
-const release = JSON.parse(await readFile(join(root, "import2/release.json"), "utf8"));
+const release = JSON.parse(await readFile(join(root, `${publicRuntime.basePath.slice(1)}/release.json`), "utf8"));
 if (!release.current) throw new Error("A full release is required for a durable recovery record");
 const sourcePin = JSON.parse(await readFile("source-pin.json", "utf8"));
 const deploymentConfigSha256 = await fileSha256("wrangler.import2.jsonc");
@@ -48,8 +50,8 @@ const record = {
   },
   deployment: {
     resource: "pob-codes-import2",
-    route: "pob.codes/import2*",
-    basePath: "/import2",
+    routes: [`pob.codes${publicRuntime.basePath}*`, "pob.codes/import2*"],
+    basePath: publicRuntime.basePath,
     configSha256: deploymentConfigSha256,
   },
   inventorySha256: sha256(inventoryBytes),

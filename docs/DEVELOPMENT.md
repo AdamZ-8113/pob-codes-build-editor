@@ -152,7 +152,7 @@ machine that passes the CI subset. Run a harness directly when supplying its
 own fixture/report options or using an explicitly started manual LAN server.
 
 `test:e2e:release` starts a dedicated static server for `.runtime/import2-release`
-on `127.0.0.1:3011` and opens `/import2/`; it never starts the development server.
+on `127.0.0.1:3011` and opens `/browserpob/`; it never starts the development server.
 The discovered release suite checks native fixture import, editing, recalculation,
 export, mocked sharing/link resolution and character import, and save/reload using
 the existing native OPFS path, plus immutable asset paths and the candidate's

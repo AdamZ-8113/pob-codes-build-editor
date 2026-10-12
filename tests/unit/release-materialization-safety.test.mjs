@@ -12,7 +12,7 @@ import { materializeImport2Disabled } from "../../scripts/release/materialize-im
 import { verifyImport2Release } from "../../scripts/release/verify-import2-release.mjs";
 
 const config = Object.freeze({
-  basePath: "/import2",
+  basePath: "/browserpob",
   siteOrigin: "https://pob.codes",
   productName: "PoB Codes Build Editor",
   repositoryUrl: "https://github.com/AdamZ-8113/pob-codes-build-editor",
@@ -65,5 +65,5 @@ test("disabled release materializes and passes the production release verifier",
   const verified = await verifyImport2Release(releaseDirectory);
   assert.equal(verified.release.mode, "disabled");
   assert.equal(verified.release.current, null);
-  assert.match(await readFile(join(releaseDirectory, "import2/index.html"), "utf8"), /Build Editor temporarily unavailable/);
+  assert.match(await readFile(join(releaseDirectory, "browserpob/index.html"), "utf8"), /Build Editor temporarily unavailable/);
 });

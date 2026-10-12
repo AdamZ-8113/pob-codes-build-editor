@@ -56,7 +56,7 @@ async function fixture(t) {
   }
   await writeFile(join(root, "source-pin.json"), JSON.stringify({ compositePatch: { patchSha256: pin } }));
   await file("release-record.json", JSON.stringify({ generation: current }));
-  await file("import2-release/import2/release.json", JSON.stringify({ current, retained: [retained], predecessor }));
+  await file("import2-release/browserpob/release.json", JSON.stringify({ current, retained: [retained], predecessor }));
   return { root, runtime, file, pair, ready, exists: (name) => existsSync(join(runtime, name)) };
 }
 
@@ -223,9 +223,9 @@ test("missing identities disable generation pruning; incomplete or malformed ide
     await f.file(`${shell(stale)}/index.html`);
     await f.pair(stale);
     if (["both missing", "record missing"].includes(variant)) await rm(join(f.runtime, "release-record.json"));
-    if (["both missing", "release missing"].includes(variant)) await rm(join(f.runtime, "import2-release/import2/release.json"));
+    if (["both missing", "release missing"].includes(variant)) await rm(join(f.runtime, "import2-release/browserpob/release.json"));
     if (variant === "malformed") await f.file("release-record.json", "{");
-    if (variant === "invalid retained") await f.file("import2-release/import2/release.json", JSON.stringify({ current, retained: ["../bad"] }));
+    if (variant === "invalid retained") await f.file("import2-release/browserpob/release.json", JSON.stringify({ current, retained: ["../bad"] }));
     if (variant === "invalid pin") await writeFile(join(f.root, "source-pin.json"), "{}");
     await f.ready();
     if (["malformed", "invalid retained", "invalid pin"].includes(variant)) await assert.rejects(discoverRuntime(f.root), /Invalid|Cannot identify/);
@@ -251,7 +251,7 @@ test("preflight detects post-discovery candidate, identity, pin, staging and lin
     const plan = await discoverRuntime(f.root);
     if (variant === "candidate") await f.file(`${archive(stale)}.sha256`, "edited");
     if (variant === "record") await f.file("release-record.json", JSON.stringify({ generation: current, changed: true }));
-    if (variant === "release") await f.file("import2-release/import2/release.json", JSON.stringify({ current, retained: [stale], predecessor }));
+    if (variant === "release") await f.file("import2-release/browserpob/release.json", JSON.stringify({ current, retained: [stale], predecessor }));
     if (variant === "pin") await writeFile(join(f.root, "source-pin.json"), JSON.stringify({ compositePatch: { patchSha256: "1".repeat(64) } }));
     if (variant === "staging") await f.file(`import2-release-${stale}.next/index.html`);
     if (variant === "link") {

@@ -1,3 +1,4 @@
+import { publicConfig } from "../lib/public-config.mjs";
 import { createServer } from "node:http";
 import { createReadStream } from "node:fs";
 import { readFile, realpath, stat } from "node:fs/promises";
@@ -33,8 +34,11 @@ export async function createReleaseTestServer(directory = root) {
         response.writeHead(404).end(); return;
       }
       const headers = Object.assign({}, ...rules.filter(rule => rule.match.test(pathname)).map(rule => rule.headers));
-      const redirect = redirects.find(([from]) => from === pathname);
-      if (redirect) { response.writeHead(Number(redirect[2]), { ...headers, location: redirect[1] }).end(); return; }
+      const redirect = redirects.find(([from]) => from === pathname || (from.endsWith("/*") && pathname.startsWith(from.slice(0, -1))));
+      if (redirect) {
+        const location = redirect[1].replace(":splat", pathname.slice(redirect[0].length - 1));
+        response.writeHead(Number(redirect[2]), { ...headers, location }).end(); return;
+      }
       const file = await realpath(join(base, pathname, pathname.endsWith("/") ? "index.html" : ""));
       const inside = relative(base, file);
       if (!inside || isAbsolute(inside) || inside.startsWith(`..${sep}`) || inside === "..") { response.writeHead(404).end(); return; }
@@ -52,5 +56,5 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
   const stop = () => { server.closeAllConnections(); server.close(); };
   process.once("SIGTERM", stop);
   process.once("SIGINT", stop);
-  server.listen(3011, "127.0.0.1", () => console.log("Candidate test server: http://127.0.0.1:3011/import2/"));
+  server.listen(3011, "127.0.0.1", () => console.log(`Candidate test server: http://127.0.0.1:3011${publicConfig().basePath}/`));
 }

@@ -11,7 +11,7 @@ test("Import2 deployment is an assets-only prefix route", async () => {
   const config = await verifyImport2Config();
   assert.equal(config.assets.not_found_handling, "404-page");
   assert.equal("main" in config, false);
-  assert.equal(config.routes[0].pattern, "pob.codes/import2*");
+  assert.equal(config.routes[0].pattern, "pob.codes/browserpob*");
 });
 
 test("release materializer defines an indexable landing beside noindex immutable preview assets", async () => {

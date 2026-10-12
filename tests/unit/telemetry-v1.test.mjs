@@ -14,3 +14,11 @@ test("all five v1 events use valid dimensions and local hosts remain disabled", 
   const local=createTelemetryV1({endpoint:"https://api.pob.codes/analytics/events",hostname:"localhost",appVersion:version,sessionId,send(){throw Error("must not send")}}); assert.equal(local.enabled,false);
   assert.doesNotThrow(()=>createTelemetryV1({endpoint:"/analytics/events",hostname:"pob.codes",appVersion:version,sessionId,send(){throw Error("offline")}}).emit("build_editor_error_v1",{result:"error",actionTarget:"runtime",errorCode:"runtime"}));
 });
+
+test("canonical and historical editor routes remain distinct without enabling telemetry", () => {
+  for (const path of ["/browserpob", "/browserpob/", "/import2/"]) {
+    const telemetry = createTelemetryV1({ pathname: path, hostname: "pob.codes", appVersion: version });
+    assert.equal(telemetry.route, path.startsWith("/browserpob") ? "GET /browserpob/" : "GET /import2/");
+    assert.equal(telemetry.enabled, false);
+  }
+});

@@ -1,5 +1,5 @@
 const DEFAULTS = Object.freeze({
-  basePath: "/import2",
+  basePath: "/browserpob",
   siteOrigin: "https://pob.codes",
   productName: "PoB Codes Build Editor",
   repositoryUrl: "https://github.com/AdamZ-8113/pob-codes-build-editor",
@@ -39,4 +39,11 @@ export function publicConfig(env = process.env) {
     throw new Error("PUBLIC_TELEMETRY_ENDPOINT must be https://api.pob.codes/analytics/events");
   }
   return Object.freeze(config);
+}
+
+// Only documents redirect globally. Immutable compatibility is generation-specific.
+export const legacyBasePath = "/import2";
+export function documentRedirects(basePath = publicConfig().basePath) {
+  return `${basePath} ${basePath}/ 308\n` + (basePath === legacyBasePath ? "" :
+    `${legacyBasePath} ${basePath}/ 308\n${legacyBasePath}/ ${basePath}/ 308\n`);
 }

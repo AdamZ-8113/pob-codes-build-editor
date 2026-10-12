@@ -10,6 +10,7 @@
     "not_found_handling": "404-page"
   },
   "routes": [
+    { "pattern": "pob.codes/browserpob*", "zone_name": "pob.codes" },
     {
       "pattern": "pob.codes/import2*",
       "zone_name": "pob.codes"

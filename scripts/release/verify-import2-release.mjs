@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { readFile, readdir, stat } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { publicConfig } from "../lib/public-config.mjs";
+import { publicConfig, documentRedirects } from "../lib/public-config.mjs";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
@@ -17,7 +17,7 @@ export async function verifyImport2Config(configFile = join(appDir, "wrangler.im
   }
   if (config.assets?.binding || config.assets?.run_worker_first) throw new Error("Import2 assets cannot have a Worker binding or worker-first routes");
   if (config.assets?.not_found_handling !== "404-page") throw new Error("Import2 misses must terminate in the static 404 layer");
-  if (config.routes?.length !== 1 || config.routes[0].pattern !== "pob.codes/import2*") {
+  if (JSON.stringify(config.routes?.map(route => route.pattern)) !== JSON.stringify([`pob.codes${publicRuntime.basePath}*`, "pob.codes/import2*"])) {
     throw new Error("Import2 must own the reviewed prefix route, including query variants");
   }
   return config;
@@ -120,6 +120,10 @@ export async function verifyImport2Release(root = join(appDir, ".runtime/import2
   const redirects = await readFile(join(root, "_redirects"), "utf8");
   if (mode === "full" && !redirects.includes("/import /import/ 308")) throw new Error("Build Editor landing slash redirect is missing");
   if (!redirects.includes(`${publicRuntime.basePath} ${publicRuntime.basePath}/ 308`)) throw new Error("Build Editor slash redirect is missing");
+  for (const rule of documentRedirects().trim().split("\n")) {
+    if (!redirects.split("\n").includes(rule)) throw new Error("Missing canonical document redirect");
+  }
+  if (redirects.split("\n").some(rule => rule.startsWith("/import2/* "))) throw new Error("Unproven legacy wildcard redirect");
   const scriptText = (await Promise.all(files.filter((path) => path.endsWith(".js")).map((path) => readFile(path, "utf8")))).join("\n");
   for (const forbidden of ["/local-api/", "/payload/root.zip"]) {
     if (scriptText.includes(forbidden)) throw new Error(`Import2 shell contains forbidden runtime path: ${forbidden}`);

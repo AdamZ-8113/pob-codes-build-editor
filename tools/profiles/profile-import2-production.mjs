@@ -1,13 +1,15 @@
+import { publicConfig } from "../../scripts/lib/public-config.mjs";
+const basePath = publicConfig().basePath;
 import assert from "node:assert/strict";
 import { chromium } from "@playwright/test";
 import { cpus } from "node:os";
 import { writeFile } from "node:fs/promises";
 
-const target = new URL(process.env.IMPORT2_ORIGIN ?? "https://pob.codes/import2/");
+const target = new URL(process.env.IMPORT2_ORIGIN ?? `${publicConfig().siteOrigin}${basePath}/`);
 const cloudflareManagedPrefix = "/cdn-cgi/";
 const localPreview = process.env.IMPORT2_ALLOW_LOCAL === "1" && target.protocol === "http:" && target.hostname === "127.0.0.1";
-if ((!localPreview && (target.protocol !== "https:" || target.hostname !== "pob.codes")) || target.pathname !== "/import2/") {
-  throw new Error("IMPORT2_ORIGIN must be https://pob.codes/import2/");
+if ((!localPreview && (target.protocol !== "https:" || target.hostname !== "pob.codes")) || target.pathname !== `${basePath}/`) {
+  throw new Error(`IMPORT2_ORIGIN must be https://pob.codes${basePath}/`);
 }
 const output = process.argv.find((arg) => arg.startsWith("--out="))?.slice(6);
 const disabledMode = process.argv.includes("--disabled");
@@ -15,7 +17,7 @@ if (disabledMode) {
   const [home, unknown, boundary] = await Promise.all([
     fetch(target),
     fetch(new URL("unknown-disabled-probe", target)),
-    fetch(new URL("/import20", target)),
+    fetch(new URL(`${basePath}0`, target)),
   ]);
   const [html, unknownBody, boundaryBody] = await Promise.all([
     home.text(),
@@ -122,7 +124,7 @@ try {
   }
   assert.equal(requests.some((request) => request.host === "api.pob.codes"), false, "Import2 contacted the API Worker");
   const unexpectedMainSiteRequests = requests.filter(
-    (request) => request.host === target.host && !request.path.startsWith("/import2") && !request.path.startsWith(cloudflareManagedPrefix),
+    (request) => request.host === target.host && !request.path.startsWith(`${basePath}/`) && !request.path.startsWith(cloudflareManagedPrefix),
   );
   if (unexpectedMainSiteRequests.length > 0) {
     console.error(JSON.stringify({ target: target.href, unexpectedMainSiteRequests }, null, 2));
@@ -138,24 +140,30 @@ try {
   for (const response of startupMissing) {
     assert.equal(response.host, target.host, `Startup request failed outside the Import2 host: ${response.host}${response.path}`);
     assert.equal(response.status, 404, `Unexpected startup response status for ${response.path}`);
-    const match = response.path.match(/^\/import2\/releases\/[a-f0-9]{24}\/payload\/root\/(.+)$/);
+    const match = response.path.slice(basePath.length).match(/^\/releases\/[a-f0-9]{24}\/payload\/root\/(.+)$/);
     assert.ok(match && allowedStartupMisses.has(match[1]), `Unexpected missing startup asset: ${response.path}`);
   }
 
-  const [unknown, sourceMap, boundary, head] = await page.evaluate(async () => {
+  const [unknown, sourceMap, boundary, head] = await page.evaluate(async (basePath) => {
     const results = await Promise.all([
-      fetch("/import2/unknown-probe", { cache: "no-store" }),
-      fetch("/import2/releases/missing/app.js.map", { cache: "no-store" }),
-      fetch("/import20", { cache: "no-store" }),
-      fetch("/import2/", { method: "HEAD", cache: "no-store" }),
+      fetch(`${basePath}/unknown-probe`, { cache: "no-store" }),
+      fetch(`${basePath}/releases/missing/app.js.map`, { cache: "no-store" }),
+      fetch(`${basePath}0`, { cache: "no-store" }),
+      fetch(`${basePath}/`, { method: "HEAD", cache: "no-store" }),
     ]);
     return results.map((response) => ({ status: response.status, worker: response.headers.get("server-timing") ?? "" }));
-  });
+  }, basePath);
   assert.equal(unknown.status, 404);
   assert.equal(sourceMap.status, 404);
   assert.equal(boundary.status, 404);
   assert.equal(head.status, 200);
 
+  for (const path of ["/import2", "/import2/"]) {
+    const response = await context.request.get(new URL(path, target).href, { maxRedirects: 0 });
+    assert.equal(response.status(), 308);
+    assert.equal(new URL(response.headers().location, target).pathname, `${basePath}/`);
+  }
+  assert.equal((await context.request.get(new URL("/import20", target).href)).status(), 404);
   const legacy = await context.newPage();
   await legacy.goto(new URL("?legacyPayload=1", target).href, { waitUntil: "domcontentloaded", timeout: 120_000 });
   await legacy.waitForFunction(() => document.querySelector("#status")?.classList.contains("status-error"));

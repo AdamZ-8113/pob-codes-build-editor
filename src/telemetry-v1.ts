@@ -3,7 +3,7 @@ type CreateTelemetryV1Options = { endpoint?: string; hostname?: string; pathname
 export type TelemetryEventNameV1 = "build_editor_open_v1" | "build_editor_ready_v1" | "build_editor_import_v1" | "build_editor_export_v1" | "build_editor_error_v1";
 export type TelemetryDeviceV1 = "desktop" | "mobile" | "tablet" | "touch" | "unknown";
 export type TelemetryErrorV1 = "asset-load" | "export" | "import" | "network" | "runtime" | "startup" | "storage" | "timeout" | "unknown" | "unsupported-browser";
-export type TelemetryEventV1 = { eventName: TelemetryEventNameV1; sessionId: string; route: "GET /import/" | "GET /import2/"; appVersion: string; result: string; actionTarget?: string; deviceClass?: TelemetryDeviceV1; durationMs?: number; errorCode?: TelemetryErrorV1; buildPatchVersion?: string };
+export type TelemetryEventV1 = { eventName: TelemetryEventNameV1; sessionId: string; route: "GET /import/" | "GET /import2/" | "GET /browserpob/"; appVersion: string; result: string; actionTarget?: string; deviceClass?: TelemetryDeviceV1; durationMs?: number; errorCode?: TelemetryErrorV1; buildPatchVersion?: string };
 
 export const TELEMETRY_EVENTS_V1: readonly TelemetryEventNameV1[] = Object.freeze([
   "build_editor_open_v1", "build_editor_ready_v1", "build_editor_import_v1", "build_editor_export_v1", "build_editor_error_v1",
@@ -24,7 +24,7 @@ const ERRORS = new Set(["asset-load", "export", "import", "network", "runtime", 
 export function validateTelemetryEventV1(event: TelemetryEventV1): TelemetryEventV1 {
   if (!TELEMETRY_EVENTS_V1.includes(event?.eventName)) throw new Error("Invalid telemetry eventName");
   if (!/^pobcs_[a-z0-9_-]{16,80}$/i.test(event.sessionId)) throw new Error("Invalid telemetry sessionId");
-  if (!["GET /import/", "GET /import2/"].includes(event.route)) throw new Error("Invalid telemetry route");
+  if (!["GET /import/", "GET /import2/", "GET /browserpob/"].includes(event.route)) throw new Error("Invalid telemetry route");
   if (!/^[a-f0-9]{12,64}$/.test(event.appVersion)) throw new Error("Invalid telemetry appVersion");
   if (!RESULTS[event.eventName].has(event.result)) throw new Error("Invalid telemetry result");
   if (event.actionTarget !== undefined && !TARGETS[event.eventName].has(event.actionTarget)) throw new Error("Invalid telemetry actionTarget");
@@ -40,7 +40,7 @@ export function validateTelemetryEventV1(event: TelemetryEventV1): TelemetryEven
 
 export function createTelemetryV1(options: CreateTelemetryV1Options = {}): { enabled: boolean; sessionId: string; route: string; emit(name: TelemetryEventNameV1, fields: Omit<TelemetryEventV1, "eventName" | "sessionId" | "route" | "appVersion" | "deviceClass" | "buildPatchVersion">): void } {
   const { endpoint, hostname = globalThis.location?.hostname ?? "", pathname = globalThis.location?.pathname ?? "/import/", appVersion, sessionId = randomSessionId(), deviceClass = "unknown", buildPatchVersion, send = (url, body) => fetch(url, { method: "POST", keepalive: true, headers: { "content-type": "application/json" }, body }).catch(() => {}) } = options;
-  const route = pathname === "/import2" || pathname.startsWith("/import2/") ? "GET /import2/" : "GET /import/";
+  const route = pathname === "/browserpob" || pathname.startsWith("/browserpob/") ? "GET /browserpob/" : pathname === "/import2" || pathname.startsWith("/import2/") ? "GET /import2/" : "GET /import/";
   const enabled = telemetryEndpointAllowed(endpoint) && hostname === "pob.codes" && /^[a-f0-9]{12,64}$/.test(appVersion ?? "");
   return { enabled, sessionId, route, emit(eventName, fields) {
     if (!enabled) return;

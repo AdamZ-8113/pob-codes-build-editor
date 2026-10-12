@@ -1,3 +1,4 @@
+import { publicConfig } from "../../scripts/lib/public-config.mjs";
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createRequire } from 'node:module';
@@ -30,9 +31,9 @@ export async function readCorePackage(origin = 'http://127.0.0.1:3010/') {
   let manifest, archive;
   if (new URL(origin).hostname === 'pob.codes') {
     const html = await (await fetch(origin)).text();
-    const release = html.match(/\/import2\/releases\/([a-f0-9]{24})\//)?.[1];
+    const release = html.match(new RegExp(`${publicConfig().basePath}/releases/([a-f0-9]{24})/`))?.[1];
     assert.ok(release, 'Live release pointer');
-    const prefix = `https://pob.codes/import2/releases/${release}/payload/`;
+    const prefix = `https://pob.codes${publicConfig().basePath}/releases/${release}/payload/`;
     manifest = await (await fetch(`${prefix}manifest.json`)).json();
     archive = Buffer.from(await (await fetch(`${prefix}packages/${manifest.packages.find(p => p.id === 'core').sha256}.zip`)).arrayBuffer());
   } else {

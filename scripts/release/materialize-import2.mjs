@@ -3,7 +3,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { publicConfig } from "../lib/public-config.mjs";
+import { publicConfig, documentRedirects, legacyBasePath } from "../lib/public-config.mjs";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const runtimeDir = join(appDir, ".runtime");
@@ -176,16 +176,27 @@ export async function materializeImport2({ retainDirectory } = {}) {
   await writeFile(join(staging, "import", "index.html"), landingHtml);
 
   const retained = [];
+  let retainedRedirect = "";
   if (retainDirectory) {
-    const previous = JSON.parse(await readFile(join(retainDirectory, publicDirectory, "release.json"), "utf8"));
+    const previousDirectory = await exists(join(retainDirectory, publicDirectory, "release.json")) ? publicDirectory : legacyBasePath.slice(1);
+    const previous = JSON.parse(await readFile(join(retainDirectory, previousDirectory, "release.json"), "utf8"));
     if (previous.current === release) throw new Error("Retained Import2 release is the current release");
     if (!/^[a-f0-9]{24}$/.test(previous.current)) throw new Error("Retained Import2 release identity is invalid");
     await cp(
-      join(retainDirectory, publicDirectory, "releases", previous.current),
+      join(retainDirectory, previousDirectory, "releases", previous.current),
       join(import2Root, "releases", previous.current),
       { recursive: true },
     );
+    const original = join(retainDirectory, previousDirectory, "releases", previous.current);
+    const copied = join(import2Root, "releases", previous.current);
+    if (JSON.stringify(await hashedFiles(original, await walkFiles(original))) !==
+        JSON.stringify(await hashedFiles(copied, await walkFiles(copied)))) {
+      throw new Error("Retained generation changed during prefix migration");
+    }
     retained.push(previous.current);
+    if (previousDirectory !== publicDirectory) {
+      retainedRedirect = `${legacyBasePath}/releases/${previous.current}/* ${publicRuntime.basePath}/releases/${previous.current}/:splat 308\n`;
+    }
   }
 
   const releaseMetadata = {
@@ -207,13 +218,13 @@ export async function materializeImport2({ retainDirectory } = {}) {
     payloadManifestSha256: await fileHash(join(payloadDir, "manifest.json")),
     payloadProvenanceSha256: await fileHash(join(payloadDir, "provenance.json")),
     publicConfig: publicRuntime,
-    deployment: { resource: "pob-codes-import2", route: "pob.codes/import2*", basePath: publicRuntime.basePath },
+    deployment: { resource: "pob-codes-import2", routes: [`pob.codes${publicRuntime.basePath}*`, "pob.codes/import2*"], basePath: publicRuntime.basePath },
   };
   await writeFile(join(import2Root, "release.json"), `${JSON.stringify(releaseMetadata, null, 2)}\n`);
   const unavailable = "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"robots\" content=\"noindex,nofollow\"><title>Build Editor unavailable</title><body><main><h1>Build Editor unavailable</h1><p>This Build Editor page is unavailable. Return to <a href=\"https://pob.codes/\">PoB Codes</a>.</p></main></body></html>\n";
   await writeFile(join(staging, "404.html"), unavailable);
   await writeFile(join(import2Root, "404.html"), unavailable);
-  await writeFile(join(staging, "_redirects"), `/import /import/ 308\n${publicRuntime.basePath} ${publicRuntime.basePath}/ 308\n`);
+  await writeFile(join(staging, "_redirects"), `/import /import/ 308\n${documentRedirects(publicRuntime.basePath)}${retainedRedirect}`);
   await writeFile(join(staging, "_headers"), [
     "/*",
     "  Cross-Origin-Opener-Policy: same-origin",

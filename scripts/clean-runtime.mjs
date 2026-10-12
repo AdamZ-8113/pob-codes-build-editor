@@ -1,3 +1,4 @@
+import { publicConfig } from "./lib/public-config.mjs";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
@@ -97,7 +98,8 @@ async function readIdentity(runtime, name) {
 
 async function identities(root, runtime) {
   const record = await readIdentity(runtime, "release-record.json");
-  const release = await readIdentity(runtime, "import2-release/import2/release.json");
+  const release = await readIdentity(runtime, `import2-release${publicConfig().basePath}/release.json`) ??
+    await readIdentity(runtime, "import2-release/import2/release.json");
   const generations = new Set();
   function protect(value) {
     if (typeof value !== "string" || !generationPattern.test(value)) throw new Error("Invalid release generation identity");

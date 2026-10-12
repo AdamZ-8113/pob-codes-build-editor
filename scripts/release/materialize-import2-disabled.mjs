@@ -1,3 +1,4 @@
+import { publicConfig, documentRedirects } from "../lib/public-config.mjs";
 import { cp, mkdir, readdir, rename, rm, stat, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -31,7 +32,7 @@ async function inventory(root) {
 
 export async function materializeImport2Disabled({ releaseDirectory = releaseDir, stagingDirectory = staging } = {}) {
   await rm(stagingDirectory, { recursive: true, force: true });
-  const import2Root = join(stagingDirectory, "import2");
+  const import2Root = join(stagingDirectory, publicConfig().basePath.slice(1));
   await mkdir(join(import2Root, "releases"), { recursive: true });
   const unavailable = "<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><meta name=\"robots\" content=\"noindex,nofollow\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Build Editor temporarily unavailable</title><body><main><h1>Build Editor temporarily unavailable</h1><p>The Build Editor is temporarily unavailable. Your browser-stored builds have not been changed. Return to <a href=\"https://pob.codes/\">PoB Codes</a>.</p></main></body></html>\n";
   await writeFile(join(stagingDirectory, "404.html"), unavailable);
@@ -43,7 +44,7 @@ export async function materializeImport2Disabled({ releaseDirectory = releaseDir
     current: null,
     retained: [],
   }, null, 2)}\n`);
-  await writeFile(join(stagingDirectory, "_redirects"), "/import2 /import2/ 308\n");
+  await writeFile(join(stagingDirectory, "_redirects"), documentRedirects());
   await writeFile(join(stagingDirectory, "_headers"), [
     "/*",
     "  X-Robots-Tag: noindex, nofollow",
