@@ -1,0 +1,855 @@
+diff --git a/spec/System/TestPowerReport_spec.lua b/spec/System/TestPowerReport_spec.lua
+index dca0ceec4..96eba7096 100644
+--- a/spec/System/TestPowerReport_spec.lua
++++ b/spec/System/TestPowerReport_spec.lua
+@@ -666,4 +666,261 @@ describe("Power report relevance", function()
+ 	it("preserves every node, mastery, cluster and maximum in a synchronous report", function()
+ 		assertReportParity()
+ 	end)
++
++	it("reuses item and skill setup for independent passives without changing the report", function()
++		build.itemsTab:CreateDisplayItemFromRaw("Rarity: RARE\nTest Ring\nIron Ring\nImplicits: 0\n+40 to maximum Life")
++		build.itemsTab:AddDisplayItem()
++		build.skillsTab:PasteSocketGroup("Fireball 20/0  1")
++		runCallback("OnFrame")
++		local calcs = build.calcsTab.calcs
++		local initEnv = calcs.initEnv
++		local reused = 0
++		calcs.initEnv = function(build, mode, override, specEnv, ...)
++			if specEnv and specEnv.reuseSetup then
++				reused = reused + 1
++			end
++			return initEnv(build, mode, override, specEnv, ...)
++		end
++		local ok, err = pcall(assertReportParity)
++		calcs.initEnv = initEnv
++		assert(ok, tostring(err))
++		assert.is_true(reused > 0)
++	end)
++
++	it("keeps full setup for passives that item or skill setup reads", function()
++		local calcs = build.calcsTab.calcs
++		local observation = calcs.newQueryObserver()
++		calcs.initEnv(build, "CALCULATOR", { }, { observeSetup = true }, observation)
++		observation:Seal()
++		local independence = calcs.newSetupIndependence(build.calcsTab.mainEnv, observation)
++		local ringSlot = { id = -1, type = "Normal", modList = { modLib.createMod("AdditionalRingSlot", "FLAG", true) } }
++		local unused = { id = -2, type = "Normal", modList = { modLib.createMod("Unused", "BASE", 1) } }
++		local keystone = { id = -3, type = "Keystone", modList = { } }
++		assert.is_false(independence:Allows({ addNodes = { [ringSlot] = true } }))
++		assert.is_true(independence:Allows({ addNodes = { [unused] = true } }))
++		assert.is_true(independence:Allows({ removeNodes = { [unused] = true } }))
++		assert.is_false(independence:Allows({ removeNodes = { [keystone] = true } }))
++		assert.is_false(independence:Allows({ addNodes = { [unused] = true }, conditions = { } }))
++		assert.is_false(independence:Allows({ }))
++		-- Radius functions granted by passives rerun item setup from the unobserved passive merge.
++		local radiusFunc = { id = -4, type = "Notable", modList = { modLib.createMod("ExtraJewelFunc", "LIST", { radius = "Large", type = "Other", func = function() end }) } }
++		assert.is_false(independence:Allows({ addNodes = { [radiusFunc] = true } }))
++	end)
++
++	local function findPlainNodes(count)
++		local candidates = { }
++		for _, node in pairs(build.spec.nodes) do
++			if not node.alloc and node.type == "Normal" and #node.modList == 1 and node.modList[1].name == "Dex" then
++				table.insert(candidates, node)
++			end
++		end
++		table.sort(candidates, function(a, b) return a.id < b.id end)
++		assert(#candidates >= count, "Not enough unallocated Dexterity passives")
++		return unpack(candidates, 1, count)
++	end
++
++	local function outputDifference(expected, actual, path, seen)
++		if expected == actual or (expected ~= expected and actual ~= actual) then
++			return nil
++		end
++		if type(expected) ~= "table" or type(actual) ~= "table" then
++			return path .. ": expected " .. tostring(expected) .. ", got " .. tostring(actual)
++		end
++		seen = seen or { }
++		seen[expected] = seen[expected] or { }
++		if seen[expected][actual] then
++			return nil
++		end
++		seen[expected][actual] = true
++		for key, value in pairs(expected) do
++			local difference = outputDifference(value, actual[key], path .. "." .. tostring(key), seen)
++			if difference then
++				return difference
++			end
++		end
++		for key, value in pairs(actual) do
++			if expected[key] == nil then
++				return path .. "." .. tostring(key) .. ": unexpected " .. tostring(value)
++			end
++		end
++	end
++
++	it("compares repeated expected tables against every actual table", function()
++		local expected = { value = 1 }
++		local seen = { }
++		assert.is_nil(outputDifference(expected, { value = 1 }, "first", seen))
++		assert.are.equal("second.value: expected 1, got 2", outputDifference(expected, { value = 2 }, "second", seen))
++	end)
++
++	-- Calculates the candidates in order through one reused setup and compares every output
++	-- with the ordinary fresh-setup calculation. Returns the fresh environments.
++	local function assertReuseMatchesFresh(overrides)
++		local calcs = build.calcsTab.calcs
++		local reuse = assert(calcs.newSetupReuse(build))
++		local freshEnvs = { }
++		for i, override in ipairs(overrides) do
++			assert.is_true(reuse:Allows(override), "Candidate " .. i .. " must reuse setup")
++			local env = reuse:InitEnv(override)
++			calcs.perform(env, true)
++			local fresh = calcs.initEnv(build, "CALCULATOR", copyTable(override, true))
++			calcs.perform(fresh, true)
++			local difference = outputDifference(fresh.player.output, env.player.output, "candidate " .. i)
++			assert(not difference, difference)
++			freshEnvs[i] = fresh
++		end
++		return freshEnvs
++	end
++
++	local function selectMainSkill(skillId)
++		for index, group in ipairs(build.skillsTab.socketGroupList) do
++			if group.gemList[1] and group.gemList[1].skillId == skillId then
++				build.mainSocketGroup = index
++			end
++		end
++		build.buildFlag = true
++		runCallback("OnFrame")
++		assert.are.equal(skillId, build.skillsTab.socketGroupList[build.mainSocketGroup].gemList[1].skillId)
++	end
++
++	it("does not carry The Hidden Blade's disabled skill into the next candidate", function()
++		build.configTab.input.conditionSuppressedRecently = true
++		build.configTab:BuildModList()
++		build.itemsTab:CreateDisplayItemFromRaw("Rarity: UNIQUE\nThe Hidden Blade\nAmbusher\nImplicits: 1\n30% increased Global Critical Strike Chance\nTrigger Level 20 Unseen Strike every 0.5 seconds while Phasing\n+30 to Dexterity\n245% increased Physical Damage\n30% reduced Attack Speed while Phasing")
++		build.itemsTab:AddDisplayItem()
++		runCallback("OnFrame")
++		selectMainSkill("UnseenStrike")
++		local tree = build.spec.tree
++		local mastery = assert(build.spec.nodes[20730])
++		local phasing = { id = mastery.id, type = mastery.type, name = mastery.name, sd = assert(tree.masteryEffects[13757]).sd }
++		tree:ProcessStats(phasing)
++		-- Without Phasing the trigger disables Unseen Strike; the Phasing mastery enables it.
++		local fresh = assertReuseMatchesFresh({ { addNodes = { [findPlainNodes(1)] = true } }, { addNodes = { [phasing] = true } } })
++		assert.are.equal("This skill is requires you to be phasing", fresh[1].player.mainSkill.disableReason)
++		assert.is_nil(fresh[2].player.mainSkill.disableReason)
++		assert.is_true(fresh[2].player.output.TotalDPS > 0)
++	end)
++
++	it("does not carry Tawhoa's Chosen main skill replacement into the next candidate", function()
++		-- Tawhoa's Felling is an Ascendant option on the 3_28_alternate tree. Tawhoa's Chosen
++		-- replaces the main skill with the skill its Mirage Chieftain uses.
++		loadBuildFromXML((build:SaveDB("code"):gsub('treeVersion="[^"]*"', 'treeVersion="3_28_alternate"')))
++		local spec = build.spec
++		spec:SelectAscendClass(spec.tree.ascendNameMap.Ascendant.ascendClassId)
++		spec:AllocNode(assert(spec.nodes[49543]))
++		build.itemsTab:CreateDisplayItemFromRaw("Rarity: RARE\nTest Mace\nWar Hammer\nImplicits: 0")
++		build.itemsTab:AddDisplayItem()
++		build.skillsTab:PasteSocketGroup("Ground Slam 20/0  1")
++		build.buildFlag = true
++		runCallback("OnFrame")
++		selectMainSkill("SummonMirageChieftain")
++		local first, second = findPlainNodes(2)
++		local fresh = assertReuseMatchesFresh({ { addNodes = { [first] = true } }, { addNodes = { [second] = true } } })
++		assert.are.equal("Tawhoa's Chosen using Ground Slam", fresh[2].player.mainSkill.infoMessage)
++	end)
++
++	it("keeps full setup when a passive grants jewel radius functions", function()
++		local calcs = build.calcsTab.calcs
++		local spec = build.spec
++		for _, id in ipairs({ 60735, 3469, 12412 }) do
++			spec:AllocNode(assert(spec.nodes[id]))
++		end
++		local jewel = new("Item"):Item("Rarity: RARE\nTest Jewel\nCrimson Jewel\nImplicits: 0\n+10 to maximum Life")
++		build.itemsTab:AddItem(jewel, true)
++		spec.jewels[60735] = jewel.id
++		build.itemsTab.sockets[60735].selItemId = jewel.id
++		build.buildFlag = true
++		runCallback("OnFrame")
++		local ngamahu
++		for _, node in pairs(spec.nodes) do
++			if node.name == "Ngamahu, Flame's Advance" then
++				ngamahu = node
++			end
++		end
++		assert(ngamahu, "Ngamahu, Flame's Advance must exist on the current tree")
++		local calc = build.calcsTab.calcs.getMiscCalculator(build)
++		local without = calc({ addNodes = { [findPlainNodes(1)] = true } }, false, { skipEHP = true, skipFullDPS = true })
++		local expected = calc({ addNodes = { [ngamahu] = true } }, false, { skipEHP = true, skipFullDPS = true })
++		local actual = calc({ addNodes = { [ngamahu] = true } }, false, { skipEHP = true, skipFullDPS = true, setupReuse = assert(calcs.newSetupReuse(build)) })
++		-- Ngamahu's jewel transformation adds Strength to passives in the jewel's radius.
++		assert.is_true(expected.Str > without.Str)
++		local difference = outputDifference(expected, actual, "Ngamahu")
++		assert(not difference, difference)
++	end)
++
++	it("replays Widowhail's quiver multiplier for Mirror Arrow clones", function()
++		build.itemsTab:CreateDisplayItemFromRaw("Rarity: UNIQUE\nWidowhail\nCrude Bow\nImplicits: 0\n200% increased bonuses gained from Equipped Quiver")
++		build.itemsTab:AddDisplayItem()
++		build.itemsTab:CreateDisplayItemFromRaw("Rarity: RARE\nTest Quiver\nTwo-Point Arrow Quiver\nImplicits: 0\nAdds 10 to 20 Physical Damage to Attacks")
++		build.itemsTab:AddDisplayItem()
++		build.skillsTab:PasteSocketGroup("Mirror Arrow 20/0  1")
++		runCallback("OnFrame")
++		selectMainSkill("MirrorArrow")
++		local first, second = findPlainNodes(2)
++		local fresh = assertReuseMatchesFresh({ { addNodes = { [first] = true } }, { addNodes = { [second] = true } } })
++		assert.are.equal(3, fresh[2].modDB:Sum("BASE", nil, "WidowHailMultiplier"))
++		assert.is_true(fresh[2].player.output.Minion.TotalDPS > 0)
++	end)
++
++	it("does not carry Full DPS edits of the cached databases into the next candidate", function()
++		build.itemsTab:CreateDisplayItemFromRaw("Rarity: RARE\nTest Axe\nVaal Axe\nImplicits: 0")
++		build.itemsTab:AddDisplayItem()
++		build.skillsTab:PasteSocketGroup("Cleave 20/0  1\nImpale Support 20/0  1")
++		for _, group in ipairs(build.skillsTab.socketGroupList) do
++			group.includeInFullDPS = true
++		end
++		-- More configured Impales than the maximum: each calculation replaces the configured
++		-- count, which Full DPS environments find in their cached parent database.
++		build.configTab.input.multiplierImpalesOnEnemy = 10
++		build.configTab:BuildModList()
++		local skewering = assert(build.spec.nodes[39904])
++		build.spec:AllocNode(skewering)
++		build.buildFlag = true
++		runCallback("OnFrame")
++		local calcs = build.calcsTab.calcs
++		local overrides = { { removeNodes = { [skewering] = true } }, { addNodes = { [findPlainNodes(1)] = true } } }
++		local reuse = assert(calcs.newSetupReuse(build))
++		for i, override in ipairs(overrides) do
++			assert.is_true(reuse:Allows(override), "Candidate " .. i .. " must reuse setup")
++		end
++		local calc = calcs.getMiscCalculator(build)
++		local reuseOptions = { skipEHP = true, skipFullDPS = false, setupReuse = reuse }
++		for i, override in ipairs(overrides) do
++			local expected = calc(copyTable(override, true), true, { skipEHP = true, skipFullDPS = false })
++			local actual = calc(override, true, reuseOptions)
++			assert.is_true(expected.FullDPS > 0)
++			local difference = outputDifference(expected, actual, "candidate " .. i)
++			assert(not difference, difference)
++		end
++	end)
++
++	it("does not mutate source modifiers while applying enemy modifiers", function()
++		local nested = modLib.createMod("ColdResist", "BASE", -10)
++		local payload = modLib.createMod("EnemyModifier", "LIST", { mod = nested })
++		build.configTab.modList:AddMod(modLib.createMod("EnemyModifier", "LIST", { mod = payload }, "Test Source"))
++		local env = build.calcsTab.calcs.initEnv(build, "CALCULATOR")
++		build.calcsTab.calcs.perform(env, true)
++		assert.is_nil(payload.source)
++		assert.is_nil(nested.source)
++	end)
++
++	it("does not add Spectre attribution to setup-owned modifiers", function()
++		build.spectreList = { "Metadata/Monsters/LeagueAzmeri/SpecialCorpses/Hailrake/HailrakeHigh" }
++		build.skillsTab:PasteSocketGroup("Raise Spectre 20/0  1")
++		runCallback("OnFrame")
++		selectMainSkill("RaiseSpectre")
++		local env = build.calcsTab.calcs.initEnv(build, "CALCULATOR")
++		build.calcsTab.calcs.perform(env, true)
++		local found = false
++		for _, skill in ipairs(env.player.mainSkill.minion.activeSkillList or { }) do
++			for _, buff in ipairs(skill.buffList) do
++				if buff.type == "Aura" then
++					for _, mod in ipairs(buff.modList) do
++						found = true
++						assert.is_nil((mod.source or ""):match("^Spectre:"))
++					end
++				end
++			end
++		end
++		assert.is_true(found)
++	end)
+ end)
+diff --git a/src/Classes/CalcsTab.lua b/src/Classes/CalcsTab.lua
+index d670e393c..e4e538309 100644
+--- a/src/Classes/CalcsTab.lua
++++ b/src/Classes/CalcsTab.lua
+@@ -563,6 +563,8 @@ function CalcsTabClass:PowerBuilder(disableRelevance)
+ 			error(nullOutput, 0)
+ 		end
+ 		relevance = self.calcs.newNodeRelevance(self.mainEnv, observation, nullOutput)
++		-- The builder owns one setup snapshot; the private unpruned validation path stays fresh.
++		calcOptions.setupReuse = self.calcs.newSetupReuse(self.build)
+ 	end
+ 
+ 	local function buildMasteryEffectNode(node, effect)
+diff --git a/src/Modules/CalcPerform.lua b/src/Modules/CalcPerform.lua
+index 078d0cfe6..849c77a27 100644
+--- a/src/Modules/CalcPerform.lua
++++ b/src/Modules/CalcPerform.lua
+@@ -66,6 +66,24 @@ local function mergeBuff(env, src, destTable, destKey)
+ 	end
+ end
+ 
++-- Source attribution is calculation-local; copy the complete modifier payload before
++-- changing it so setup-owned modifier records remain reusable.
++local function copyModWithSource(mod, source)
++	return modLib.setSource(copyTable(mod), source)
++end
++
++-- Spectre attribution is calculation-local; copy modifiers that may still belong to
++-- the reusable setup before adding the source label.
++local function setSpectreSource(activeSkill, castingMinion, modList, sourceSkill)
++	if not activeSkill.skillFlags.spectre then
++		return
++	end
++	local source = "Spectre:" .. (sourceSkill and sourceSkill .. " - " or "") .. castingMinion.minionData.name
++	for i = 1, #modList do
++		modList[i] = copyModWithSource(modList[i], source)
++	end
++end
++
+ function doActorLifeMana(actor)
+ 	local modDB = actor.modDB
+ 	---@class Output
+@@ -626,7 +644,7 @@ local function applyEnemyModifiers(actor, clearCache)
+ 		local mod = value.value and value.value.mod
+ 		if mod and not cache[mod] then
+ 			local source = mod.source or value.mod.source
+-			enemyDB:AddMod(modLib.setSource(mod, source))
++			enemyDB:AddMod(copyModWithSource(mod, source))
+ 			cache[mod] = true
+ 		end
+ 	end
+@@ -1952,8 +1970,7 @@ function calcs.perform(env, skipEHP)
+ 			for _, value in ipairs(env.modDB:Tabulate(nil, nil, "EnemyModifier")) do
+ 				local mod = value.value and value.value.mod
+ 				if mod then
+-					local copy = copyTable(mod, true)
+-					env.minion.modDB:AddMod(modLib.setSource(copy, mod.source or value.mod.source))
++					env.minion.modDB:AddMod(copyModWithSource(mod, mod.source or value.mod.source))
+ 				end
+ 			end
+ 		end
+@@ -2781,19 +2798,6 @@ function calcs.perform(env, skipEHP)
+ 		if activeSkill.minion and activeSkill.minion.activeSkillList then
+ 			local castingMinion = activeSkill.minion
+ 			for _, activeMinionSkill in ipairs(activeSkill.minion.activeSkillList) do
+-			local function setSpectreSource(modList, sourceSkill)
+-				if activeSkill.skillFlags.spectre then
+-					local source = "Spectre:"
+-					if sourceSkill then
+-						source = source..sourceSkill.." - "..castingMinion.minionData.name
+-					else
+-						source = source..castingMinion.minionData.name
+-					end
+-					for i = 1, #modList do
+-						modList[i].source = source
+-					end
+-				end
+-			end
+ 				local skillModList = activeMinionSkill.skillModList
+ 				local skillCfg = activeMinionSkill.skillCfg
+ 				for _, buff in ipairs(activeMinionSkill.buffList) do
+@@ -2871,7 +2875,7 @@ function calcs.perform(env, skipEHP)
+ 										local srcList = calcs.newModList(env)
+ 										srcList:ScaleAddList(buff.modList, mult)
+ 										srcList:ScaleAddList(extraAuraModList, mult)
+-										setSpectreSource(srcList, buff.name)
++										setSpectreSource(activeSkill, castingMinion, srcList, buff.name)
+ 										mergeBuff(env, srcList, buffs, buff.name)
+ 									end
+ 								end
+@@ -2886,7 +2890,7 @@ function calcs.perform(env, skipEHP)
+ 										local srcList = calcs.newModList(env)
+ 										srcList:ScaleAddList(buff.modList, mult)
+ 										srcList:ScaleAddList(extraAuraModList, mult)
+-										setSpectreSource(srcList, buff.name)
++										setSpectreSource(activeSkill, castingMinion, srcList, buff.name)
+ 										mergeBuff(env, srcList, minionBuffs, buff.name)
+ 									end
+ 								end
+@@ -2896,7 +2900,7 @@ function calcs.perform(env, skipEHP)
+ 								local newModList = calcs.newModList(env)
+ 								newModList:AddList(buff.modList)
+ 								newModList:AddList(extraAuraModList)
+-								setSpectreSource(newModList, buff.name)
++								setSpectreSource(activeSkill, castingMinion, newModList, buff.name)
+ 								if buffExports["Aura"][buff.name] then
+ 									buffExports["Aura"][buff.name.."_Debuff"] = buffExports["Aura"][buff.name]
+ 								end
+@@ -2929,7 +2933,7 @@ function calcs.perform(env, skipEHP)
+ 											end
+ 										end
+ 									end
+-									setSpectreSource(srcList)
++									setSpectreSource(activeSkill, castingMinion, srcList)
+ 									mergeBuff(env, srcList, buffs, "Totem "..buff.name)
+ 								end
+ 							end
+diff --git a/src/Modules/CalcRelevance.lua b/src/Modules/CalcRelevance.lua
+index bbff6c089..33afd6822 100644
+--- a/src/Modules/CalcRelevance.lua
++++ b/src/Modules/CalcRelevance.lua
+@@ -91,6 +91,64 @@ function relevance:IsIrrelevant(node)
+ 	return true
+ end
+ 
++local setupIndependence = { }
++setupIndependence.__index = setupIndependence
++
++-- Decides from an observeSetup observation whether a passive allocation change
++-- leaves item, gem requirement and active skill setup unchanged.
++function calcs.newSetupIndependence(env, observation)
++	return setmetatable({
++		env = env, observation = observation, memo = { },
++		enabled = not observation.active and not observation.unsafe,
++	}, setupIndependence)
++end
++
++function setupIndependence:IsIndependent(node)
++	if not self.enabled or type(node) ~= "table" then
++		return false
++	end
++	if self.memo[node] ~= nil then
++		return self.memo[node]
++	end
++	local independent = false
++	-- Setup reads sockets, keystones and tattoo counts directly rather than through queries.
++	if (node.type == "Normal" or node.type == "Notable" or node.type == "Mastery") and not node.isTattoo and not self.observation.nodes[node.id] then
++		local mods, grantsSkill, explodes = calcs.probeNodeContribution(self.env, node)
++		if mods and not grantsSkill and not explodes then
++			independent = true
++			for _, mod in ipairs(mods) do
++				-- Structured effects (such as ExtraJewelFunc, which reruns item setup from the
++				-- unobserved passive merge) can change setup without a recorded query.
++				if mod.type == "LIST" or matchesQuery(self.observation.queries, mod) then
++					independent = false
++					break
++				end
++			end
++		end
++	end
++	self.memo[node] = independent
++	return independent
++end
++
++function setupIndependence:Allows(override)
++	if not self.enabled or not override then
++		return false
++	end
++	local changed = false
++	for key, nodes in pairs(override) do
++		if key ~= "addNodes" and key ~= "removeNodes" then
++			return false
++		end
++		for node in pairs(nodes) do
++			if not self:IsIndependent(node) then
++				return false
++			end
++			changed = true
++		end
++	end
++	return changed
++end
++
+ function relevance:CanSkip(override)
+ 	if not self.enabled or not override.addNodes or not next(override.addNodes) or override.removeNodes then
+ 		return false
+diff --git a/src/Modules/CalcSetup.lua b/src/Modules/CalcSetup.lua
+index d0f87f3f2..b70790085 100644
+--- a/src/Modules/CalcSetup.lua
++++ b/src/Modules/CalcSetup.lua
+@@ -560,6 +560,134 @@ local function addBestSupport(supportEffect, appliedSupportList, mode)
+ 	end
+ end
+ 
++-- Limits a setup observation to the item and skill phases that a reused setup skips.
++local function setSetupObservation(specEnv, queryObserver, active)
++	if queryObserver and specEnv and specEnv.observeSetup then
++		queryObserver.active = active
++	end
++end
++
++---@class SetupDBWrites
++---@field mods table[] Mods appended in order.
++---@field conditions table<string, any> Conditions set or changed.
++---@field multipliers table<string, any> Multipliers set or changed.
++
++---@class SetupPhaseWrites
++---@field modDB SetupDBWrites
++---@field enemyDB SetupDBWrites
++---@field explodeSources table[]? Explode sources after the item phase.
++
++---@class SetupWrites
++---@field items SetupPhaseWrites?
++---@field skills SetupPhaseWrites?
++---@field unsafe string? Why the captured writes cannot be replayed.
++
++---@class CalcSpecEnv
++---@field env Env? Environment to reuse instead of creating one.
++---@field cachedPlayerDB ModDB?
++---@field cachedEnemyDB ModDB?
++---@field cachedMinionDB ModDB?
++---@field accelerate table<string, boolean>? Setup phases a reused environment skips.
++---@field observeSetup boolean? Record queries only during item and skill setup.
++---@field captureSetup SetupWrites? Receives the direct writes of item and skill setup.
++---@field reuseSetup boolean? Passive-only reuse: copy cached base mods and replay `setupWrites`.
++---@field setupWrites SetupWrites?
++
++-- Reused setup skips the item and skill phases, but wipeEnv still clears the player and
++-- enemy modifier databases those phases write to directly (for example Widowhail's
++-- multiplier and socket properties). A capturing setup records those writes once so a
++-- reused setup can replay them at the same point, preserving each modifier list's order.
++local setupPhaseDBs = { "modDB", "enemyDB" }
++
++local function markSetupPhase(specEnv, env)
++	if not (specEnv and specEnv.captureSetup) then
++		return nil
++	end
++	local mark = { }
++	for _, key in ipairs(setupPhaseDBs) do
++		local db = env[key]
++		local lists = { }
++		for name, list in pairs(db.mods) do
++			lists[name] = copyTable(list, true)
++		end
++		mark[key] = { lists = lists, conditions = copyTable(db.conditions, true), multipliers = copyTable(db.multipliers, true) }
++	end
++	return mark
++end
++
++local function captureSetupValues(capture, phase, current, previous)
++	local changed = { }
++	for key, value in pairs(current) do
++		if previous[key] ~= value then
++			changed[key] = value
++		end
++	end
++	for key in pairs(previous) do
++		if current[key] == nil then
++			capture.unsafe = phase .. " setup removed a condition or multiplier"
++		end
++	end
++	return changed
++end
++
++local function captureSetupPhase(specEnv, env, mark, phase)
++	if not mark then
++		return
++	end
++	local capture = specEnv.captureSetup
++	local writes = { }
++	for _, key in ipairs(setupPhaseDBs) do
++		local db, before = env[key], mark[key]
++		local added = { }
++		for name, previous in pairs(before.lists) do
++			local list = db.mods[name]
++			if not list or #list < #previous then
++				capture.unsafe = phase .. " setup removed modifiers"
++			end
++		end
++		for name, list in pairs(db.mods) do
++			local previous = before.lists[name] or { }
++			for i = 1, #previous do
++				if list[i] ~= previous[i] then
++					capture.unsafe = phase .. " setup replaced modifiers"
++				end
++			end
++			for i = #previous + 1, #list do
++				t_insert(added, list[i])
++			end
++		end
++		writes[key] = {
++			mods = added,
++			conditions = captureSetupValues(capture, phase, db.conditions, before.conditions),
++			multipliers = captureSetupValues(capture, phase, db.multipliers, before.multipliers),
++		}
++	end
++	if phase == "items" then
++		writes.explodeSources = copyTable(env.explodeSources, true)
++	end
++	capture[phase] = writes
++end
++
++local function replaySetupPhase(specEnv, env, phase)
++	local writes = specEnv and specEnv.reuseSetup and specEnv.setupWrites and specEnv.setupWrites[phase]
++	if not writes then
++		return
++	end
++	for _, key in ipairs(setupPhaseDBs) do
++		local db, write = env[key], writes[key]
++		db:AddList(write.mods)
++		for name, value in pairs(write.conditions) do
++			db.conditions[name] = value
++		end
++		for name, value in pairs(write.multipliers) do
++			db.multipliers[name] = value
++		end
++	end
++	if writes.explodeSources then
++		env.explodeSources = copyTable(writes.explodeSources, true)
++	end
++end
++
+ ---@alias CalcEnvMode "MAIN"|"CALCS"|"EFFECTIVE"|"COMBAT"|"BUFFED"|"CALCULATOR"
+ -- Initialise environment:
+ -- 1. Initialises the player and enemy modifier databases
+@@ -571,7 +699,7 @@ end
+ ---@param build Build
+ ---@param mode CalcEnvMode
+ ---@param override CalcOverride?
+----@param specEnv any?
++---@param specEnv CalcSpecEnv?
+ ---@return Env
+ ---@return ModDB? cachedPlayerDB
+ ---@return ModDB? cachedEnemyDB
+@@ -584,6 +712,7 @@ function calcs.initEnv(build, mode, override, specEnv, queryObserver)
+ 	local cachedMinionDB = specEnv and specEnv.cachedMinionDB or nil
+ 	local env = specEnv and specEnv.env or nil
+ 	local accelerate = specEnv and specEnv.accelerate or { }
++	setSetupObservation(specEnv, queryObserver, false)
+ 
+ 	-- environment variables
+ 	local override = override or { }
+@@ -789,6 +918,17 @@ function calcs.initEnv(build, mode, override, specEnv, queryObserver)
+ 		env.enemyDB:AddList(build.partyTab.enemyModList)
+ 
+ 		cachedPlayerDB, cachedEnemyDB, cachedMinionDB = specCopy(env)
++	elseif specEnv.reuseSetup then
++		-- Copy rather than link the cached base mods so every query keeps a fresh
++		-- environment's mod order and shares one set of global limits.
++		env.modDB.parent = nil
++		env.enemyDB.parent = nil
++		mergeDB(env.modDB, cachedPlayerDB)
++		mergeDB(env.enemyDB, cachedEnemyDB)
++		if cachedMinionDB and env.minion then
++			env.minion.modDB.parent = nil
++			mergeDB(env.minion.modDB, cachedMinionDB)
++		end
+ 	else
+ 		env.modDB.parent = cachedPlayerDB
+ 		env.enemyDB.parent = cachedEnemyDB
+@@ -830,12 +970,23 @@ function calcs.initEnv(build, mode, override, specEnv, queryObserver)
+ 			env.queryObserver:ObserveNodes(nodes)
+ 		end
+ 		env.allocNodes = nodes
++		-- A fresh environment has not collected radius jewels yet; match its first node pass.
++		local radiusJewelList, extraRadiusNodeList
++		if specEnv and specEnv.reuseSetup then
++			radiusJewelList, extraRadiusNodeList = env.radiusJewelList, env.extraRadiusNodeList
++			env.radiusJewelList, env.extraRadiusNodeList = { }, { }
++		end
+ 		env.initialNodeModDB = calcs.buildModListForNodeList(env, env.allocNodes, true)
+ 		modLib.mergeKeystones(env, env.initialNodeModDB)
++		if radiusJewelList then
++			env.radiusJewelList, env.extraRadiusNodeList = radiusJewelList, extraRadiusNodeList
++		end
+ 	end
+ 
+ 	calcs.addAllocatedNodeCountMods(modDB, allocatedCounts)
+ 
++	setSetupObservation(specEnv, queryObserver, true)
++	local itemPhase = markSetupPhase(specEnv, env)
+ 	-- Build and merge item modifiers, and create list of radius jewels
+ 	if not accelerate.requirementsItems then
+ 		local items = {}
+@@ -1420,7 +1571,12 @@ function calcs.initEnv(build, mode, override, specEnv, queryObserver)
+ 			end
+ 		end
+ 	end
++	if accelerate.requirementsItems then
++		replaySetupPhase(specEnv, env, "items")
++	end
++	captureSetupPhase(specEnv, env, itemPhase, "items")
+ 
++	setSetupObservation(specEnv, queryObserver, false)
+ 	-- Merge env.itemModDB with env.ModDB
+ 	mergeDB(env.modDB, env.itemModDB)
+ 
+@@ -1485,9 +1641,11 @@ function calcs.initEnv(build, mode, override, specEnv, queryObserver)
+ 		end
+ 	end
+ 
++	setSetupObservation(specEnv, queryObserver, true)
+ 	-- Merge Granted Skills Tables
+ 	env.grantedSkills = tableConcat(env.grantedSkillsNodes, env.grantedSkillsItems)
+ 
++	local skillPhase = markSetupPhase(specEnv, env)
+ 	if not accelerate.skills then
+ 		if env.mode == "MAIN" then
+ 			local function getNormalizedSkillLevel(grantedSkill)
+@@ -1983,6 +2141,7 @@ function calcs.initEnv(build, mode, override, specEnv, queryObserver)
+ 			calcs.buildActiveSkillModList(env, activeSkill)
+ 		end
+ 	else
++		replaySetupPhase(specEnv, env, "skills")
+ 		-- Wipe skillData and readd required data the rest of the data will be added by the rest of code this stops iterative calculations on skillData not being reset
+ 		for _, activeSkill in pairs(env.player.activeSkillList) do
+ 			local skillData = copyTable(activeSkill.skillData, true)
+@@ -2008,6 +2167,8 @@ function calcs.initEnv(build, mode, override, specEnv, queryObserver)
+ 		end
+ 	end
+ 
++	captureSetupPhase(specEnv, env, skillPhase, "skills")
++	setSetupObservation(specEnv, queryObserver, false)
+ 	-- Merge Requirements Tables
+ 	env.requirementsTable = tableConcat(env.requirementsTableItems, env.requirementsTableGems)
+ 
+diff --git a/src/Modules/Calcs.lua b/src/Modules/Calcs.lua
+index ced6fbb8e..47216945e 100644
+--- a/src/Modules/Calcs.lua
++++ b/src/Modules/Calcs.lua
+@@ -21,6 +21,7 @@ require("Modules.CalcOffence")
+ require("Modules.CalcTriggers")
+ require("Modules.CalcMirages")
+ require("Modules.CalcRelevance")
++require("Modules.CalcSetupReuse")
+ 
+ -- Get the average value of a table -- note this is unused
+ function math.average(t)
+@@ -87,6 +88,7 @@ end
+ ---@field queryObserver table? Private execution-scoped modifier observer.
+ ---@field skipEHP boolean? Skip effective hit pool and maximum hit estimations.
+ ---@field skipFullDPS boolean? Skip the Full DPS roll-up.
++---@field setupReuse SetupReuse? Private setup snapshot owned by one report execution.
+ 
+ -- Get calculator for other changes (adding/removing nodes, items, gems, etc)
+ ---@param build Build
+@@ -104,7 +106,13 @@ function calcs.getMiscCalculator(build)
+ 		env.player.output.FullDotDPS = fullDPS.TotalDotDPS
+ 	end
+ 	return function(override, useFullDPS, options)
+-		local env, cachedPlayerDB, cachedEnemyDB, cachedMinionDB = calcs.initEnv(build, "CALCULATOR", override, nil, options and options.queryObserver)
++		local env, cachedPlayerDB, cachedEnemyDB, cachedMinionDB
++		local setupReuse = options and not options.queryObserver and options.setupReuse
++		if setupReuse and setupReuse:Allows(override) then
++			env, cachedPlayerDB, cachedEnemyDB, cachedMinionDB = setupReuse:InitEnv(override)
++		else
++			env, cachedPlayerDB, cachedEnemyDB, cachedMinionDB = calcs.initEnv(build, "CALCULATOR", override, nil, options and options.queryObserver)
++		end
+ 		calcs.perform(env, options and options.skipEHP)
+ 		local calculateFullDPS = not (options and options.skipFullDPS) and (useFullDPS ~= false or build.viewMode == "TREE")
+ 		if calculateFullDPS and usedFullDPS then
+diff --git a/src/Modules/CalcSetupReuse.lua b/src/Modules/CalcSetupReuse.lua
+new file mode 100644
+index 000000000..d0c828859
+--- /dev/null
++++ b/src/Modules/CalcSetupReuse.lua
+@@ -0,0 +1,122 @@
++-- Path of Building
++-- Conservative, execution-scoped reuse of item and skill calculation setup.
++local calcs = require("Modules.CalcBase")
++local t_insert = table.insert
++
++---@class SetupReuse
++---@field build Build
++---@field independence table Result of calcs.newSetupIndependence for the baseline setup.
++---@field specEnv CalcSpecEnv Reused environment and the item/skill acceleration that skips setup.
++---@field tables table[] Every table the baseline setup created that calculations receive, in discovery order.
++---@field contents table[] Post-setup shallow contents of `tables`, by the same index.
++local setupReuse = { }
++setupReuse.__index = setupReuse
++
++local setupReuseAcceleration = { requirementsItems = true, requirementsGems = true, skills = true }
++
++-- Mod objects are treated as immutable records once created. Calculation paths copy them
++-- before scaling, merging or adding source attribution, so they never need restoring.
++local function isMod(tbl)
++	return type(tbl.name) == "string" and type(tbl.flags) == "number" and type(tbl.keywordFlags) == "number"
++end
++
++-- Finds every table a setup created, reachable from `seed`, by pairing it with an
++-- independent setup of the same build position by position along values. Identical tables
++-- at a position are shared build, item, gem, tree or data tables that a fresh setup would
++-- use as well; differing tables were created by setup. A created table without a counterpart
++-- is collected but not descended.
++local function collectSetupTables(seed, twin)
++	local counterpart = { [seed] = twin }
++	local tables = { seed }
++	local index = 1
++	while tables[index] do
++		local tbl = tables[index]
++		index = index + 1
++		local other = counterpart[tbl]
++		if other then
++			for key, value in pairs(tbl) do
++				if type(value) == "table" and counterpart[value] == nil and not isMod(value) then
++					local otherValue = rawget(other, type(key) == "table" and counterpart[key] or key)
++					if otherValue ~= value then
++						counterpart[value] = type(otherValue) == "table" and otherValue
++						t_insert(tables, value)
++					end
++				end
++			end
++		end
++	end
++	return tables
++end
++
++-- Observes which modifiers item and skill setup reads and builds the baseline setup that
++-- passive-only calculations may reuse. Returns nil when setup changes its own override,
++-- cannot be replayed additively, or reads cached calculations from a previous environment.
++---@param build Build
++---@return SetupReuse? reuse
++function calcs.newSetupReuse(build)
++	local observation = calcs.newQueryObserver()
++	local seedOverride = { }
++	calcs.initEnv(build, "CALCULATOR", seedOverride, { observeSetup = true }, observation)
++	observation:Seal()
++	if seedOverride.conditions or (seedOverride.extraJewelFuncs and #seedOverride.extraJewelFuncs > 0) then
++		return nil
++	end
++	local capture = { }
++	local env, cachedPlayerDB, cachedEnemyDB, cachedMinionDB = calcs.initEnv(build, "CALCULATOR", nil, { captureSetup = capture })
++	if capture.unsafe or not capture.items or not capture.skills then
++		return nil
++	end
++	local mainSkill = env.player.mainSkill
++	if mainSkill and (mainSkill.skillData.triggeredByManaforged or mainSkill.activeEffect.grantedEffect.name == "Reflection") then
++		return nil
++	end
++	-- Calculations also receive the cached base databases (as Full DPS parents, which
++	-- ReplaceMod and ConvertMod can edit), so they belong to the restored state too.
++	local twin = { }
++	twin.env, twin.cachedPlayerDB, twin.cachedEnemyDB, twin.cachedMinionDB = calcs.initEnv(build, "CALCULATOR")
++	local tables = collectSetupTables({ env = env, cachedPlayerDB = cachedPlayerDB, cachedEnemyDB = cachedEnemyDB, cachedMinionDB = cachedMinionDB }, twin)
++	local contents = { }
++	for i, tbl in ipairs(tables) do
++		contents[i] = copyTable(tbl, true)
++	end
++	return setmetatable({
++		build = build,
++		independence = calcs.newSetupIndependence(env, observation),
++		specEnv = { env = env, cachedPlayerDB = cachedPlayerDB, cachedEnemyDB = cachedEnemyDB, cachedMinionDB = cachedMinionDB, accelerate = setupReuseAcceleration, reuseSetup = true, setupWrites = capture },
++		tables = tables,
++		contents = contents,
++	}, setupReuse)
++end
++
++function setupReuse:Allows(override)
++	return self.independence:Allows(override)
++end
++
++-- Returns every table the baseline setup created (except immutable mod objects) to its
++-- post-setup contents in place, preserving identity. Anything an earlier calculation wrote
++-- into or attached to them is discarded, so each reused calculation starts from the same
++-- state; shared build and data tables are left alone, as a fresh setup shares them too.
++function setupReuse:Restore()
++	local contents = self.contents
++	for i, tbl in ipairs(self.tables) do
++		local saved = contents[i]
++		for key in pairs(tbl) do
++			if saved[key] == nil then
++				tbl[key] = nil
++			end
++		end
++		for key, value in pairs(saved) do
++			tbl[key] = value
++		end
++	end
++end
++
++---@param override CalcOverride
++---@return Env, ModDB?, ModDB?, ModDB?
++function setupReuse:InitEnv(override)
++	self:Restore()
++	self.specEnv.env.override = override
++	return calcs.initEnv(self.build, "CALCULATOR", override, self.specEnv)
++end
++
++return calcs

@@ -44,11 +44,12 @@ These patches preserve PoB's calculation rules and are applied with exact source
 and result checks. The complete maintained inventory is in
 [`docs/BUNDLED_POB_CHANGES.md`](docs/BUNDLED_POB_CHANGES.md).
 
-Power Reports also include the retained **relevance-pruning optimization**:
+Power Reports also include retained **relevance pruning and setup reuse**:
 node additions that cannot affect the selected metric avoid a redundant
-calculation. It applies to serial reports and browser helpers. The
-[bundled change inventory](docs/BUNDLED_POB_CHANGES.md) records this required
-local patch and the rules for carrying it through future bundles and releases.
+calculation, and candidates proven setup-independent reuse the report's item
+and skill setup snapshot. Both apply to serial reports and browser helpers. The
+[bundled change inventory](docs/BUNDLED_POB_CHANGES.md) records these required
+local patches and the rules for carrying them through future bundles and releases.
 
 ### Improvements submitted to pob-web
 

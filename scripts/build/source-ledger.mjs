@@ -1,12 +1,14 @@
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { parseDriftPatch } from "./drift-patch.mjs";
+import { parseDriftPatch, transformDriftPatch } from "./drift-patch.mjs";
 
 export const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
+const blobSha1 = (text) => createHash("sha1").update(`blob ${Buffer.byteLength(text)}\0`).update(text).digest("hex");
 
-export function patchFiles(bytes) {
-  return [...bytes.toString().matchAll(/^diff --git a\/(.+) b\/[^\r\n]+$/gm)].map((match) => match[1]).sort();
+export function patchFiles(bytes, deduplicate = false) {
+  const paths = [...bytes.toString().matchAll(/^diff --git a\/(.+) b\/[^\r\n]+$/gm)].map((match) => match[1]);
+  return (deduplicate ? [...new Set(paths)] : paths).sort();
 }
 
 export async function validateSourceLedger(appDir, suppliedPinBytes) {
@@ -21,18 +23,41 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
   }
   const sourceLocal = pin.overlays.filter((entry) => entry.kind === "local-patch" && entry.applicationStage === "source-composite");
   const relevance = sourceLocal[0];
+  const environmentReuse = sourceLocal[1];
   const relevancePaths = ["spec/System/TestPowerReport_spec.lua", "src/Classes/CalcsTab.lua", "src/Classes/ModDB.lua", "src/Classes/ModList.lua", "src/Classes/ModStore.lua", "src/Modules/CalcActiveSkill.lua", "src/Modules/CalcMirages.lua", "src/Modules/CalcPerform.lua", "src/Modules/CalcRelevance.lua", "src/Modules/CalcSetup.lua", "src/Modules/CalcTriggers.lua", "src/Modules/Calcs.lua", "src/Modules/Common.lua"];
-  if (sourceLocal.length !== 1 || relevance?.id !== "power-report-relevance-pruning" ||
+  const environmentPaths = ["spec/System/TestPowerReport_spec.lua", "src/Classes/CalcsTab.lua", "src/Modules/CalcPerform.lua", "src/Modules/CalcRelevance.lua", "src/Modules/CalcSetup.lua", "src/Modules/CalcSetupReuse.lua", "src/Modules/Calcs.lua"];
+  const relevancePr = {
+    number: 10383,
+    url: "https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10383",
+    head: "e6bc2a6322d1d3c1f268fcc2d7e06a82204b9fec",
+    scope: "Power Report relevance pruning; excludes follow-on environment reuse",
+  };
+  if (sourceLocal.length !== 2 || relevance?.id !== "power-report-relevance-pruning" ||
       pin.overlays[6] !== relevance || relevance.patchFile !== "patches/power-report-relevance-pruning.patch" ||
+      JSON.stringify(relevance.upstreamPr) !== JSON.stringify(relevancePr) ||
       JSON.stringify(relevance.files) !== JSON.stringify(relevancePaths) ||
       JSON.stringify(Object.keys(relevance.sourceBlobHashes ?? {})) !== JSON.stringify(relevancePaths) ||
       JSON.stringify(Object.keys(relevance.resultBlobHashes ?? {})) !== JSON.stringify(relevancePaths) ||
       relevancePaths.some(path => !pin.compositePatch.files.includes(path) ||
         !/^[a-f0-9]{40}$/.test(relevance.resultBlobHashes[path]) ||
-        relevance.resultBlobHashes[path] !== pin.compositePatch.resultBlobHashes[path]) ||
+        relevance.resultBlobHashes[path] !== (environmentReuse.sourceBlobHashes[path] ?? pin.compositePatch.resultBlobHashes[path])) ||
       relevancePaths.some(path => path === "src/Modules/CalcRelevance.lua"
         ? relevance.sourceBlobHashes[path] !== null : !/^[a-f0-9]{40}$/.test(relevance.sourceBlobHashes[path]))) {
     throw new Error("Power-report relevance source overlay identity or composition changed");
+  }
+  if (environmentReuse?.id !== "power-report-environment-reuse" || pin.overlays[7] !== environmentReuse ||
+      environmentReuse.patchFile !== "patches/power-report-env-reuse.patch" ||
+      JSON.stringify(environmentReuse.files) !== JSON.stringify(environmentPaths) ||
+      JSON.stringify(Object.keys(environmentReuse.sourceBlobHashes ?? {})) !== JSON.stringify(environmentPaths) ||
+      JSON.stringify(Object.keys(environmentReuse.resultBlobHashes ?? {})) !== JSON.stringify(environmentPaths) ||
+      environmentPaths.some(path => !pin.compositePatch.files.includes(path) ||
+        !/^[a-f0-9]{40}$/.test(environmentReuse.resultBlobHashes[path]) ||
+        environmentReuse.resultBlobHashes[path] !== pin.compositePatch.resultBlobHashes[path]) ||
+      environmentPaths.some(path => path === "src/Modules/CalcSetupReuse.lua"
+        ? environmentReuse.sourceBlobHashes[path] !== null
+        : !/^[a-f0-9]{40}$/.test(environmentReuse.sourceBlobHashes[path]) ||
+          environmentReuse.sourceBlobHashes[path] !== relevance.resultBlobHashes[path])) {
+    throw new Error("Power-report environment-reuse source overlay identity or composition changed");
   }
   const local = pin.overlays.filter((entry) => entry.kind === "local-patch" && entry.applicationStage !== "source-composite");
   if (JSON.stringify(local.map((overlay) => overlay.id)) !== JSON.stringify(["gem-dropdown-hover", "limited-unique-item-comparisons", "importtab-host-capabilities", "preferred-export-site", "calculation-only-jewel-specs", "node-power-delegation", "compact-status-text"]) ||
@@ -135,38 +160,66 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
   }
   const compositeBytes = await readFile(join(appDir, pin.compositePatch.patchFile));
   if (sha256(compositeBytes) !== pin.compositePatch.patchSha256) throw new Error("PoB PR composite patch SHA-256 mismatch");
-  if (JSON.stringify(patchFiles(compositeBytes)) !== JSON.stringify([...pin.compositePatch.files].sort())) {
+  if (JSON.stringify(patchFiles(compositeBytes, true)) !== JSON.stringify([...pin.compositePatch.files].sort())) {
     throw new Error("PoB PR composite file inventory mismatch");
   }
   return { pin, pinBytes, overlayBytes, compositeBytes };
 }
 
-// Prove the prepared composite contains the independent local patch exactly,
-// including its pre-patch PR-stack identities. Never edit the prepared tree.
+// Prove the prepared composite contains each local source patch in order,
+// including every intermediate source identity. Never edit the prepared tree.
 export async function validatePreparedRelevance(appDir, sourceDir, pin) {
-  const overlay = pin.overlays.find(entry => entry.id === "power-report-relevance-pruning");
-  const patch = await readFile(join(appDir, overlay.patchFile), "utf8");
-  const sections = parseDriftPatch(patch);
-  const positions = patch.split(/^diff --git /m).slice(1).map(section =>
-    [...section.matchAll(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/gm)].map(match => Number(match[1]) - 1));
-  for (const [index, section] of sections.entries()) {
-    const source = await readFile(join(sourceDir, section.path), "utf8");
-    if (section.added) {
-      if (source !== section.blocks[0].after) throw new Error(`Relevance source composition changed: ${section.path}`);
-      continue;
+  const overlays = pin.overlays.filter(entry => entry.kind === "local-patch" && entry.applicationStage === "source-composite");
+  const source = new Map();
+  for (const path of new Set(overlays.flatMap(overlay => overlay.files))) {
+    source.set(path, await readFile(join(sourceDir, path), "utf8"));
+  }
+  for (const overlay of [...overlays].reverse()) {
+    const patch = await readFile(join(appDir, overlay.patchFile), "utf8");
+    const sections = parseDriftPatch(patch);
+    const positions = patch.split(/^diff --git /m).slice(1).map(section =>
+      [...section.matchAll(/^@@ -\d+(?:,\d+)? \+(\d+)(?:,\d+)? @@/gm)].map(match => Number(match[1]) - 1));
+    for (const [index, section] of sections.entries()) {
+      const current = source.get(section.path);
+      if (current === undefined || blobSha1(current) !== overlay.resultBlobHashes[section.path]) {
+        throw new Error(`Power-report source composition changed: ${section.path}`);
+      }
+      if (section.added) {
+        if (overlay.sourceBlobHashes[section.path] !== null || current !== section.blocks[0].after) {
+          throw new Error(`Power-report source composition changed: ${section.path}`);
+        }
+        source.delete(section.path);
+        continue;
+      }
+      const reversed = {
+        ...section,
+        blocks: [...section.blocks].reverse().map(({ before, after }) => ({ before: after, after: before })),
+      };
+      let original;
+      try {
+        // Follow-on patches can retain exact unique context at a line offset
+        // when an earlier PR changed an unrelated part of the same file.
+        original = transformDriftPatch({ [section.path]: current }, [reversed])[section.path];
+      } catch (error) {
+        if (error.message !== "patch-context") throw error;
+        // Fixed positions handle repeated modifier-store boilerplate without
+        // fuzzy matching. Complete pre/post blobs remain identity checked.
+        const lines = current.match(/[^\n]*\n|[^\n]+$/g) ?? [];
+        for (let i = section.blocks.length - 1; i >= 0; i--) {
+          const { before, after } = section.blocks[i];
+          const count = (after.match(/[^\n]*\n|[^\n]+$/g) ?? []).length;
+          const start = positions[index][i];
+          if (lines.slice(start, start + count).join("") !== after) {
+            throw new Error(`Power-report patch context changed: ${section.path}`);
+          }
+          lines.splice(start, count, ...(before.match(/[^\n]*\n|[^\n]+$/g) ?? []));
+        }
+        original = lines.join("");
+      }
+      if (blobSha1(original) !== overlay.sourceBlobHashes[section.path]) {
+        throw new Error(`Power-report source composition changed: ${section.path}`);
+      }
+      source.set(section.path, original);
     }
-    // Exact hunk positions handle repeated modifier-store boilerplate without
-    // fuzzy matching. Both complete pre/post blobs remain identity checked.
-    const lines = source.match(/[^\n]*\n|[^\n]+$/g) ?? [];
-    for (let i = section.blocks.length - 1; i >= 0; i--) {
-      const { before, after } = section.blocks[i];
-      const count = (after.match(/[^\n]*\n|[^\n]+$/g) ?? []).length;
-      const start = positions[index][i];
-      if (lines.slice(start, start + count).join("") !== after) throw new Error(`Relevance patch context changed: ${section.path}`);
-      lines.splice(start, count, ...(before.match(/[^\n]*\n|[^\n]+$/g) ?? []));
-    }
-    const original = lines.join("");
-    const hash = createHash("sha1").update(`blob ${Buffer.byteLength(original)}\0`).update(original).digest("hex");
-    if (hash !== overlay.sourceBlobHashes[section.path]) throw new Error(`Relevance source composition changed: ${section.path}`);
   }
 }
