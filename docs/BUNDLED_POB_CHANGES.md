@@ -34,12 +34,15 @@ The composite resolves overlapping files semantically. In particular, the
 power-report result keeps #10373's cluster gating, #10313's calculation-stage
 options, and #10381's context-aware cache keys and regression coverage.
 
-## Required local source patch
+## Required local source patches
 
 `power-report-relevance-pruning` is retained in
 [`power-report-relevance-pruning.patch`](../patches/power-report-relevance-pruning.patch).
 It is composed **after all six PRs and before the browser adapters**, using the
-`source-composite` stage. It has not yet been submitted as a PoB PR.
+`source-composite` stage. It is also tracked in
+[PoB #10383](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10383);
+the recorded local layer remains authoritative until a pinned base contains
+equivalent behavior.
 
 For each Power Report, a recording calculation identifies which modifiers the
 selected metric reads. Simple node additions that provably cannot affect those
@@ -52,11 +55,20 @@ and relevance memo. Importing a build or starting another report creates fresh
 state. The retained patch includes the desktop regression tests; the browser
 adapter preserves traversal, cache keys, result order and fallback behavior.
 
-**Carry this patch in every future bundle and deployment.** Source-ledger
-validation rejects its absence or a broken composition. On an upstream pin
-refresh, review the retained patch alongside the six PRs. Remove it only after
-verifying equivalent upstream behavior and updating the ledger, regressions and
-this inventory together. An upstream merge by itself does not update a bundle.
+`power-report-environment-reuse` follows relevance pruning in
+[`power-report-env-reuse.patch`](../patches/power-report-env-reuse.patch).
+One Power Report operation may reuse its captured item and active-skill setup
+only when the passive override is proven independent of every setup read.
+Reusable state is restored between candidates; uncertain changes fall back to
+a fresh calculation environment. The patch includes the setup-independence,
+copy-on-write, state-restoration, lifecycle, and exact-output regressions.
+
+**Carry both patches in every future bundle and deployment.** Source-ledger
+validation rejects their absence, reordering, or broken composition. On an
+upstream pin refresh, review both layers alongside the six PRs. Remove either
+only after verifying equivalent upstream behavior and updating the ledger,
+regressions and this inventory together. An upstream merge by itself does not
+update a bundle.
 
 ## Pack-time PoB patches
 

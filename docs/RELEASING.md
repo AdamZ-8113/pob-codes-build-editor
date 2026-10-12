@@ -165,13 +165,14 @@ Keep those bytes and their identities in the complete release inventory.
 
 ### Required Power Report optimization in release artifacts
 
-All future candidates must include the `power-report-relevance-pruning`
-source overlay and its browser helper integration. Before building, run the
+All future candidates must include the `power-report-relevance-pruning` and
+`power-report-environment-reuse` source overlays and their browser helper
+integration. Before building, run the
 source-ledger/unit checks and follow the affected validation route in
-[DEVELOPMENT.md](DEVELOPMENT.md#retained-power-report-relevance-pruning).
-`npm run pack` validates the retained patch and composed source identities;
-the resulting payload provenance records the overlay. Confirm the candidate's
-provenance includes it when reviewing a release or an upstream pin refresh.
+[DEVELOPMENT.md](DEVELOPMENT.md#retained-power-report-relevance-pruning-and-environment-reuse).
+`npm run pack` validates the retained patches and composed source identities;
+the resulting payload provenance records both overlays. Confirm the candidate's
+provenance includes them when reviewing a release or an upstream pin refresh.
 
 Promote the verified exact-SHA artifact through the existing private operator
 handoff. Do not apply a patch during deployment or rebuild the artifact there.

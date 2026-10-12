@@ -54,7 +54,7 @@ retained change blocks already in the target tree (`absorbed`), and mixed
 absorption (`partial`). PR state is informational; a merged flag never proves
 absorption. Individual PRs are diagnosed independently because their recorded
 composite includes an overlap resolution. That composite prepares the candidate
-source, including the required local relevance patch, followed by the
+source, including the required local Power Report patches, followed by the
 authoritative pack-time transforms in packer order. Source-local patches have
 separate absorption entries; prerequisite resolution follows the composite.
 Failure blocks dependent stages. Result-only adapters report locked-path drift.
@@ -182,15 +182,17 @@ All automated browser runs are headless. Ordinary local tests must not be aimed
 at production. `npm run test:e2e:production-smoke` is the explicit live-site
 opt-in and is appropriate only for release verification.
 
-### Retained Power Report relevance pruning
+### Retained Power Report relevance pruning and environment reuse
 
-Every source refresh must retain `power-report-relevance-pruning` from
-`source-pin.json`, after the six PR overlays and before pack-time adapters.
-The independent patch is `patches/power-report-relevance-pruning.patch`; its
-13 source/spec files are also included in `patches/pob-pr-composite.patch`.
-Regenerate the composite and the `nodePowerDelegation` source/result identities
-from the actual patch chain. Do not copy hashes from an edited prepared tree.
-The source ledger rejects omission of this required source layer.
+Every source refresh must retain `power-report-relevance-pruning` followed by
+`power-report-environment-reuse` from `source-pin.json`, after the six PR
+overlays and before pack-time adapters. The independent patches are
+`patches/power-report-relevance-pruning.patch` and
+`patches/power-report-env-reuse.patch`; their 14-file union is also included
+in `patches/pob-pr-composite.patch`. Regenerate the composite and the
+`nodePowerDelegation` source/result identities from the actual patch chain.
+Do not copy hashes from an edited prepared tree. The source ledger rejects
+omission, reordering, or identity drift in either required source layer.
 
 Changes to this integration require the retained Power Report LuaJIT/Busted
 regressions, the source-ledger and node-power adapter unit tests,
@@ -198,11 +200,13 @@ regressions, the source-ledger and node-power adapter unit tests,
 helper coverage. Check serial and parallel results, Full DPS/minions, defensive
 metrics, transformed nodes, and report/build changes. Each helper operation
 must create its relevance calculator after selecting the metric; do not reuse
-its observer across operations. The private `PowerBuilder(true)` validation
-path disables both pruning and delegation for an unpruned serial reference.
-Native LuaJIT benchmark improvements are not browser timing guarantees.
+its observer or setup snapshot across operations. Setup reuse must restore
+calculation-owned state between candidates and fall back when independence
+cannot be proved. The private `PowerBuilder(true)` validation path disables
+pruning, setup reuse, and delegation for an unpruned serial reference. Native
+LuaJIT benchmark improvements are not browser timing guarantees.
 
-See [the bundled inventory](BUNDLED_POB_CHANGES.md#required-local-source-patch)
+See [the bundled inventory](BUNDLED_POB_CHANGES.md#required-local-source-patches)
 for removal criteria and [release requirements](RELEASING.md).
 
 ## Calculation optimization coverage

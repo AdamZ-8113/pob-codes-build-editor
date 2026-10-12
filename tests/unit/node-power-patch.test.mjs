@@ -13,6 +13,7 @@ const { pin } = await validateSourceLedger(fileURLToPath(new URL('../..', import
 const adapter = pin.adapters.nodePowerDelegation;
 const patch = await readFile(adapter.patchFile);
 const relevancePatch = await readFile('patches/power-report-relevance-pruning.patch');
+const environmentPatch = await readFile('patches/power-report-env-reuse.patch');
 const source = await readFile(`.runtime/source-${pin.compositePatch.patchSha256.slice(0, 12)}/src/Classes/CalcsTab.lua`, 'utf8').catch(error => {
   if (error.code === 'ENOENT') return null;
   throw error;
@@ -20,9 +21,11 @@ const source = await readFile(`.runtime/source-${pin.compositePatch.patchSha256.
 
 test('relevance integration preserves the accepted browser traversal and rejects drift', { skip: source === null }, () => {
   const result = applyNodePowerPatch(source, patch, adapter);
+  const reverse = section => ({ ...section, blocks: [...section.blocks].reverse().map(({ before, after }) => ({ before: after, after: before })) });
+  const environment = parseDriftPatch(environmentPatch).find(section => section.path === 'src/Classes/CalcsTab.lua');
   const feature = parseDriftPatch(relevancePatch).find(section => section.path === 'src/Classes/CalcsTab.lua');
-  const reversed = { ...feature, blocks: [...feature.blocks].reverse().map(({ before, after }) => ({ before: after, after: before })) };
-  const original = transformDriftPatch({ [feature.path]: source }, [reversed])[feature.path];
+  const beforeEnvironment = transformDriftPatch({ [environment.path]: source }, [reverse(environment)])[environment.path];
+  const original = transformDriftPatch({ [feature.path]: beforeEnvironment }, [reverse(feature)])[feature.path];
   const trial = transforms[0].transform(original);
   assert.equal(result.split('function CalcsTabClass:PowerBuilderPass(')[1], trial.split('function CalcsTabClass:PowerBuilderPass(')[1]);
   assert.match(result, /calcFunc = self:CreateNodePowerCalculator\(calcFunc, disableRelevance\)/);
@@ -41,23 +44,28 @@ test('node-power ledger rejects unowned patches and changed source chains', asyn
   }
 });
 
-test('relevance patch remains a required source layer across future bundles', async () => {
+test('Power Report patches remain required source layers across future bundles', async () => {
   for (const mutate of [
     p => { p.overlays = p.overlays.filter(o => o.id !== 'power-report-relevance-pruning'); },
     p => { p.overlays[6].applicationStage = 'pack-time'; },
     p => { delete p.compositePatch.resultBlobHashes['src/Modules/CalcRelevance.lua']; },
     p => { p.overlays[6].resultBlobHashes['src/Classes/CalcsTab.lua'] = '0'.repeat(40); },
+    p => { p.overlays = p.overlays.filter(o => o.id !== 'power-report-environment-reuse'); },
+    p => { p.overlays[7].applicationStage = 'pack-time'; },
+    p => { delete p.compositePatch.resultBlobHashes['src/Modules/CalcSetupReuse.lua']; },
+    p => { p.overlays[7].resultBlobHashes['src/Modules/CalcSetup.lua'] = '0'.repeat(40); },
   ]) {
     const changed = structuredClone(pin);
     mutate(changed);
-    await assert.rejects(validateSourceLedger(process.cwd(), Buffer.from(JSON.stringify(changed))), /relevance source overlay/);
+    await assert.rejects(validateSourceLedger(process.cwd(), Buffer.from(JSON.stringify(changed))), /Power-report .*source overlay/);
   }
 });
 
-test('prepared source must contain the exact independent relevance patch', { skip: source === null }, async () => {
+test('prepared source must contain the exact ordered Power Report patches', { skip: source === null }, async () => {
   const directory = await mkdtemp(join(tmpdir(), 'pob-relevance-ledger-'));
   try {
-    for (const path of pin.overlays[6].files) {
+    const paths = new Set(pin.overlays.filter(overlay => overlay.applicationStage === 'source-composite').flatMap(overlay => overlay.files));
+    for (const path of paths) {
       await mkdir(dirname(join(directory, path)), { recursive: true });
       await writeFile(join(directory, path), await readFile(`.runtime/source-${pin.compositePatch.patchSha256.slice(0, 12)}/${path}`));
     }

@@ -16,10 +16,13 @@ let source = await readFile(new URL(`../../.runtime/source-${pin.compositePatch.
 // The retained experiment targets the pre-pruning stack; preserve that exact
 // historical identity instead of weakening its assertions for today's source.
 if (source !== null) {
+  const environment = parseDriftPatch(await readFile(new URL('../../patches/power-report-env-reuse.patch', import.meta.url)))
+    .find(section => section.path === 'src/Classes/CalcsTab.lua');
   const feature = parseDriftPatch(await readFile(new URL('../../patches/power-report-relevance-pruning.patch', import.meta.url)))
     .find(section => section.path === 'src/Classes/CalcsTab.lua');
-  const reverse = { ...feature, blocks: [...feature.blocks].reverse().map(({before, after}) => ({before: after, after: before})) };
-  source = transformDriftPatch({ [feature.path]: source }, [reverse])[feature.path];
+  const reverse = section => ({ ...section, blocks: [...section.blocks].reverse().map(({before, after}) => ({before: after, after: before})) });
+  source = transformDriftPatch({ [environment.path]: source }, [reverse(environment)])[environment.path];
+  source = transformDriftPatch({ [feature.path]: source }, [reverse(feature)])[feature.path];
 }
 test('node-power seam is exact, independently guarded, and rejects drift and double application', {skip: source === null}, () => {
   assert.equal(transforms.length, 1);

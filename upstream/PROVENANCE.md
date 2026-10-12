@@ -38,13 +38,13 @@ where #10371 and #10372 both change `ItemDBControl.lua`, and where #10313 is
 applied after #10373, followed by #10381. Those three PRs overlap in
 `CalcsTab.lua` and `TestPowerReport_spec.lua`; the resolution keeps #10373's
 `useClusterPower` gating, #10313's stage options, #10381's context-aware cache
-keys, and all specs. The composite also includes the required local relevance
-patch described below. PR #10360 is recorded through head
+keys, and all specs. The composite also includes the two required local Power
+Report patches described below. PR #10360 is recorded through head
 `dddd929e190e46af36dd185f842ef53726c1d28a`, including its always-visible node
 power controls and heat-map-gated Power Report action without metric selection
 enabling the heat map. The composite SHA-256 is
-`fef5c4f1ddf92234bded84fb95640905afc1479f63bc2d883013efcc84dc182c`
-and its result tree is `be02a4d0fdde4fa194fceac935b744988f4ce5af`.
+`7acc91dfb931fddc211743f481cd5de2818770d0b442702c1e9cf50e8ab87c5c`
+and its result tree is `c1903d3f3a53c87b94a54e3ce2c973600793f5b5`.
 
 The maintainer-supplied 2026-09-30 gem-dropdown hover patch is preserved in
 `../patches/gem-dropdown-hover-tooltip.patch` (SHA-256
@@ -477,8 +477,9 @@ The October 6 browser node-power adapter is retained in
 `../scripts/patches/node-power-patch.mjs`. The pin records its patch and exact
 CalcsTab source/result identities. Every pack and release includes it; the
 adapter itself leaves the prepared desktop checkout unchanged. The source
-composite also carries the relevance patch documented below. It shares the
-existing bounded helper pool, preserving PoB calculation functions, #10381's
+composite also carries the relevance and environment-reuse patches documented
+below. It shares the existing bounded helper pool, preserving PoB calculation
+functions, #10381's
 context-aware cache keys, and result merge order. Eligible release sessions enable it by default;
 `?nodePowerHelpers=0` forces serial calculation for diagnostics.
 
@@ -561,12 +562,28 @@ Its SHA-256 is
 The 13-file source/spec patch records calculation reads and conservatively
 reuses the unchanged output for irrelevant pure node additions. Uncertain
 cases and unsafe cached calculations retain the normal calculation path.
-It is pending upstream submission and is required in future bundles.
+It is tracked in
+[Path of Building #10383](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10383)
+and is required in future bundles until equivalent behavior is present in the
+pinned base.
 
-The checked node-power delegation patch is rebased on that source. It shares
-`CreateNodePowerCalculator` between the serial fallback and helper operations;
-observers and node memos last for one operation only. Helpers construct it
-after selecting the report metric and obtaining a fresh calculator. The
-private unpruned validation path also bypasses delegation. This integration
-does not change report traversal, cache keys or merge order. See
+### Power Report environment reuse (October 12)
+
+The source composite next applies
+`../patches/power-report-env-reuse.patch` (SHA-256
+`78a43c3646e710057ecbcb7dfba5603d5756ff1fa339a1d942bc2ebc79a1dfb0`).
+The seven-file source/spec patch captures one setup snapshot per Power Report
+operation and reuses it only for passive overrides proven independent of setup.
+Calculation-owned state is restored between candidates, setup database writes
+are replayed, and uncertain changes retain a fresh environment. The regression
+coverage includes independence, copy-on-write, state restoration, snapshot
+lifetime, and exact report output.
+
+The checked node-power delegation patch is rebased on both source layers. It
+shares `CreateNodePowerCalculator` between the serial fallback and helper operations;
+observers, node memos, and setup snapshots last for one operation only. Helpers
+construct it after selecting the report metric and obtaining a fresh
+calculator. The private unpruned validation path also bypasses relevance
+pruning, setup reuse, and delegation. This integration does not change report
+traversal, cache keys or merge order. See
 `../docs/BUNDLED_POB_CHANGES.md` for retention and upstream absorption rules.
