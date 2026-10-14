@@ -219,6 +219,36 @@ production interfaces. Read the experiment's `--help`, focused tests and local
 decision before running it. Store disposable output in an owned OS temporary
 directory; use `tmp/` only when evidence is intentionally retained for review.
 
+Startup profiler schema 2 preserves the positional report path, `--legacy`, and
+default five cold/warm pairs; `--runs=1..10` bounds local samples. Each cold
+sample now starts a new browser process/context, and its warm sample navigates
+again in the same context. It blocks external traffic with a loopback proxy,
+without request interception that would disable the HTTP cache. OS/server
+caches are not cleared. The development-server default remains suitable for
+runtime diagnostics; it is not evidence of bundled shell delivery.
+
+For built startup timing, materialize baseline/candidate snapshots using
+`node scripts/release/materialize-import2.mjs` with identical native/payload
+inputs. Preserve any existing candidate before replacement. Serve each snapshot
+with `createReleaseTestServer(directory)` from
+`scripts/release/serve-test-release.mjs` on the same loopback port. Set
+`DESKTOP_POB_ORIGIN` to the document base path (for example,
+`http://127.0.0.1:3011/browserpob`) and run:
+
+```text
+node tools/profiles/profile-startup.mjs <report.json> --runs=2 --artifact=<snapshot-directory> --source-head=<materialization-commit> --source-diff-sha256=<working-source-diff-hash>
+```
+
+Record the source identity when materializing, including new source files in
+the working-diff hash. The profiler checks served release metadata and immutable
+payload manifest/provenance against the snapshot, and records hashes rather
+than paths or URLs. It reports FCP, shell JS start, first canonical frame,
+editor-ready and payload-ready separately. Older artifacts lack editor-ready;
+the identical RAF-sampled ready observation is available for paired comparisons,
+with up to a frame of observation delay. It is not a GPU presentation metric.
+The [startup trial](COLD_START.md#browser-startup-presentation-and-readiness)
+retains a compact result and artifact identities.
+
 ## Updating a claim
 
 When later evidence conflicts with this ledger, do not overwrite history with an

@@ -1,6 +1,7 @@
 import { Driver } from "../upstream/packages/driver/src/js/driver.ts";
 import { assertDriverCapabilities } from "../upstream/packages/driver/src/js/capability.ts";
 import type { PayloadProgress } from "../upstream/packages/driver/src/js/payload.ts";
+import { createStartupPresenter, createStartupReadiness } from "./startup.ts";
 import "./style.css";
 import { createCharacterHostV1, createDisabledCharacterTransport, createPobCodesCharacterTransport } from "./character-host-v1.ts";
 import type { CharacterTransportV1 } from "./character-host-v1.ts";
@@ -42,6 +43,8 @@ const element = <T extends HTMLElement>(id: string) => document.getElementById(i
 bindAboutDialog({ trigger: element<HTMLButtonElement>("about-legal"), dialog: element<HTMLDialogElement>("about-dialog") });
 const status = element<HTMLOutputElement>("status");
 const calculationStatus = element<HTMLOutputElement>("calculation-status");
+const startupReadiness = createStartupReadiness();
+const startupPresenter = createStartupPresenter(element("startup-surface"), element("startup-detail"));
 const payloadProgress = createPayloadProgressOverlay();
 let driver: Driver | undefined;
 let configuration: ReturnType<typeof createConfigurationBridgeV1> | undefined;
@@ -74,6 +77,8 @@ function setHeaderStatus(message: string, tone: RuntimeStatusNotice["tone"] = "i
 }
 
 function report(error: unknown) {
+  if (!ready) startupReadiness.fail(error);
+  startupPresenter.error();
   telemetry.emit("build_editor_error_v1", { result: "error", actionTarget: "runtime", errorCode: "runtime" });
   calculationStatus.hidden = true;
   const message = error instanceof Error ? error.message : String(error);
@@ -113,7 +118,6 @@ async function main() {
   if (!import2Preview && !["localhost", "127.0.0.1", "[::1]"].includes(location.hostname) && !lanDevelopment) throw new Error("Use localhost or the HTTPS LAN address printed by dev:restart.");
   assertDriverCapabilities();
   if (!new OffscreenCanvas(1, 1).getContext("webgl2")) throw new Error("Path of Building requires WebGL2 graphics support.");
-  let hasDrawn = false;
   payloadProgress.startup(0, "Downloading core data");
   const options = new URLSearchParams(location.search);
   const payloadPrefetchEnabled = import2Preview
@@ -202,8 +206,8 @@ async function main() {
       frames++; lastStats = stats;
       frameSamples.push({ at, duration, render: stats?.lastFrameTime ?? 0, reused: stats?.reused ?? false });
       if (frameSamples.length > 600) frameSamples.shift();
-      if ((stats?.backend.instances ?? 0) > 0 && !hasDrawn) {
-        hasDrawn = true;
+      if (startupReadiness.frame(stats?.backend.instances ?? 0)) {
+        startupPresenter.firstFrame();
         if (import2Preview) performance.mark(`${performancePrefix}-first-pob-frame`);
       }
     },
@@ -266,16 +270,19 @@ async function main() {
   payloadProgress.startup(84, "Starting Path of Building");
   if (options.get("synchronousCalculations") === "1") await driver.configureCalculationScheduling(false);
   if (options.get("renderReuse") === "0") await driver.configureRenderReuse(false);
-  await driver.attachToDOM(element("window"), element("editor-accessibility"));
+  await driver.attachToDOM(element("editor-window"), element("editor-accessibility"));
+  startupReadiness.attached();
   buildFolderImport = createBuildFolderImportSidecar(driver);
   if (buildListState) buildFolderImport.update(buildListState);
-  const deadline = performance.now() + 90_000;
-  while (!hasDrawn) {
-    if (errors.length) throw new Error(errors[errors.length - 1]);
-    if (performance.now() > deadline) throw new Error("PoB started but did not draw its interface. Check the runtime diagnostics.");
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
+  await startupReadiness.wait();
+  startupReadiness.assertHealthy();
   ready = true;
+  if (import2Preview) performance.mark(`${performancePrefix}-editor-ready`);
+  element("editor-window").setAttribute("aria-busy", "false");
+  startupPresenter.ready();
+  // The driver's focus attempt happens while its surface is hidden. Restore
+  // initial keyboard focus without stealing it from About or another control.
+  if (document.activeElement === document.body) element("editor-window").querySelector<HTMLElement>('[contenteditable="true"]')?.focus();
   launchButton.disabled = !publicRuntime.apiBaseUrl;
   telemetry.emit("build_editor_ready_v1", { result: "ready", actionTarget: "cold", durationMs: Math.round(performance.now() - startupAt) });
   await driver.markPayloadReady();
@@ -287,7 +294,7 @@ async function main() {
   };
   if ("requestIdleCallback" in window) window.requestIdleCallback(beginBackgroundWork);
   else setTimeout(beginBackgroundWork, 0);
-  setHeaderStatus("");
+  if (!errors.length) setHeaderStatus("");
   const initial = new URLSearchParams(location.hash.slice(1));
   const initialCode = initial.get("code");
   const initialBuild = initial.get("build");
@@ -316,7 +323,12 @@ Object.defineProperty(window, "__DESKTOP_POB__", { value: {
   shareBuild: () => buildTransfer!.share(), retryShare: () => buildTransfer!.retry(),
   getBuildCode: exportBuildCode, flushInput: () => driver!.flushInput(),
 } });
-window.addEventListener("pagehide", () => { buildFolderImport?.destroy(); driver?.detachFromDOM(); driver?.destory(true); });
+window.addEventListener("pagehide", () => {
+  startupPresenter.dispose();
+  payloadProgress.dispose();
+  startupReadiness.fail(new Error("Page closed during startup"));
+  buildFolderImport?.destroy(); driver?.detachFromDOM(); driver?.destory(true);
+});
 void main().catch(report);
 
 function debugBrowserIdentity(userAgent: string, platform: string) {
@@ -337,6 +349,7 @@ function createPayloadProgressOverlay() {
   const squareCount = 15;
   const section = document.createElement("section");
   section.className = "panel payload-progress";
+  section.hidden = true;
   section.setAttribute("aria-label", "Data loading progress");
   const label = document.createElement("div");
   label.className = "payload-progress-label";
@@ -376,8 +389,10 @@ function createPayloadProgressOverlay() {
   let dismissTimer: number | undefined;
   let startupComplete = false;
   let demandVisible = false;
+  let failed = false;
 
   const render = (progress: number, text: string, stageText: string, busy: boolean) => {
+    if (failed) return;
     const value = Math.max(0, Math.min(100, Math.round(progress)));
     section.hidden = false;
     label.textContent = text;
@@ -394,6 +409,7 @@ function createPayloadProgressOverlay() {
   };
 
   const ready = () => {
+    if (failed) return;
     clearTimeout(dismissTimer);
     render(100, "PoB Data Ready", "PoB Data Ready", false);
     dismissTimer = setTimeout(() => {
@@ -404,10 +420,20 @@ function createPayloadProgressOverlay() {
 
   return {
     startup(progress: number, stageText: string) {
-      render(progress, "Loading Path of Building..", stageText, true);
+      startupPresenter.update(progress, stageText);
     },
     update(event: PayloadProgress) {
       if (event.reason === "prefetch" || event.reason === "comparison") return;
+      if (event.phase === "error") {
+        const message = event.message ?? `${event.label} could not be loaded`;
+        if (!startupComplete) {
+          startupReadiness.fail(new Error(message));
+          startupPresenter.error();
+        }
+        this.error(message);
+        return;
+      }
+      if (failed) return;
       const ratio = event.totalBytes ? event.loadedBytes / event.totalBytes : 0;
       const loadingAtStartup = !startupComplete;
       const progress = loadingAtStartup
@@ -418,11 +444,7 @@ function createPayloadProgressOverlay() {
         : event.phase === "ready" ? `${event.label} ready`
         : `Downloading ${event.label} (${formatBytes(event.loadedBytes)} of ${formatBytes(event.totalBytes)})`;
       if (loadingAtStartup) {
-        render(progress, "Loading Path of Building..", stageText, event.phase !== "ready");
-        return;
-      }
-      if (event.phase === "error") {
-        this.error(event.message ?? `${event.label} could not be loaded`);
+        startupPresenter.update(progress, stageText);
         return;
       }
       pendingDemand = () => render(progress, "Loading PoB Data..", stageText, true);
@@ -446,11 +468,16 @@ function createPayloadProgressOverlay() {
     },
     completeStartup() {
       startupComplete = true;
-      ready();
+      if (failed) return;
+      // Preserve the ready label used by demand consumers without a startup toast.
+      render(100, "PoB Data Ready", "PoB Data Ready", false);
+      section.hidden = true;
     },
     error(message: string) {
+      failed = true;
       clearTimeout(demandTimer);
       clearTimeout(dismissTimer);
+      pendingDemand = undefined;
       section.hidden = false;
       label.textContent = "PoB data needs attention";
       grid.setAttribute("aria-valuetext", "PoB data needs attention");
@@ -459,6 +486,7 @@ function createPayloadProgressOverlay() {
       alertMessage.textContent = message;
       alert.hidden = false;
     },
+    dispose() { clearTimeout(demandTimer); clearTimeout(dismissTimer); },
   };
 }
 

@@ -58,7 +58,14 @@ button:focus-visible, a:focus-visible, textarea:focus-visible { outline: 2px sol
 .btn-secondary:hover:not(:disabled), .btn-secondary:focus-visible { border-color: #3b5788; outline: none; box-shadow: inset 0 0 0 1px rgba(77, 113, 177, 0.42), 0 0 18px rgba(63, 101, 171, 0.14); }
 @keyframes payload-progress-pulse { 50% { opacity: .8; } }
 @media (prefers-reduced-motion: reduce) { .payload-progress-square[data-active] { animation: none; } }
-#window { flex: 1; min-height: 0; width: 100%; overflow: hidden; }
+#window { position: relative; flex: 1; min-height: 0; width: 100%; overflow: hidden; }
+#editor-mount { position: absolute; inset: 0; }
+#editor-window { width: 100%; height: 100%; }
+#editor-window[aria-busy="true"] { visibility: hidden; }
+#startup-surface { position: relative; --panel-padding: 12px; margin: 24px auto; width: max-content; max-width: calc(100% - 32px); box-sizing: border-box; text-align: center; box-shadow: 0 8px 28px rgb(0 0 0 / 45%); }
+#startup-title { margin: 0 0 8px; }
+#startup-detail[hidden] { display: none; }
+#startup-detail { grid-template-columns: repeat(15, minmax(0, 18.12px)); }
 .pob-build-folder-layer { position: absolute; inset: 0 auto auto 0; transform-origin: 0 0; pointer-events: none; }
 .pob-build-folder-import { position: absolute; box-sizing: border-box; padding: 8px; overflow: hidden; border: 1px solid #777; border-radius: 0; background: #000; color: #eee; font: 400 14px/16px "PoB Liberation Sans", "Liberation Sans", Arial, sans-serif; pointer-events: auto; }
 .pob-build-folder-import[hidden] { display: none; }

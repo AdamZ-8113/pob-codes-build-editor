@@ -93,6 +93,12 @@ load. It is not comparable to a cold application process. See the taxonomy in
 
 ## Current priorities supported by evidence
 
+- Browser startup uses a centered segmented loading bar until the attached editor
+  supplies its first real frame. Readiness is event-driven instead of polled
+  every 100 ms. The [built-artifact startup trial](COLD_START.md#browser-startup-presentation-and-readiness)
+  separates that host delay from unchanged PoB initialization. Tree rendering
+  remains unchanged pending a representative input/presentation diagnosis.
+
 - For a materially faster cold engine, test a generated/hydrated representation
   for `Modules/Data`, `Data/ModCache` and demanded passive-tree structures. The
   input-aware startup experiment saved only 1-2%, showing that avoiding the

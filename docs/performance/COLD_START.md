@@ -4,6 +4,83 @@ This document covers navigation to the Build Editor through the first complete
 import result. It distinguishes browser/runtime startup from PoB initialization,
 target import and target calculation.
 
+## Browser startup presentation and readiness
+
+The browser host shows a centered, segmented loading bar in a separate startup
+surface. It keeps About accessible and editor actions disabled
+until DOM attachment and a real nonzero-instance frame complete. A one-shot
+frame/attachment latch replaces the 100 ms readiness poll. The startup surface
+then disappears; demand loading, terminal errors and Reload keep their existing
+panel. PoB initialization, renderer behavior and payload requirements are unchanged.
+
+The timing trial below predates the visual revision from a text placeholder to
+the segmented loading bar; its artifact hashes identify that earlier presentation.
+The readiness latch is unchanged. The revised presentation passed type checks,
+unit tests, startup browser checks and five end-to-end tests; its timing was not
+remeasured.
+
+A local trial on 2026-10-14 used five alternating baseline/candidate pairs, each
+with a fresh-browser cold launch followed by a same-context warm navigation.
+Both were materialized static builds served on the same loopback port, with
+identical native binaries and payloads, at 1600x1000 DPR 1 in headless Chrome
+155.0.8059.41 on a Ryzen 7 9800X3D (8 logical processors exposed). OS/server
+caches were not cleared; no test suite ran during the retained timing sample.
+The default empty build selector was measured, not build import or calculation.
+
+Each entry below is p50 / p95 in milliseconds, with five samples per cell.
+With this sample size p95 is simply the observed maximum, not a population
+estimate. One candidate cold launch took 2.26 seconds; its Lua-ready phase also
+rose to 1.96 seconds. Do not turn these numbers into a general speedup claim.
+
+| Navigation milestone | Baseline cold | Candidate cold | Baseline warm | Candidate warm |
+| --- | ---: | ---: | ---: | ---: |
+| First contentful paint | 183.2 / 184.5 | 140.9 / 154.5 | 22.7 / 26.4 | 23.6 / 25.6 |
+| First canonical PoB frame | 1698.8 / 1717.9 | 1731.0 / 2258.9 | 1475.2 / 1726.4 | 1562.9 / 1686.2 |
+| Observed editor ready | 1756.1 / 1783.9 | 1732.7 / 2260.1 | 1531.7 / 1752.3 | 1565.4 / 1688.4 |
+| Payload ready | 1751.6 / 1781.3 | 1733.5 / 2263.4 | 1527.4 / 1748.0 | 1563.9 / 1687.4 |
+| First frame to observed ready | 66.0 / 73.3 | 1.6 / 1.7 | 45.1 / 56.5 | 2.6 / 4.2 |
+
+Ready is observed with the same RAF sampler in both builds; baseline has no
+exact editor-ready mark. Candidate's exact first-frame-to-editor-ready median
+was 0.02 ms for both cache modes. The observed-ready median ratios were 0.987x
+cold and 1.022x warm; payload-ready ratios were 0.990x and 1.024x. Both meet
+the local 1.05x regression guard. Cached FCP remained below 250 ms. All samples
+had zero settled idle redraws and no runtime/page errors or external requests;
+the existing optional texture 404s were explicitly classified by the profiler.
+
+Existing worker phase clocks are relative to worker startup, not navigation,
+and overlap; do not add them together:
+
+| Worker phase | Baseline cold | Candidate cold | Baseline warm | Candidate warm |
+| --- | ---: | ---: | ---: | ---: |
+| Fonts ready | 12.0 / 24.0 | 13.1 / 21.2 | 10.8 / 12.3 | 11.1 / 29.3 |
+| Wasm ready | 16.5 / 23.6 | 18.0 / 43.8 | 13.1 / 15.8 | 14.2 / 31.9 |
+| Filesystem ready | 407.4 / 423.6 | 407.0 / 480.9 | 381.3 / 390.5 | 393.9 / 435.4 |
+| Lua ready | 1515.4 / 1534.7 | 1538.5 / 1963.7 | 1357.7 / 1465.2 | 1362.5 / 1568.3 |
+
+Artifact identity: baseline generation `5fcc4bba07a6eeb706fcadf4`, candidate
+`30de8224d1cacecdf5b63b6e`, both based on source HEAD
+`734de652ae57a139e8f1594621caff82d11a1ae2`. The candidate host-source diff hash
+was `dba6cf08100a5d3634c83c22362d423ac1267d4ee2d1b9b01f1a338c76aa13ac`
+(SHA-256 of binary Git diff for index.html/src followed by the NUL-terminated
+new `src/startup.ts` path and its bytes); baseline's source diff was empty.
+Shared payload manifest SHA-256:
+`3a193a89c9b0f430e78691a02108a8d6702e4ae9fa30cc1e9ef90fc43864efb7`;
+Wasm SHA-256: `54e0eba3ccd30aa894b7fbdab331d537a1ef4089c41ee390df15f37a88581638`;
+native JS SHA-256: `cafaf3bcdd755c8d3c93265df544d8c927f6ae8971fb10d9c90fb1984b0003c4`;
+payload provenance SHA-256: `7233f34a404430b0db3e00b11540f1e19643cdf3e9539aad8f0364fc737d1529`.
+These are local materializations, not release authorization. The reproducible
+[profiler protocol](METHODS_AND_EVIDENCE.md#reproduction-entry-points) records
+the complete binary/provenance tuple and milestones without private build data.
+
+Startup, lazy/eager/legacy/fallback, keyboard focus, demand/error/Reload,
+comparison, About, header/fullscreen and end-to-end checks passed. Settled
+initial canvas captures had zero pixel differences at DPR 1 and 2. The focused
+helper boundary command is
+`node tests/browser/test-helper-workers.mjs --boundaries-only` against the
+development server; it covers mobile serial admission and helper-first payload
+failure without rerunning unrelated sort/memory calibration.
+
 ## What “cold” means here
 
 The strongest cold matrix used a fresh Chrome process and profile, broker,

@@ -107,6 +107,25 @@ That is a correctness/visual decision, not a general performance result.
 
 ### What renderer profiles can and cannot prove
 
+The startup host retains its own loading bar in a separate mount until both
+DOM attachment and a nonzero-instance canonical frame complete. The native
+canvas then fills the same viewport and receives initial keyboard focus unless
+the user has focused another control. Settled baseline/candidate canvas captures
+on 2026-10-14 had zero changed pixels at DPR 1 and DPR 2. Demand loading and
+terminal payload errors still use the existing progress/Reload panel.
+
+This does not optimize passive-tree motion. The current interaction profiler
+serializes mouse moves with 16 ms waits, so completed-frame gaps include the
+driver's input cadence. Worker duration includes the Lua callback and rendering;
+subtracting render time leaves Lua/bridge work, not isolated Lua or GPU time.
+Whole-command reuse avoids renderer submission but still executes Lua. No
+authoritative active-tree/camera bridge is exposed to a browser transform.
+Before proposing retained layers or a presentation transform, reproduce the
+reported symptom on the relevant browser/DPR and identify removable input,
+worker, renderer or presentation cost. Use actual dispatch timestamps and a
+relative baseline improvement; an already-passing absolute frame budget cannot
+establish a benefit. No tree smoothness improvement is claimed here.
+
 Animation-frame callback and worker tick timing measures scheduled CPU work. It
 does not directly measure scan-out, compositor latency, GPU presentation or
 human input-to-photon delay. Pixel comparisons prove rendered equivalence at

@@ -7,7 +7,8 @@ import { chromium } from '@playwright/test';
 import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
 import { createHash } from 'node:crypto';
 
-const args = process.argv.slice(2).filter(arg => arg !== '--resume');
+const boundariesOnly = process.argv.includes('--boundaries-only');
+const args = process.argv.slice(2).filter(arg => arg !== '--resume' && arg !== '--boundaries-only');
 const output = resolve(args[0] ?? 'tmp/desktop-pob-helper-workers/acceptance.json');
 const privateFile = args[1];
 const sha256 = value => createHash('sha256').update(value).digest('hex');
@@ -63,6 +64,11 @@ function usedHelpers(report, count) {
   assert.ok(report.phases.at(-1).helpers.completed >= scores(report).reduce((total, values) => total + values.length - Math.floor(values.length / (count + 1)), 0));
 }
 try {
+  // Startup/presenter edits need these real payload-failure checks, without
+  // rerunning unrelated sort speed and Windows private-commit calibration.
+  if (boundariesOnly) {
+    await browserBoundaries();
+  } else {
   const serialTimes = [], parallelTimes = [], intervals = [];
   let baseline;
   for (let pair=0; pair<3; pair++) {
@@ -106,6 +112,7 @@ try {
   if (!summary.sixSecondTargetMet) console.warn('Advisory 6-second warm-pool target missed; retaining exact relative acceptance for the live performance trial.');
   await writeFile(output, JSON.stringify({status:'passed',summary,reports},null,2)+'\n');
   console.log('Helper acceptance passed:', JSON.stringify(summary));
+  }
 } finally {
   const owned = resolve(scratch);
   if (resolve(owned,'..') !== resolve(tmpdir()) || !basename(owned).startsWith('pob-helper-acceptance-')) throw new Error('Invalid scratch cleanup path');
@@ -134,17 +141,21 @@ async function browserBoundaries() {
         await payloadGate;
         await route.fulfill({body:'corrupt helper-first payload'});
       });
-      await context.route('**/calc-helper.ts?*', async route => {
+      // Vite also serves ?worker on the main thread. Inject only into the
+      // worker implementation, not that import wrapper's MessagePort prototype.
+      await context.route(/\/calc-helper\.ts\?worker_file(?:&|$)/, async route => {
         const response = await route.fetch();
+        const source = await response.text();
+        assert.ok(source.includes('self.onmessage'), 'Observe the real helper worker');
         const hook = `\nconst originalPost = MessagePort.prototype.postMessage;
           MessagePort.prototype.postMessage = function(request,...args) {
-            if(request.operation==='open') {
+            if(request?.operation==='open') {
               request.args[1]='/root/TreeData/3_28/tree.lua';
               MessagePort.prototype.postMessage=originalPost;
             }
             return originalPost.call(this,request,...args);
           };\n`;
-        await route.fulfill({response,body:(await response.text())+hook});
+        await route.fulfill({response,body:source+hook});
       });
       // This boundary probe deliberately boots a helper without sorting so its
       // first filesystem access can fail while the UI remains idle. Explicit
@@ -161,6 +172,9 @@ async function browserBoundaries() {
       assert.equal(failed.helpers.ready, 0);
       assert.deepEqual(failed.filesystem.writes, beforeFailure.filesystem.writes, 'Payload failure must not trigger regeneration or user writes');
       assert.equal(await page.locator('.payload-progress-error[role="alert"]').isVisible(), true);
+      await page.waitForTimeout(1100);
+      assert.equal(await page.locator('.payload-progress-error[role="alert"]').isVisible(), true,
+        'Late startup/dismissal timers must not hide a helper payload error');
       console.log('Mobile serial mode and helper-first payload containment passed.');
     } finally { releasePayload(); await context.close(); }
   } finally { await browser.close(); }

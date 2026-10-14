@@ -34,7 +34,29 @@
         </div>
       </div>
     </header>
-    <main id="window" aria-label="Path of Building desktop application"></main>
+    <main id="window" aria-label="Path of Building desktop application">
+      <section id="startup-surface" class="panel" aria-labelledby="startup-title">
+        <h1 id="startup-title" class="payload-progress-label">Loading PoB Data..</h1>
+        <div id="startup-detail" class="payload-progress-grid" role="progressbar" aria-label="Starting Path of Building" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" hidden>
+          <span class="payload-progress-square" aria-hidden="true"></span>
+          <span class="payload-progress-square" aria-hidden="true"></span>
+          <span class="payload-progress-square" aria-hidden="true"></span>
+          <span class="payload-progress-square" aria-hidden="true"></span>
+          <span class="payload-progress-square" aria-hidden="true"></span>
+          <span class="payload-progress-square" aria-hidden="true"></span>
+          <span class="payload-progress-square" aria-hidden="true"></span>
+          <span class="payload-progress-square" aria-hidden="true"></span>
+          <span class="payload-progress-square" aria-hidden="true"></span>
+          <span class="payload-progress-square" aria-hidden="true"></span>
+          <span class="payload-progress-square" aria-hidden="true"></span>
+          <span class="payload-progress-square" aria-hidden="true"></span>
+          <span class="payload-progress-square" aria-hidden="true"></span>
+          <span class="payload-progress-square" aria-hidden="true"></span>
+          <span class="payload-progress-square" aria-hidden="true"></span>
+        </div>
+      </section>
+      <div id="editor-mount"><div id="editor-window" aria-busy="true"></div></div>
+    </main>
     <dialog id="auth-dialog">
       <h1>Connect Path of Exile</h1>
       <p>Continue in your browser to authorize this local PoB session.</p>
