@@ -18,6 +18,15 @@ import { sha256, validateSourceLedger } from './source-ledger.mjs';
 import { classifyPatch, parseDriftPatch } from './drift-patch.mjs';
 
 export const PUBLIC_REPOSITORY = 'AdamZ-8113/pob-codes-build-editor';
+export const DRIFT_SCHEMA_VERSION = 2;
+export const DRIFT_ENTRY_CATALOG_VERSION = 2;
+export const DRIFT_ENTRY_IDS = [
+  'composite', 'pr-10360', 'pr-10371', 'pr-10372', 'pr-10373', 'pr-10313', 'pr-10381',
+  'power-report-relevance-pruning', 'power-report-environment-reuse', 'limitedUniqueItemComparisons',
+  'gemDropdownHover', 'uniqueSortDelegation', 'calculationOnlyJewelSpecs', 'importTabHostCapabilities',
+  'preferredExportSite', 'nodePowerDelegation', 'compactStatusText', 'powerNodeDepthDefault',
+  'calculationScheduling', 'browserUiDefaults', 'uniqueComparisonDelay', 'sparseTimelessSeeds',
+];
 export const PACK_STAGES = [
   ['limitedUniqueItemComparisons', transformItemComparisonPatch],
   ['gemDropdownHover', transformGemHoverPatch],
@@ -113,6 +122,12 @@ export function driftExitCode(report, failOn = 'conflict') {
   return failOn === 'touched' && (report.counts['touched-applies'] || report.counts.absorbed) ? 1 : 0;
 }
 
+export function validateDriftEntryCatalog(entries) {
+  if (!Array.isArray(entries) || entries.length !== DRIFT_ENTRY_IDS.length) throw new Error('entry-catalog-mismatch');
+  const ids = new Set(entries.map(entry => entry?.id));
+  if (ids.size !== DRIFT_ENTRY_IDS.length || !DRIFT_ENTRY_IDS.every(id => ids.has(id))) throw new Error('entry-catalog-mismatch');
+}
+
 function git(cwd, args) {
   const result = spawnSync('git', ['-c', `safe.directory=${cwd}`, '-c', 'core.autocrlf=false', ...args], {
     cwd, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024, timeout: 90_000, windowsHide: true,
@@ -139,7 +154,7 @@ async function prState(repository, number, fetchImpl) {
 export async function collectDrift({ root = appDir, ref = 'dev', identities = false, fetchImpl = fetch,
   env = process.env, repositoryOverride } = {}) {
   if (!/^[A-Za-z0-9][A-Za-z0-9_./-]{0,127}$/.test(ref) || ref.includes('..')) throw new Error('invalid-ref');
-  const report = { schemaVersion: 1, repository: PUBLIC_REPOSITORY,
+  const report = { schemaVersion: DRIFT_SCHEMA_VERSION, entryCatalogVersion: DRIFT_ENTRY_CATALOG_VERSION, repository: PUBLIC_REPOSITORY,
     editorSha: git(root, ['rev-parse', 'HEAD']).trim(),
     workflowRunId: /^\d+$/.test(env.GITHUB_RUN_ID ?? '') ? Number(env.GITHUB_RUN_ID) : null,
     workflowRunAttempt: /^\d+$/.test(env.GITHUB_RUN_ATTEMPT ?? '') ? Number(env.GITHUB_RUN_ATTEMPT) : null,
@@ -178,7 +193,9 @@ export async function collectDrift({ root = appDir, ref = 'dev', identities = fa
       ['pob', 'PathOfBuildingCommunity/PathOfBuilding', 9863],
       ...Array.from({ length: 7 }, (_, i) => ['pob-web', 'atty303/pob-web', 220 + i])];
     const states = await Promise.all(prRequests.map(async ([kind, repository, number]) => [ `${kind}:${number}`, await prState(repository, number, fetchImpl) ]));
-    Object.assign(report, analyzeDrift({ pin, patches, baseFiles, targetFiles, identities, prStates: Object.fromEntries(states) }));
+    const analysis = analyzeDrift({ pin, patches, baseFiles, targetFiles, identities, prStates: Object.fromEntries(states) });
+    validateDriftEntryCatalog(analysis.entries);
+    Object.assign(report, analysis);
     report.informationalPrs = states.map(([id, state]) => ({ id, state }));
     let fetchedBytes = 0;
     for (const file of await readdir(join(directory, '.git', 'objects', 'pack'), { withFileTypes: true })) {

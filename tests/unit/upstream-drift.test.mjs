@@ -5,7 +5,9 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import test from 'node:test';
 import { classifyPatch, parseDriftPatch, transformDriftPatch } from '../../scripts/build/drift-patch.mjs';
-import { analyzeDrift, driftExitCode, driftMarkdown, main, PACK_STAGES } from '../../scripts/build/upstream-drift.mjs';
+import { analyzeDrift, driftExitCode, driftMarkdown, main, PACK_STAGES,
+  DRIFT_SCHEMA_VERSION, DRIFT_ENTRY_CATALOG_VERSION, DRIFT_ENTRY_IDS,
+  validateDriftEntryCatalog } from '../../scripts/build/upstream-drift.mjs';
 import { blobHash } from '../../scripts/patches/gem-hover-patch.mjs';
 
 const path = 'src/Classes/ImportTab.lua';
@@ -68,12 +70,23 @@ test('exit policies retain incomplete failure and Markdown never echoes raw diag
   assert.doesNotMatch(markdown, /sentinel|@everyone|webhook/);
 });
 
+test('the cross-repository drift entry catalog is explicit and fail-closed', () => {
+  assert.equal(DRIFT_SCHEMA_VERSION, 2);
+  assert.equal(DRIFT_ENTRY_CATALOG_VERSION, 2);
+  assert.equal(DRIFT_ENTRY_IDS.length, 22);
+  const entries = DRIFT_ENTRY_IDS.map(id => ({ id }));
+  assert.doesNotThrow(() => validateDriftEntryCatalog(entries));
+  assert.throws(() => validateDriftEntryCatalog(entries.slice(1)), /entry-catalog-mismatch/);
+  assert.throws(() => validateDriftEntryCatalog(entries.map((entry, index) => index ? entry : { id: 'unexpected' })), /entry-catalog-mismatch/);
+});
+
 test('CLI persists conflicts and incomplete reports before applying its exit code', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'drift-cli-unit-'));
   const previous = process.exitCode;
   try {
     const output = join(directory, 'report.json'), summary = join(directory, 'summary.md');
-    const report = { schemaVersion: 1, completion: 'complete', capturedAt: '2026-10-05T00:00:00Z',
+    const report = { schemaVersion: DRIFT_SCHEMA_VERSION, entryCatalogVersion: DRIFT_ENTRY_CATALOG_VERSION,
+      completion: 'complete', capturedAt: '2026-10-05T00:00:00Z',
       entries: [{ id: 'composite', classification: 'conflict', touchedPaths: [path], prState: null }],
       counts: { conflict: 1, partial: 0, 'touched-applies': 0, absorbed: 0, untouched: 0 }, informationalPrs: [] };
     let printed;

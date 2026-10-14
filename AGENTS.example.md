@@ -14,8 +14,9 @@ These instructions apply to the whole repository.
   commit changes that do not belong to the active task.
 - Use `README.md` for ordinary setup and commands, `docs/DEVELOPMENT.md` for the
   repository map and validation routing, `docs/RELEASING.md` for release or
-  deployment work, and `upstream/PROVENANCE.md` for adopted-runtime changes.
-  Read only the documents relevant to the task.
+  deployment work, `docs/performance/README.md` for prior performance findings
+  and evidence, and `upstream/PROVENANCE.md` for adopted-runtime changes. Read
+  only the documents relevant to the task.
 
 ## Source authority
 

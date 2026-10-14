@@ -11,6 +11,10 @@ performance, rendering, and interaction work. Exact source revisions and patch
 hashes are recorded in [`source-pin.json`](source-pin.json) and
 [`upstream/PROVENANCE.md`](upstream/PROVENANCE.md).
 
+Measured performance findings, including cold-versus-warm boundaries and
+negative experiments, are consolidated in the
+[`docs/performance/` knowledge base](docs/performance/README.md).
+
 ## What this fork improves
 
 ### Path of Building changes

@@ -21,6 +21,10 @@ owned host, checked source adapters, build tooling, and release controls.
 - `tools/profiles/`: reproducible performance and production-smoke profiles.
 - `tools/experiments/`: retained, test-backed research implementations that are
   not production entry points.
+- `docs/performance/`: durable performance findings, cold/warm boundaries,
+  shipped and rejected experiments, and the evidence index. Start at
+  [`docs/performance/README.md`](performance/README.md) before proposing a new
+  performance investigation.
 - `contracts/` and `fixtures/`: bounded host contracts and reviewed public test
   inputs.
 
@@ -66,13 +70,21 @@ policy, and 2 for incomplete collection or invalid invocation. The default
 fails on changed/absorbed entries. `--fail-on=never` still fails incomplete
 collection. Report output is written before applying the classification exit.
 
-JSON schema version 1 includes the fixed public `repository`, `editorSha`,
-`workflowRunId`/`workflowRunAttempt` (null locally), UTC `capturedAt`,
-`targetRef`/`targetSha`, `pinSha`, `completion`, sanitized `errorCode`, bounded
-`entries` and `counts`, informational PR states, and fetch size/duration.
-Incomplete reports cannot be interpreted as clean. Historical dispatch probes
-are identifiable by `targetRef`; consumers should bind reports to trusted
-default-branch workflow metadata and treat their contents as data.
+JSON schema version 2 includes entry-catalog version 2, the fixed public
+`repository`, `editorSha`, `workflowRunId`/`workflowRunAttempt` (null locally),
+UTC `capturedAt`, `targetRef`/`targetSha`, `pinSha`, `completion`, sanitized
+`errorCode`, bounded `entries` and `counts`, informational PR states, and fetch
+size/duration. Incomplete reports cannot be interpreted as clean. Historical
+dispatch probes are identifiable by `targetRef`; consumers should bind reports
+to trusted default-branch workflow metadata and treat their contents as data.
+
+The entry catalog is a cross-repository contract with the private PoB Codes
+monitor. Adding, removing, or renaming any emitted drift entry requires bumping
+`DRIFT_ENTRY_CATALOG_VERSION`, updating `DRIFT_ENTRY_IDS` and its unit test, and
+coordinating the matching private-monitor allowlist and fixtures in the same
+maintenance batch. Catalog validation deliberately fails collection when the
+source ledger changes without that explicit update; do not replace it with
+producer-defined or dynamically trusted entry names.
 
 GitHub can disable public scheduled workflows after 60 days without repository
 activity. Open Actions → Upstream overlay drift → Enable workflow to restore

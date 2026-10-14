@@ -1,5 +1,10 @@
 # Public benchmark recipe
 
+For established findings, surface boundaries, evidence strength and the raw
+evidence index, start with the
+[performance knowledge base](performance/README.md). This page is the short
+public execution recipe; it does not replace the result ledger.
+
 Build and start the candidate once, then run `npm run bench`. Use the same
 machine and alternate baseline/candidate order. The runner records commands and
 identity metadata beneath `reports/benchmark/`; those reports are ignored and
@@ -24,3 +29,9 @@ also require fixed-time pixel comparisons.
 Animation-frame callbacks measure JavaScript/Lua/renderer CPU scheduling, not
 actual GPU presentation latency. Scripted input response is a proxy, not human
 input-to-photon latency. State those limitations with every result.
+
+Name the completion contract in every report. In particular, distinguish fresh
+application startup from the first operation on an already loaded build,
+heatmap readiness from complete Power Report readiness, and calculation-only
+results from an authoring-ready editor. Use the cold/warm taxonomy in
+[`performance/METHODS_AND_EVIDENCE.md`](performance/METHODS_AND_EVIDENCE.md).
