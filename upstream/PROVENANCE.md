@@ -43,7 +43,7 @@ Report patches described below. PR #10360 is recorded through head
 `dddd929e190e46af36dd185f842ef53726c1d28a`, including its always-visible node
 power controls and heat-map-gated Power Report action without metric selection
 enabling the heat map. The composite SHA-256 is
-`7acc91dfb931fddc211743f481cd5de2818770d0b442702c1e9cf50e8ab87c5c`
+`31af75e58f96c27cceddfda9bbf4608ac1191f64473667cc50743b773ca7c4db`
 and its result tree is `c1903d3f3a53c87b94a54e3ce2c973600793f5b5`.
 
 The maintainer-supplied 2026-09-30 gem-dropdown hover patch is preserved in
@@ -569,7 +569,7 @@ harness identities remain in the report.
 The source composite now includes the separate local
 `../patches/power-report-relevance-pruning.patch` after the six upstream PRs.
 Its SHA-256 is
-`03d98724df698353df471904ae528c9dfd450cbb05d4ac934f79d33db1c843e6`.
+`20edd2afbd53b20cd0f16ad385ece28d70686328d455a3c7866efcee81e6e719`.
 The 13-file source/spec patch records calculation reads and conservatively
 reuses the unchanged output for irrelevant pure node additions. Uncertain
 cases and unsafe cached calculations retain the normal calculation path.
@@ -577,6 +577,13 @@ It is tracked in
 [Path of Building #10383](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10383)
 and is required in future bundles until equivalent behavior is present in the
 pinned base.
+
+On October 15, 2026, this patch and the source composite were regenerated from
+their exact recorded trees with expanded unified-diff context. The additional
+context makes every retained preimage unambiguous to the fail-closed drift
+matcher after upstream duplicated a nearby aura-condition block. Source and
+result blob hashes, the composite result tree, and shipped behavior are
+unchanged; this was patch-evidence maintenance, not a source-pin update.
 
 ### Power Report environment reuse (October 12)
 
@@ -598,3 +605,16 @@ calculator. The private unpruned validation path also bypasses relevance
 pruning, setup reuse, and delegation. This integration does not change report
 traversal, cache keys or merge order. See
 `../docs/BUNDLED_POB_CHANGES.md` for retention and upstream absorption rules.
+
+### Homepage link launch (October 15, experiment)
+
+`boot.lua`'s `loadBuildFromCode` opens a decodable code from the build selector
+with `main:SetMode("BUILD", false, "Imported build", xml)` and
+`newModeChangeToTree`, the path PoB uses for a startup import link. It replaces
+an unnamed `Build:Init` followed by the import tab's "Import to a new build"
+re-initialization; codes that do not inflate, and imports from BUILD mode, keep
+the import-tab path. `Driver.loadBuildFromCode` can skip helper startup for a
+launch import, and `prefetchPayloadPrefixes` lets the host background-load lazy
+packages (a launch build's Timeless Jewel table or tree version) after the
+startup packages. These are experiment-branch changes; see
+`../docs/performance/COLD_START.md#homepage-link-launch`.

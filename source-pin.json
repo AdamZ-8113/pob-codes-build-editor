@@ -301,7 +301,7 @@
       "id": "power-report-relevance-pruning",
       "applicationStage": "source-composite",
       "patchFile": "patches/power-report-relevance-pruning.patch",
-      "patchSha256": "03d98724df698353df471904ae528c9dfd450cbb05d4ac934f79d33db1c843e6",
+      "patchSha256": "20edd2afbd53b20cd0f16ad385ece28d70686328d455a3c7866efcee81e6e719",
       "files": [
         "spec/System/TestPowerReport_spec.lua",
         "src/Classes/CalcsTab.lua",
@@ -522,7 +522,7 @@
   ],
   "compositePatch": {
     "patchFile": "patches/pob-pr-composite.patch",
-    "patchSha256": "7acc91dfb931fddc211743f481cd5de2818770d0b442702c1e9cf50e8ab87c5c",
+    "patchSha256": "31af75e58f96c27cceddfda9bbf4608ac1191f64473667cc50743b773ca7c4db",
     "baseRevision": "a431f3a28823270acbdd6864c644f93678581f1e",
     "upstreamBase": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
     "resultTree": "c1903d3f3a53c87b94a54e3ce2c973600793f5b5",

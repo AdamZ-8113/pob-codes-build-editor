@@ -46,6 +46,29 @@ test('strict matcher rejects ambiguous context that git apply accepts by line po
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
 
+test('committed source-composite patches keep exact preimages unique per file', async () => {
+  const pin = JSON.parse(await readFile('source-pin.json', 'utf8'));
+  const patchFiles = [
+    pin.compositePatch.patchFile,
+    ...pin.overlays
+      .filter(overlay => overlay.applicationStage === 'source-composite')
+      .map(overlay => overlay.patchFile),
+  ];
+
+  for (const patchFile of patchFiles) {
+    const seenByPath = new Map();
+    for (const section of parseDriftPatch(await readFile(patchFile, 'utf8'))) {
+      const seen = seenByPath.get(section.path) ?? new Set();
+      for (const block of section.blocks) {
+        assert.equal(seen.has(block.before), false,
+          `${patchFile}: duplicate exact preimage for ${section.path}`);
+        seen.add(block.before);
+      }
+      seenByPath.set(section.path, seen);
+    }
+  }
+});
+
 test('new files and missing final newlines preserve exact blob identity', () => {
   const added = parseDriftPatch(`diff --git a/src/New.lua b/src/New.lua\nnew file mode 100644\nindex 0000000..2222222\n--- /dev/null\n+++ b/src/New.lua\n@@ -0,0 +1 @@\n+content\n\\ No newline at end of file\n`);
   assert.equal(transformDriftPatch({ 'src/New.lua': null }, added)['src/New.lua'], 'content');
