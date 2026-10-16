@@ -243,6 +243,48 @@ test("same-origin tabs share the write lock and use live folder-name reservation
   }
 });
 
+test("repairs a persisted desktop build path before folder import", async ({ page }) => {
+  test.setTimeout(300_000);
+  const temporary = await mkdtemp(join(tmpdir(), "pob-build-folder-path-repair-"));
+  const selected = join(temporary, "Migrated Builds");
+  try {
+    await mkdir(selected, { recursive: true });
+    await writeFile(join(selected, "one.xml"), fixtureXml);
+
+    await page.goto("/404.html");
+    await page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      const user = await root.getDirectoryHandle("Path of Building", { create: true });
+      const settings = await user.getFileHandle("Settings.xml", { create: true });
+      const writable = await settings.createWritable();
+      await writable.write('<?xml version="1.0"?><PathOfBuilding><Mode mode="BUILD"><Arg boolean="false"/><Arg string="Unnamed build"/></Mode><Misc buildPath="D:\\Saved Builds\\"/></PathOfBuilding>');
+      await writable.close();
+    });
+
+    await page.goto("/");
+    await waitForReady(page);
+    await showBuildList(page);
+    await expect.poll(() => page.evaluate(() => window.__DESKTOP_POB__.buildListState?.buildPath))
+      .toBe("/app/user/Path of Building/Builds/");
+    const repairedSettings = await page.evaluate(async () => {
+      const root = await navigator.storage.getDirectory();
+      const user = await root.getDirectoryHandle("Path of Building");
+      return await (await (await user.getFileHandle("Settings.xml")).getFile()).text();
+    });
+    expect(repairedSettings).not.toContain("buildPath=");
+
+    await importFolder(page, selected, "Migrated Builds");
+    await page.reload();
+    await waitForReady(page);
+    await showBuildList(page);
+    await expect.poll(() => page.evaluate(() => window.__DESKTOP_POB__.buildListState?.buildPath))
+      .toBe("/app/user/Path of Building/Builds/");
+    expect((await inspectBuildFolder(page, "Migrated Builds")).files).toEqual({ "one.xml": fixtureXml.toString() });
+  } finally {
+    await rm(temporary, { recursive: true, force: true });
+  }
+});
+
 test("starts on the build selector and sidecar geometry follows a 150 percent native UI override at DPR 1", async ({ page }) => {
   await page.setViewportSize({ width: 2530, height: 1196 });
   await page.goto("/404.html");

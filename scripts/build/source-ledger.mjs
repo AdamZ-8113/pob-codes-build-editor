@@ -66,7 +66,7 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
   }
   const browserDefaults = pin.adapters.browserUiDefaults;
   const mainPath = "src/Modules/Main.lua";
-  if (browserDefaults?.version !== 1 ||
+  if (browserDefaults?.version !== 2 ||
       JSON.stringify(Object.keys(browserDefaults.sourceBlobHashes ?? {})) !== JSON.stringify([mainPath]) ||
       JSON.stringify(Object.keys(browserDefaults.resultBlobHashes ?? {})) !== JSON.stringify([mainPath]) ||
       browserDefaults.sourceBlobHashes[mainPath] !== pin.adapters.calculationScheduling.resultBlobHashes[mainPath] ||

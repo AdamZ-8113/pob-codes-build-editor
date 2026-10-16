@@ -16,12 +16,12 @@
       }
     },
     "browserUiDefaults": {
-      "version": 1,
+      "version": 2,
       "sourceBlobHashes": {
         "src/Modules/Main.lua": "ba137678649df496950c11751ad609b8d8232f8f"
       },
       "resultBlobHashes": {
-        "src/Modules/Main.lua": "0d8f4b5ba5fe27fa773d2e0aaa9eeaad05420550"
+        "src/Modules/Main.lua": "12866fa0d2b9d99dbea547bd837a34d4c1aaa8fc"
       }
     },
     "uniqueComparisonDelay": {
