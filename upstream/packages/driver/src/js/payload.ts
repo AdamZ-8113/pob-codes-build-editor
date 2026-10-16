@@ -269,6 +269,17 @@ export class PayloadController {
     };
   }
 
+  /** Background-load packages a known launch input will demand. A miss stays retryable. */
+  prefetchPrefixes(prefixes: string[]) {
+    const roots = prefixes.map(normalizeRootPath);
+    const wanted = new Set<LazyPackage>();
+    for (const [path, pkg] of this.paths) {
+      if (!pkg.source && roots.some((root) => path.startsWith(root))) wanted.add(pkg);
+    }
+    for (const pkg of wanted) void pkg.ensure("prefetch").catch(() => {});
+    return wanted.size;
+  }
+
   startPrefetch() {
     if (this.prefetchStarted) return;
     this.prefetchStarted = true;

@@ -70,6 +70,12 @@ class AsyncBroker {
   }
   markPayloadReady() { this.payloadController?.markReady(); }
   startPayloadPrefetch() { this.payloadController?.startPrefetch(); }
+  // Hints can arrive before the manifest; they start once startup packages load.
+  prefetchPayloadPrefixes(prefixes: string[]) {
+    if (this.payloadController) this.payloadController.prefetchPrefixes(prefixes);
+    else this.pendingPayloadPrefixes.push(...prefixes);
+  }
+  private pendingPayloadPrefixes: string[] = [];
   private callbacks: BrokerCallbacks | undefined;
   private eventPort: MessagePort | undefined;
   private nextSubscriptId = 1;
@@ -109,6 +115,7 @@ class AsyncBroker {
       rootFileSystem = payload.filesystem;
       this.payloadController = payload.controller;
       this.filesystem.setPayloadGate(payload.controller);
+      if (this.pendingPayloadPrefixes.length) payload.controller?.prefetchPrefixes(this.pendingPayloadPrefixes.splice(0));
     } catch (error) {
       throw markEnvironmentError(error, "assetLoad");
     }

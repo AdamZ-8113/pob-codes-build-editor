@@ -10,6 +10,7 @@ owned host, checked source adapters, build tooling, and release controls.
   recorded adaptations in `upstream/PROVENANCE.md` when refreshing it.
 - `patches/`: exact, hash-ledgered Path of Building overlays.
 - `scripts/build/`: native build, payload pack, and source-ledger entry points.
+  `scripts/build/mod-cache/` generates and verifies the pack-time ModCache supplement.
 - `scripts/dev/`: loopback/LAN development server and narrow local services.
 - `scripts/patches/`: checked adapters that apply the files in `patches/`.
 - `scripts/release/`: release materialization, verification, archives, and
@@ -39,6 +40,13 @@ Do not edit `.runtime/`, prepared Path of Building source, packed payloads,
 native compiler output, or generated Path of Building Data/TreeData files.
 Change the authoritative source, exporter, or checked adapter and regenerate.
 Keep third-party licenses and notices with every published generation.
+
+`npm run pack` also generates the mastery-option ModCache supplement under
+`generated` in `source-pin.json`. It runs PoB headless in the driver's vendored
+Lua interpreter through Docker, without network access, and proves the packed
+entries against PoB's on-demand parser. Rerun that proof for an existing payload
+with `node scripts/build/mod-cache/supplement.mjs [payload-dir]`. See
+[Bundled PoB changes](BUNDLED_POB_CHANGES.md#generated-pob-data).
 
 Use `npm run clean:runtime` to preview verified stale archives and shell outputs; stop build producers before `-- --apply`, and use repeated `--include <name>` only for reviewed direct children (protected inputs and the archive container cannot be included).
 
@@ -107,6 +115,9 @@ For an upstream pin bump:
    requires a rebase, never automatic removal.
 4. Preserve local edits and move the prior versioned `.runtime/source-<hash>`
    directory aside when pack requests it; never overwrite generated source.
+   Pack regenerates the ModCache supplement and reports a changed ModCache
+   identity, tree version, entry count or exclusion. Review the generated
+   entries before recording the reported identities under `generated`.
 5. Run `npm run pack` to verify every identity, then `npm run test:unit`,
    `npm run test:native`, `npm run build:release`, and `npm run test:e2e:release`.
    Follow the release handoff contract before publishing an artifact.

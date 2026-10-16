@@ -185,6 +185,23 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
       Object.keys(pendingFolders.resultBlobHashes).length !== 1) {
     throw new Error("Build-list pending-folder overlay identities differ");
   }
+  // Generated at pack time (scripts/build/mod-cache) and appended to PoB's own
+  // ModCache.lua. Entries are exact parseMod memoization; the hashes pin the bytes.
+  const supplement = pin.generated?.masteryModCacheSupplement;
+  const modCachePath = "src/Data/ModCache.lua";
+  const lockedPaths = [...pin.compositePatch.files, ...pin.overlays.flatMap((overlay) => overlay.files),
+    ...Object.values(pin.adapters).flatMap((adapter) => Object.keys({ ...adapter.sourceBlobHashes, ...adapter.resultBlobHashes }))];
+  if (JSON.stringify(Object.keys(pin.generated ?? {})) !== JSON.stringify(["masteryModCacheSupplement"]) ||
+      supplement?.version !== 1 || !/^\d+_\d+$/.test(supplement.treeVersion ?? "") ||
+      !Number.isInteger(supplement.entries) || supplement.entries < 1 || !Array.isArray(supplement.excluded) ||
+      supplement.excluded.some((item) => JSON.stringify(Object.keys(item ?? {})) !== JSON.stringify(["key", "reason"]) ||
+        typeof item.key !== "string" || !["unescaped-key", "not-serialized", "inexact-serialization"].includes(item.reason)) ||
+      JSON.stringify(Object.keys(supplement.sourceBlobHashes ?? {})) !== JSON.stringify([modCachePath]) ||
+      JSON.stringify(Object.keys(supplement.resultBlobHashes ?? {})) !== JSON.stringify([modCachePath]) ||
+      ![supplement.sourceBlobHashes[modCachePath], supplement.resultBlobHashes[modCachePath]].every((hash) => /^[a-f0-9]{40}$/.test(hash)) ||
+      lockedPaths.includes(modCachePath)) {
+    throw new Error("Mastery ModCache supplement identity changed");
+  }
   const compositeBytes = await readFile(join(appDir, pin.compositePatch.patchFile));
   if (sha256(compositeBytes) !== pin.compositePatch.patchSha256) throw new Error("PoB PR composite patch SHA-256 mismatch");
   if (JSON.stringify(patchFiles(compositeBytes, true)) !== JSON.stringify([...pin.compositePatch.files].sort())) {

@@ -81,6 +81,91 @@ helper boundary command is
 development server; it covers mobile serial admission and helper-first payload
 failure without rerunning unrelated sort/memory calibration.
 
+## Homepage link launch
+
+The PoB Codes homepage's **Browser PoB** action opens
+`/browserpob/#build=<encoded pob.codes link>`. The measured boundary is
+navigation start to the first frame of the imported build that is observed
+after both the import completed and the startup surface was removed. It is
+RAF-sampled, so every arm includes up to one frame of observation delay.
+
+At editor `181d812`, a launch link waited for full startup, revealed the build
+selector, and only then resolved the link through the API. The bridge then
+initialized an unnamed build and re-initialized it through the import tab, while
+helper workers booted alongside the import. Three cold live-site runs on the
+machine below showed the selector at 2.4 s and the tree at 4.1 s (p50). A
+separate live waterfall resolved the link in 424 ms after the selector appeared
+and loaded 217 individual tree images during boot.
+
+An in-memory Lua sampling overlay (one fixture, sampler disabled for wall
+times) attributed the import as follows. The unnamed `Build:Init` took 572 ms,
+319 ms of it in 248 parse-cache misses for concatenated mastery option lines
+that `PassiveTree:ProcessStats` tries when a line does not parse alone. The
+imported `Build:Init` took 434 ms (72 ms of misses), with the first calculation
+about 55% of its samples, `BuildAllDependsAndPaths` about 33% and mastery
+reprocessing about 17%. `Main:Init` took about 400 ms, of which about 300 ms
+was loading the latest tree.
+
+Candidates (c3 and the generated supplement are implemented in the working
+tree; not yet released):
+
+- **c1 (host):** resolve the link in parallel with runtime startup, import
+  before revealing the editor, and do not boot helpers during that import.
+- **c2 (host):** c1, plus prefetch of lazy packages named by the decoded launch
+  build (tree version, and Timeless Jewel tables named in item text) after the
+  startup packages load. The editor is attached before the hidden import so PoB
+  lays out at the real canvas size, and is revealed after the import's first frame.
+- **c3 (native bridge):** c2, plus `boot.lua` opening a decodable code from the
+  selector with one `SetMode("BUILD", …, xml)` instead of an unnamed build and
+  an import-tab re-initialization.
+- **warm ModCache (overlay only):** 343 parse results captured from a run of
+  this fixture appended in memory to `Data/ModCache.lua`. This is identical
+  memoization of `parseMod`. Its 248 mastery-option entries are now generated
+  at pack time; see [the supplement](#mastery-option-modcache-supplement).
+
+Local loopback A/B on 2026-10-15: interleaved, alternating order, six cold
+fresh-browser launches per arm, 1600x1000 DPR 1, headless Chrome 155, Ryzen 7
+9800X3D, with the API resolver answered locally after 275 ms. Each cell is the
+median and observed range in milliseconds; arms in different rows were measured
+in different sessions.
+
+| Session | Baseline | c1 | c1 + skip overlay | c2 | c3 | Warm ModCache added |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Overlay screening | 3,389 (3,351-3,611) | 3,138 (3,035-3,191) | 2,991 (2,899-3,149) | — | — | c1: 2,763; c1 + skip: 2,507 (2,389-2,678) |
+| Final | 3,500 (3,345-3,761) | — | — | 3,256 (3,103-3,541) | 3,172 (2,968-3,238) | c3: 2,686 (2,520-2,868) |
+| Implemented | 3,315 (3,172-3,580) | — | — | — | 3,038 (2,873-3,266) | c3 + generated supplement: 2,699 (2,534-2,959) |
+
+The best measured combination is therefore about 23-26% faster on this machine.
+The implemented combination (c3 plus the pack-time supplement, without this
+fixture's own item rolls) was 19% faster than the baseline in the same session.
+All runs were error-free. Final stats and tree framing matched the baseline
+screenshot for this fixture; an earlier c1 that imported before attaching the
+canvas laid the tree out at the worker's 800x600 default and was corrected.
+
+Under Chrome network emulation (40 Mbit/s, 40 ms; five rounds) the medians were
+baseline 10.37 s, c1 10.28 s and c2 4.67 s. Treat this as directional only: the
+loopback test server is HTTP/1.1, and the demand-loaded 2.27 MB Lethal Pride
+table queued behind the 217 image requests (requested at 4.3 s, finished at
+9.8 s). Production HTTP/2/3 multiplexes those requests, so the real saving is
+smaller. Live, the same package took 73 ms on a fast connection.
+
+Remaining work, in measured order of size (the ModCache supplement is done):
+
+1. Reduce import compute (first calculation, path building, quadratic mastery
+   reprocessing). These need exact-behavior PoB patches; moving
+   `ProcessStats` out of the mastery loop would change sticky `unknown`/`extra`
+   flags and would not remove the unique misses.
+2. Reduce Lua boot (about 1.1 s). See the generated representation below.
+3. Network: add preload hints for the manifest and startup packages (live, the
+   manifest was requested at about 320 ms and packages finished at about 870 ms),
+   archive the tree images, and let the homepage prefetch the shell.
+
+`tools/profiles/profile-link-import.mjs` reproduces these measurements against a
+materialized release (`--release=`, `--build-file=`, `--link=`, optional
+`--throttle=<Mbps>@<ms>` and in-memory `--overlay=`). `--production` is an explicit,
+read-only live opt-in. The fixture is identified by its XML SHA-256
+`898ff4d0152e9094befb95e3dc9c0983d9f2cd449d0f17017a76f6a171d614d6`.
+
 ## What “cold” means here
 
 The strongest cold matrix used a fresh Chrome process and profile, broker,
@@ -218,6 +303,46 @@ source read-ahead. Selective passive-tree bytecode had a smaller transfer cost
 but inconclusive incremental benefit. An old combined bytecode candidate was
 rejected after binary reopen behavior leaked handles and deferred cleanup
 outside the measurement boundary. Parsing alone is not the dominant cold cost.
+
+### Mastery-option ModCache supplement
+
+The first passive spec of a cold start builds every unallocated mastery's
+option list. `PassiveTree:ProcessStats` retries option lines that do not parse
+alone concatenated with the following lines. For tree 3_29 that requests 656
+lines, of which 248 combination strings are missing from the shipped
+`Data/ModCache.lua`; every one of them runs a full `ModParser` scan. A Lua
+sampling overlay on a homepage link launch attributed 319 ms to them.
+
+`npm run pack` now generates PoB's exact parse results for those lines and
+appends them to the packaged cache. It proves every entry against PoB's
+on-demand parser in the browser's Lua interpreter (see
+[Bundled PoB changes](../BUNDLED_POB_CHANGES.md#generated-pob-data)). This adds
+109,246 bytes uncompressed and 7,090 bytes to the compressed core package.
+It covers mastery options only. Parse misses from a build's own item and
+cluster-jewel rolls remain.
+
+Local loopback A/B on 2026-10-15 measured a homepage `#build=` launch with
+`tools/profiles/profile-link-import.mjs`, from navigation to the first visible
+frame of the imported build. It used six interleaved rounds in alternating
+order, a fresh browser per launch, a resolver answered after 275 ms, headless
+Chrome 155.0.8059.41 at 1600x1000 DPR 1 and a Ryzen 7 9800X3D. All arms used
+the same experimental host shell (link-launch candidate c3, not yet released)
+and one build fixture (XML
+SHA-256 `898ff4d0152e9094befb95e3dc9c0983d9f2cd449d0f17017a76f6a171d614d6`).
+Only the payload differed. The in-memory overlay held these 248 entries plus 95
+results captured from this fixture's own items. It is a probe, not a shipped
+artifact.
+
+| Arm | Payload manifest | Median (ms) | Range (ms) |
+| --- | --- | ---: | ---: |
+| c3 | `3a193a89…` (shipped ModCache) | 3,374 | 3,142-3,486 |
+| c3 + generated supplement | `e22bfec8…` | 2,945 | 2,763-3,408 |
+| c3 + captured in-memory overlay | `3a193a89…` + overlay | 2,728 | 2,626-3,069 |
+
+The supplement saved 429 ms at the median, or 12.7%. The paired-round median
+saving was 417 ms. Five of six rounds improved; the sixth was within 11 ms.
+All 18 launches were error-free. This is one fixture on one machine; treat the
+size of the saving as directional.
 
 ## Architecture implications
 

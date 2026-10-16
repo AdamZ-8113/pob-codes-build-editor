@@ -22,15 +22,26 @@ import { applyImportTabHostPatch } from "../../../../scripts/patches/importtab-h
 import { applyPreferredExportSitePatch } from "../../../../scripts/patches/preferred-export-site-patch.mjs";
 import { applyBuildListPendingPatch } from "../../../../scripts/patches/build-list-pending-patch.mjs";
 import { applyPowerNodeDepthPatch } from "../../../../scripts/patches/power-node-depth-patch.mjs";
+import { appendModCacheSupplement } from "../../../../scripts/patches/mod-cache-supplement-patch.mjs";
 import { sha256, stalePackageHashes, validatePayloadManifest } from "../../../payload-manifest.ts";
 
-const [source, destination] = Deno.args;
-if (!source || !destination || Deno.args.length !== 2) {
-  throw new Error("Usage: pack.ts <pinned-source-directory> <payload-directory>");
+const [source, destination, option] = Deno.args;
+// --stage writes the adapted sources to <destination>/root for the ModCache
+// supplement generator (scripts/build/mod-cache); a payload requires its output.
+const stage = option === "--stage";
+const supplementPath = option?.startsWith("--mod-cache-supplement=")
+  ? option.slice("--mod-cache-supplement=".length)
+  : undefined;
+if (!source || !destination || Deno.args.length !== 3 || !(stage || supplementPath)) {
+  throw new Error(
+    "Usage: pack.ts <pinned-source-directory> <payload-directory> --mod-cache-supplement=<file>\n" +
+      "       pack.ts <pinned-source-directory> <stage-directory> --stage",
+  );
 }
 const repoDir = resolve(source);
 const payloadDir = resolve(destination);
 const pin = JSON.parse(await Deno.readTextFile(new URL("../../../../source-pin.json", import.meta.url)));
+const modCacheSupplement = supplementPath ? await Deno.readFile(supplementPath) : undefined;
 const gemHoverPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.gemDropdownHover.patchFile}`, import.meta.url));
 const itemComparisonPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.limitedUniqueItemComparisons.patchFile}`, import.meta.url));
 const jewelSpecPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.calculationOnlyJewelSpecs.patchFile}`, import.meta.url));
@@ -69,9 +80,11 @@ for (const entry of entries) {
     if (!dimensions) throw new Error(`Unsupported or invalid image: ${entry.path}`);
     imageIndex.push(`${relPath}\t${dimensions.width}\t${dimensions.height}`);
     zip.addFile(relPath, Buffer.alloc(0));
-    const assetPath = `${payloadDir}/root/${relPath}`;
-    await ensureDir(dirname(assetPath));
-    await copy(entry.path, assetPath, { overwrite: true });
+    if (!stage) {
+      const assetPath = `${payloadDir}/root/${relPath}`;
+      await ensureDir(dirname(assetPath));
+      await copy(entry.path, assetPath, { overwrite: true });
+    }
   }
   if (kind === "data") {
     const content = await Deno.readFile(entry.path);
@@ -133,9 +146,15 @@ for (const entry of entries) {
       : relPath === "Modules/DataLegionLookUpTableHelper.lua"
       ? new TextEncoder().encode(sparseTimelessSeeds(new TextDecoder().decode(newContent), timelessSeedHelper))
       : relPath === "Modules/DataJewelFileLoader.lua"
-      ? new TextEncoder().encode(guardJewelInflate(new TextDecoder().decode(newContent), timelessInflateHelper)) : newContent;
+      ? new TextEncoder().encode(guardJewelInflate(new TextDecoder().decode(newContent), timelessInflateHelper))
+      : relPath === "Data/ModCache.lua" && modCacheSupplement
+      ? appendModCacheSupplement(newContent, modCacheSupplement, pin.generated.masteryModCacheSupplement)
+      : newContent;
     zip.addFile(newRelPath, Buffer.from(adapted));
   }
+}
+if (modCacheSupplement && !zip.getEntry("Data/ModCache.lua")) {
+  throw new Error("ModCache supplement: Data/ModCache.lua is missing from the packed sources");
 }
 const luaPath = `${repoDir}/runtime/lua`;
 for await (const entry of walk(luaPath, { includeDirs: false, exts: [".lua"] })) {
@@ -168,6 +187,16 @@ for (const file of ["changelog.txt", "help.txt", "LICENSE.md"]) {
 }
 // AdmZip otherwise records the wall clock for every entry.
 for (const entry of zip.getEntries()) entry.header.time = new Date(2000, 0, 1);
+if (stage) {
+  for (const entry of zip.getEntries()) {
+    if (entry.isDirectory) continue;
+    const target = `${payloadDir}/root/${entry.entryName}`;
+    await ensureDir(dirname(target));
+    await Deno.writeFile(target, entry.getData());
+  }
+  console.log(`Staged ${zip.getEntries().length} entries for the ModCache supplement in ${payloadDir}`);
+  Deno.exit(0);
+}
 const { manifest: payloadManifest, archives } = await createPackages(
   zip.getEntries().filter((entry) => !entry.isDirectory).map((entry) => ({
     path: entry.entryName,

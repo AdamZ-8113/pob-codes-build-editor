@@ -1,8 +1,9 @@
 import { spawnSync } from 'node:child_process';
-import { mkdir, readFile, writeFile, access } from 'node:fs/promises';
+import { mkdir, readFile, writeFile, access, rm } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sha256, validateSourceLedger, validatePreparedRelevance } from './source-ledger.mjs';
+import { buildLuaRunner, generateSupplement, generatorInputs, verifyPackedSupplement } from './mod-cache/supplement.mjs';
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const runtimeDir = join(appDir, '.runtime');
@@ -66,6 +67,10 @@ for (const [adapter, compatibility] of Object.entries(pin.adapters)) {
     if (run('git', ['hash-object', '--no-filters', path], sourceDir) !== hash) throw new Error(`${adapter} source compatibility changed: ${path}`);
   }
 }
+const modCacheSupplement = pin.generated.masteryModCacheSupplement;
+for (const [path, hash] of Object.entries(modCacheSupplement.sourceBlobHashes)) {
+  if (run('git', ['hash-object', '--no-filters', path], sourceDir) !== hash) throw new Error(`Mastery ModCache supplement source changed: ${path}`);
+}
 
 const inputHash = sha256(Buffer.concat([
   pinBytes,
@@ -89,6 +94,8 @@ const inputHash = sha256(Buffer.concat([
   await readFile(join(appDir, 'scripts/patches/status-text-patch.mjs')),
   await readFile(join(appDir, 'scripts/patches/build-list-pending-patch.mjs')),
   await readFile(join(appDir, 'scripts/patches/power-node-depth-patch.mjs')),
+  await readFile(join(appDir, 'scripts/patches/mod-cache-supplement-patch.mjs')),
+  Buffer.from((await generatorInputs()).sha256),
   await readFile(join(appDir, 'scripts/build/drift-patch.mjs')),
   await readFile(join(appDir, pin.adapters.uniqueSortDelegation.patchFile)),
   await readFile(join(appDir, pin.adapters.gemDropdownHover.patchFile)),
@@ -115,11 +122,30 @@ if (await exists(provenanceFile)) {
   }
 }
 await mkdir(payloadDir, { recursive: true });
+const packer = (destination, option) => {
+  const packed = spawnSync(process.env.DENO ?? 'deno', ['run', '--allow-read', `--allow-write=${resolve(destination)}`, '--allow-env',
+    'packages/packer/src/pack.ts', sourceDir, destination, option], { cwd: join(appDir, 'upstream'), stdio: 'inherit' });
+  if (packed.error || packed.status !== 0) throw new Error(packed.error?.message ?? `PoB packer exited ${packed.status}`);
+};
+// Generate the mastery-option ModCache supplement from the exact adapted
+// sources that are packed, then prove the packed payload against PoB's parser.
+const modCacheDir = join(runtimeDir, 'mod-cache-supplement');
+await rm(modCacheDir, { recursive: true, force: true });
+await mkdir(modCacheDir, { recursive: true });
+console.log(`Generating the ${modCacheSupplement.treeVersion} mastery-option ModCache supplement…`);
+packer(join(modCacheDir, 'stage'), '--stage');
+const runnerDir = await buildLuaRunner(runtimeDir);
+const generated = await generateSupplement({ runnerDir, stageRoot: join(modCacheDir, 'stage', 'root'),
+  workDir: join(modCacheDir, 'generate'), ledger: modCacheSupplement });
+const supplementFile = join(modCacheDir, 'supplement.lua');
+await writeFile(supplementFile, generated.supplement);
+await rm(join(modCacheDir, 'stage'), { recursive: true, force: true });
 console.log(`Packing full desktop PoB beta ${pin.revision} with PRs ${pin.overlays.filter(overlay => overlay.kind === 'upstream-pr').map(overlay => `#${overlay.number}`).join(', ')}…`);
-const packed = spawnSync(process.env.DENO ?? 'deno', ['run', '--allow-read', `--allow-write=${resolve(payloadDir)}`, '--allow-env', 'packages/packer/src/pack.ts', sourceDir, payloadDir], {
-  cwd: join(appDir, 'upstream'), stdio: 'inherit',
-});
-if (packed.error || packed.status !== 0) throw new Error(packed.error?.message ?? `PoB packer exited ${packed.status}`);
+packer(payloadDir, `--mod-cache-supplement=${supplementFile}`);
+const verified = await verifyPackedSupplement({ runnerDir, payloadDir, shippedModCache: join(sourceDir, 'src/Data/ModCache.lua'),
+  workDir: join(modCacheDir, 'verify'), ledger: modCacheSupplement });
+await rm(modCacheDir, { recursive: true, force: true });
+console.log(`Verified ${verified.entries} mastery-option ModCache entries against PoB's on-demand parser.`);
 await writeFile(provenanceFile, `${JSON.stringify({
   schema: 2,
   sourceRevision: pin.revision,
@@ -129,6 +155,15 @@ await writeFile(provenanceFile, `${JSON.stringify({
     baseRevision: pin.compositePatch.baseRevision,
     resultTree: pin.compositePatch.resultTree,
     patchSha256: pin.compositePatch.patchSha256,
+  },
+  generated: {
+    masteryModCacheSupplement: {
+      ...modCacheSupplement,
+      requested: generated.report.requested,
+      missing: generated.report.missing,
+      supplementSha256: generated.report.supplementSha256,
+      verifiedEntries: verified.entries,
+    },
   },
   inputSha256: inputHash,
   manifestSha256: sha256(await readFile(join(payloadDir, 'manifest.json'))),

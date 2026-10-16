@@ -100,6 +100,44 @@ result locks or build transforms instead of standalone patch files.
 | `sparseTimelessSeeds` | Materializes requested Timeless records sparsely while preserving PoB's binary decoding and remapping. |
 | `uniqueSortDelegation` | Adds the checked per-candidate batch hook used by bounded helper workers, with PoB's filtering, scoring, and final order unchanged. |
 
+## Generated PoB data
+
+These additions are generated from the packed sources at pack time and pinned
+under `generated` in `source-pin.json`. They change no PoB Lua source.
+
+| Ledger identity | Change carried by the build |
+| --- | --- |
+| `masteryModCacheSupplement` | Appends PoB's own `parseMod` results for the mastery-option lines that the latest tree's first passive spec requests and that `Data/ModCache.lua` does not ship. The shipped cache bytes are kept verbatim; only new keys are added. |
+
+`PassiveSpec:AddMasteryEffectOptionsToNode` asks `PassiveTree:ProcessStats` to
+parse each mastery's cumulative option lines, retrying a line that does not
+parse alone concatenated with the lines after it. PoB's own ModCache
+regeneration never builds a passive spec, so those combination strings miss the
+cache and each runs a full `ModParser` scan on the first spec of a cold start.
+
+`scripts/build/mod-cache` regenerates the entries on every pack. It compiles
+the browser driver's vendored Lua interpreter for Node in the pinned Emscripten
+image, without network access, and boots PoB headless on the staged packed
+sources. There it builds a real passive spec for `latestTreeVersion`, records
+every line requested from the mastery-option path that the shipped cache lacks,
+and serializes PoB's parse results with PoB's own `main:SaveModCache`. Any
+entry that would not reload identically is excluded (for example a value that
+`%.14g` cannot represent exactly), so PoB keeps parsing it on demand.
+
+After packing, the verifier extracts the hash-checked payload packages. It
+checks that every shipped entry is unchanged and that each added entry gives the
+same `parseMod` output as a fresh on-demand parse. It also checks that the
+latest tree's mastery options miss only the ledgered exclusions. The pinned
+result hash, entry count and exclusions change only through review. For tree
+`3_29` this adds 248 entries: 109,246 bytes uncompressed and 7,090 bytes in the
+compressed core package.
+
+On a pin bump, pack reports a changed source or result identity, or a changed
+inventory, and leaves the generated module under `.runtime/mod-cache-supplement/`.
+Review its entries before recording the reported values. Once upstream's
+own ModCache contains these lines, the generator finds no missing entries and
+the supplement can be removed.
+
 Runtime, renderer, loading, and WebAssembly improvements that do not modify the
 packaged PoB source are outside this ledger. Glorious Vanity eligibility for
 parallel power reports, workload-specific garbage collection, and shorter UI

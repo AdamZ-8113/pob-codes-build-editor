@@ -91,6 +91,48 @@ test("pagehide releases runtime workers when graceful shutdown cannot reply", as
   expect(state.heldDestroy).toBe(0);
 });
 
+test("homepage build links open the build directly and failed links keep the selector usable", async ({ page, context }) => {
+  const cors = { "access-control-allow-origin": origin, "cache-control": "no-store" };
+  const raw = [];
+  await context.route("**/*", async route => {
+    const request = route.request(), url = new URL(request.url());
+    if (url.origin === origin) { await route.continue(); return; }
+    if (url.origin === "https://api.pob.codes" && request.method() === "GET" && /^\/(fixture-build|missing-build)\/raw$/.test(url.pathname)) {
+      raw.push(url.pathname);
+      await route.fulfill(url.pathname.startsWith("/fixture-build")
+        ? { status: 200, headers: cors, contentType: "text/plain", body: fixture }
+        : { status: 404, headers: cors, contentType: "text/plain", body: "" });
+      return;
+    }
+    await route.abort("blockedbyclient");
+  });
+  // Record what the document showed at the moment the startup surface left.
+  await page.addInitScript(() => {
+    new MutationObserver((_, observer) => {
+      if (document.readyState === "loading" || document.getElementById("startup-surface")) return;
+      window.__REVEALED_TITLE__ = document.title;
+      observer.disconnect();
+    }).observe(document, { subtree: true, childList: true });
+  });
+
+  await page.goto(`${basePath}/#build=${encodeURIComponent("https://pob.codes/b/fixture-build")}`);
+  await ready(page);
+  expect(raw).toEqual(["/fixture-build/raw"]);
+  expect(await page.evaluate(() => location.hash)).toBe("");
+  expect(await page.evaluate(() => window.__REVEALED_TITLE__)).toContain("Imported build");
+  // PoB re-exports attributes in its own order and records the open tab.
+  const exported = decode(await page.evaluate(() => window.__DESKTOP_POB__.getBuildCode()));
+  const identity = xml => ["className", "ascendClassName", "level"].map(name => buildTag(xml).match(new RegExp(`\\b${name}="([^"]*)"`))?.[1]);
+  expect(identity(exported)).toEqual(identity(decode(fixture)));
+  expect(passiveNodes(exported)).toEqual(passiveNodes(decode(fixture)));
+
+  // A query keeps this a document navigation rather than a fragment change.
+  await page.goto(`${basePath}/?launch=missing#build=${encodeURIComponent("https://pob.codes/b/missing-build")}`);
+  await page.waitForFunction(() => window.__DESKTOP_POB__?.ready && window.__DESKTOP_POB__.errors.length, null, { timeout: 120_000 });
+  expect(await page.evaluate(() => window.__DESKTOP_POB__.errors)).toEqual(["Saved build was not found."]);
+  expect(await page.evaluate(() => window.__DESKTOP_POB__.buildListState?.mode)).toBe("LIST");
+});
+
 test("candidate imports, edits, recalculates, shares and persists the displayed native build", async ({ page, context }, testInfo) => {
   await context.grantPermissions(["clipboard-read", "clipboard-write"], { origin });
   // Use the real browser paste path for text fields. Zero-delay keydown/up

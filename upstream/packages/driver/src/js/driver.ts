@@ -45,6 +45,7 @@ type AsyncBroker = {
   };
   markPayloadReady(): Promise<void>;
   startPayloadPrefetch(): Promise<void>;
+  prefetchPayloadPrefixes(prefixes: string[]): Promise<void>;
   importBuildFolder(files: BuildFolderImportFile[], buildPath: string, subPath: string): Promise<InternalBuildFolderImportResult>;
   finalizeBuildFolderImport(token: string): Promise<void>;
   recoverBuildFolderImports(buildPath: string): Promise<BuildFolderRecoveryResult>;
@@ -303,6 +304,11 @@ export class Driver {
 
   async startPayloadPrefetch() {
     await this.broker?.startPayloadPrefetch();
+  }
+
+  /** Root-relative path prefixes, such as `/Data/TimelessJewelData/LethalPride.zip`. */
+  async prefetchPayloadPrefixes(prefixes: string[]) {
+    if (prefixes.length) await this.broker?.prefetchPayloadPrefixes(prefixes);
   }
 
   startHelpers() {
@@ -622,11 +628,15 @@ export class Driver {
     });
   }
 
-  async loadBuildFromCode(code: string) {
+  async loadBuildFromCode(code: string, { startHelpers = true }: { startHelpers?: boolean } = {}) {
     this.helpers?.cancel();
     await this.flushInput();
-    const profile = await this.driverWorker?.getRuntimeProfile();
-    if (profile && profile.wasmBytes <= 2 * 2 ** 30 && !this.payloadFailed) this.startHelpers();
+    // An initial link import runs before helpers are wanted; booting them here
+    // would compete with the import for the broker and CPU.
+    if (startHelpers) {
+      const profile = await this.driverWorker?.getRuntimeProfile();
+      if (profile && profile.wasmBytes <= 2 * 2 ** 30 && !this.payloadFailed) this.startHelpers();
+    }
     return this.driverWorker?.loadBuildFromCode(code);
   }
 

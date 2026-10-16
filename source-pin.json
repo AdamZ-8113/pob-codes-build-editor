@@ -620,5 +620,19 @@
       "src/Modules/ItemSocketControls.lua": "5c5d7c47be149a1d1c124eeb508bff16ec3934fc",
       "src/Modules/Main.lua": "ba137678649df496950c11751ad609b8d8232f8f"
     }
+  },
+  "generated": {
+    "masteryModCacheSupplement": {
+      "version": 1,
+      "treeVersion": "3_29",
+      "entries": 248,
+      "excluded": [],
+      "sourceBlobHashes": {
+        "src/Data/ModCache.lua": "c975e8c33aba0bbfbbacc2a97bc3ae830b250d95"
+      },
+      "resultBlobHashes": {
+        "src/Data/ModCache.lua": "35ba945b83f0cc359b1c660bd6ccf82f1e43dd9c"
+      }
+    }
   }
 }

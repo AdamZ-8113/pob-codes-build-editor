@@ -9,6 +9,7 @@ import { createTelemetryV1 } from "./telemetry-v1.ts";
 import { createConfigurationBridgeV1 } from "./configuration-v1.ts";
 import type { ConfigurationRequestV1 } from "./configuration-v1.ts";
 import { createBuildTransferV1 } from "./build-transfer-v1.ts";
+import { payloadHintsForBuildCode } from "./launch-payload-hints.ts";
 import { bindAboutDialog } from "./about-dialog.ts";
 import { createDebugReportV1, sanitizeDiagnosticV1 } from "./debug-report.ts";
 import type { SanitizedDiagnosticV1 } from "./debug-report.ts";
@@ -88,11 +89,12 @@ function report(error: unknown) {
   console.error(error);
 }
 
-async function loadBuildFromCode(value: string, actionTarget: "code" | "saved-build" = "code") {
+async function loadBuildFromCode(value: string, actionTarget: "code" | "saved-build" = "code", startHelpers = true) {
   const started = performance.now();
   telemetry.emit("build_editor_import_v1", { result: "started", actionTarget });
+  if (import2Preview) performance.mark(`${performancePrefix}-import-start`);
   try {
-    await driver!.loadBuildFromCode(value);
+    await driver!.loadBuildFromCode(value, { startHelpers });
     telemetry.emit("build_editor_import_v1", { result: "success", actionTarget, durationMs: Math.round(performance.now() - started) });
     if (import2Preview) performance.mark(`${performancePrefix}-imported-build-ready`);
   } catch (error) {
@@ -138,6 +140,26 @@ async function main() {
     : createDisabledCharacterTransport();
   const characterHost = createCharacterHostV1({ transport: characterTransport });
   buildTransfer = createBuildTransferV1({ apiBaseUrl: publicRuntime.apiBaseUrl, getBuildCode: exportBuildCode });
+  // Resolve a launch link while the runtime starts instead of after it is
+  // ready. The settled result is consumed after startup; a failure is reported
+  // then and leaves the normal build selector usable.
+  const initial = new URLSearchParams(location.hash.slice(1));
+  const initialCode = initial.get("code");
+  const initialBuild = initial.get("build");
+  const initialImport = initialCode || initialBuild
+    ? (initialCode ? Promise.resolve(initialCode) : buildTransfer.resolve(initialBuild!))
+      .then(code => {
+        if (import2Preview) performance.mark(`${performancePrefix}-link-resolved`);
+        return { code };
+      }, (error: unknown) => ({ error }))
+    : undefined;
+  if (initialImport) history.replaceState(null, "", location.pathname);
+  let launchImportPending = Boolean(initialImport);
+  let onNextFrame: (() => void) | undefined;
+  const nextFrame = (timeoutMs: number) => new Promise<void>(resolve => {
+    const timer = setTimeout(resolve, timeoutMs);
+    onNextFrame = () => { clearTimeout(timer); resolve(); };
+  });
   if (import2Preview && options.get("legacyPayload") === "1") {
     throw new Error("The legacy payload is unavailable in this browser-only preview.");
   }
@@ -206,8 +228,10 @@ async function main() {
       frames++; lastStats = stats;
       frameSamples.push({ at, duration, render: stats?.lastFrameTime ?? 0, reused: stats?.reused ?? false });
       if (frameSamples.length > 600) frameSamples.shift();
+      onNextFrame?.(); onNextFrame = undefined;
       if (startupReadiness.frame(stats?.backend.instances ?? 0)) {
-        startupPresenter.firstFrame();
+        // Keep startup progress visible while a launch import is still running.
+        if (!launchImportPending) startupPresenter.firstFrame();
         if (import2Preview) performance.mark(`${performancePrefix}-first-pob-frame`);
       }
     },
@@ -235,6 +259,11 @@ async function main() {
       buildFolderImport?.update(state);
     },
   });
+  // Start lazy packages the launch build will demand (for example a Timeless
+  // Jewel table) while PoB boots, instead of during the import.
+  const launchDriver = driver;
+  void initialImport?.then(result => "code" in result ? payloadHintsForBuildCode(result.code) : [])
+    .then(prefixes => launchDriver.prefetchPayloadPrefixes(prefixes)).catch(() => {});
   configuration = createConfigurationBridgeV1({
     getBuildCode: () => driver!.getBuildCode(), loadBuildFromCode: code => driver!.loadBuildFromCode(code),
     applyConfiguration: request => driver!.applyConfiguration(request),
@@ -274,7 +303,25 @@ async function main() {
   startupReadiness.attached();
   buildFolderImport = createBuildFolderImportSidecar(driver);
   if (buildListState) buildFolderImport.update(buildListState);
+  // Import a launch build while the editor is attached (so PoB lays it out at
+  // the real canvas size) but still hidden, so the first frame the user sees
+  // is that build rather than the build selector.
+  const initialResult = initialImport && await initialImport;
+  let initialImportError: unknown;
+  if (initialResult) {
+    payloadProgress.startup(90, "Opening build");
+    try {
+      if ("error" in initialResult) throw initialResult.error;
+      await loadBuildFromCode(initialResult.code, initialBuild && !initialCode ? "saved-build" : "code", false);
+      // Reveal only after a frame of the imported build replaced the hidden
+      // selector. The import reply precedes that frame's callback.
+      await nextFrame(1_000);
+    } catch (error) { initialImportError = error; }
+  }
+  launchImportPending = false;
   await startupReadiness.wait();
+  // A hidden selector frame may have latched readiness during the import.
+  startupPresenter.firstFrame();
   startupReadiness.assertHealthy();
   ready = true;
   if (import2Preview) performance.mark(`${performancePrefix}-editor-ready`);
@@ -295,13 +342,7 @@ async function main() {
   if ("requestIdleCallback" in window) window.requestIdleCallback(beginBackgroundWork);
   else setTimeout(beginBackgroundWork, 0);
   if (!errors.length) setHeaderStatus("");
-  const initial = new URLSearchParams(location.hash.slice(1));
-  const initialCode = initial.get("code");
-  const initialBuild = initial.get("build");
-  if (initialCode || initialBuild) {
-    history.replaceState(null, "", location.pathname);
-    await loadBuildFromCode(initialCode ?? await buildTransfer.resolve(initialBuild!), initialBuild ? "saved-build" : "code");
-  }
+  if (initialImportError !== undefined) throw initialImportError;
 }
 
 // Local acceptance harness: these methods address the same displayed Lua instance.

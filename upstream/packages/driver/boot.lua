@@ -243,6 +243,19 @@ function loadBuildFromCode(code)
     -- Flush any pending state before import
     runCallback("OnFrame")
 
+    -- From the build selector, open the decoded build directly, as PoB does for
+    -- a startup import link. This initializes one build instead of an unnamed
+    -- build followed by "Import to a new build" into a second one.
+    if mainObject.main.mode ~= "BUILD" and not mainObject.main.newMode then
+        local xmlText = Inflate(common.base64.decode(code:gsub("-","+"):gsub("_","/")))
+        if xmlText then
+            mainObject.main:SetMode("BUILD", false, "Imported build", xmlText)
+            mainObject.main.newModeChangeToTree = true
+            runCallback("OnFrame")
+            return
+        end
+    end
+
     if mainObject.main.mode ~= "BUILD" then
         mainObject.main:SetMode("BUILD", false, "")
         runCallback("OnFrame")

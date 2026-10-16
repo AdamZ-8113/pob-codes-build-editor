@@ -606,7 +606,7 @@ pruning, setup reuse, and delegation. This integration does not change report
 traversal, cache keys or merge order. See
 `../docs/BUNDLED_POB_CHANGES.md` for retention and upstream absorption rules.
 
-### Homepage link launch (October 15, experiment)
+### Homepage link launch (October 15)
 
 `boot.lua`'s `loadBuildFromCode` opens a decodable code from the build selector
 with `main:SetMode("BUILD", false, "Imported build", xml)` and
@@ -616,5 +616,24 @@ re-initialization; codes that do not inflate, and imports from BUILD mode, keep
 the import-tab path. `Driver.loadBuildFromCode` can skip helper startup for a
 launch import, and `prefetchPayloadPrefixes` lets the host background-load lazy
 packages (a launch build's Timeless Jewel table or tree version) after the
-startup packages. These are experiment-branch changes; see
+startup packages. These are implemented but not yet released; see
 `../docs/performance/COLD_START.md#homepage-link-launch`.
+
+### Mastery-option ModCache supplement (October 15)
+
+`packages/packer/src/pack.ts` gains two modes. `--stage` writes the adapted
+sources the payload would contain, without images or packages.
+`--mod-cache-supplement=<file>` appends a generated `main:SaveModCache` module
+to the packaged `Data/ModCache.lua` through
+`../scripts/patches/mod-cache-supplement-patch.mjs`, which checks the shipped and
+result blob hashes recorded under `generated.masteryModCacheSupplement` in
+`../source-pin.json` and accepts only new keys. `../scripts/build/pack.mjs`
+stages the sources, generates the module with `../scripts/build/mod-cache`, packs,
+and verifies the packed packages before writing provenance.
+
+The generator compiles this directory's vendored Lua and luautf8 with
+`../scripts/build/mod-cache/lua-runner.c` for Node. It uses the same digest-pinned
+`emscripten/emsdk:6.0.6` image and the driver's compact-value definitions, with
+networking disabled. The runner is cached under `.runtime/` by the hash of its
+inputs and is never part of the payload or driver. See
+`../docs/BUNDLED_POB_CHANGES.md#generated-pob-data` for the exactness checks.

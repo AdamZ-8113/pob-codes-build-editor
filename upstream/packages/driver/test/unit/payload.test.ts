@@ -31,6 +31,28 @@ Deno.test('comparison requests are quiet, coalesce, and promote to demand when t
   assertEquals(events.at(-1), {...events.at(-1), reason: 'demand', phase: 'ready'});
 });
 
+Deno.test('launch prefixes prefetch only matching unloaded packages, quietly and once', async () => {
+  const {manifest, archives} = await createPackages(payloadEntries(), 'a'.repeat(40));
+  const ids = new Map(manifest.packages.map(pkg => [pkg.sha256, pkg.id]));
+  const requested: string[] = [];
+  const events: {reason: string}[] = [];
+  const payload = await loadPayload('/payload', (async (url: string) => {
+    if (url.endsWith('manifest.json')) return Response.json(manifest);
+    const hash = url.split('/').at(-1)!.slice(0, -4);
+    requested.push(ids.get(hash)!);
+    return new Response(archives.get(hash));
+  }) as typeof fetch, {onProgress: event => { events.push(event); }});
+  requested.length = 0;
+  events.length = 0;
+  const count = payload.controller!.prefetchPrefixes(['/Data/TimelessJewelData/LethalPride.zip', '/TreeData/3_29/', '/root/TreeData/3_28/']);
+  assertEquals(count, 2, 'The loaded startup tree is not requested again');
+  assertEquals(events.map(event => event.reason), ['prefetch', 'prefetch'], 'Hints do not raise startup or demand progress');
+  // A later demand joins the in-flight request instead of fetching again.
+  await payload.controller!.ensurePath('/Data/TimelessJewelData/LethalPride.zip');
+  await payload.controller!.ensurePath('/TreeData/3_28/tree.lua');
+  assertEquals(requested.sort(), ['timeless-lethalpride-zip', 'tree-3_28']);
+});
+
 function payloadEntries() {
   return [
     gameVersions,
