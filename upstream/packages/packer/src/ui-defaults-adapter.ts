@@ -30,23 +30,26 @@ export function disableAnimationsByDefault(
     throw new Error("Browser UI defaults adapter: frame entry changed");
   }
   const repairBuildPath = `\tself:LoadSettings(ignoreBuild)
-\tlocal browserBuildPathValid = type(self.buildPath) == "string"
-\t\tand #self.buildPath > 10
-\t\tand self.buildPath:sub(1, 10) == "/app/user/"
-\t\tand not self.buildPath:find("\\\\", 1, true)
-\t\tand not self.buildPath:find("//", 1, true)
-\t\tand not self.buildPath:find("%c")
-\tif browserBuildPathValid then
-\t\tfor segment in self.buildPath:gmatch("[^/]+") do
-\t\t\tif segment == "." or segment == ".." then
-\t\t\t\tbrowserBuildPathValid = false
-\t\t\t\tbreak
+\tlocal browserStorageMounted = type(self.userPath) == "string" and self.userPath:sub(1, 10) == "/app/user/"
+\tif browserStorageMounted then
+\t\tlocal browserBuildPathValid = type(self.buildPath) == "string"
+\t\t\tand #self.buildPath > 10
+\t\t\tand self.buildPath:sub(1, 10) == "/app/user/"
+\t\t\tand not self.buildPath:find("\\\\", 1, true)
+\t\t\tand not self.buildPath:find("//", 1, true)
+\t\t\tand not self.buildPath:find("%c")
+\t\tif browserBuildPathValid then
+\t\t\tfor segment in self.buildPath:gmatch("[^/]+") do
+\t\t\t\tif segment == "." or segment == ".." then
+\t\t\t\t\tbrowserBuildPathValid = false
+\t\t\t\t\tbreak
+\t\t\t\tend
 \t\t\tend
 \t\tend
-\tend
-\tif not browserBuildPathValid then
-\t\tself.buildPath = self.defaultBuildPath
-\t\tself.browserBuildPathNeedsSave = true
+\t\tif not browserBuildPathValid then
+\t\t\tself.buildPath = self.defaultBuildPath
+\t\t\tself.browserBuildPathNeedsSave = true
+\t\tend
 \tend
 \tself:LoadSharedItems()`;
   const persistBuildPath = `function main:OnFrame()

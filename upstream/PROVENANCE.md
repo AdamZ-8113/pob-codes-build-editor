@@ -136,12 +136,13 @@ with its imported bridge and Vite configuration.
 
 The checked `browserUiDefaults` pack-time adapter changes the initial
 `Main.showAnimations` value from true to false in the browser package. After
-loading settings, it also resets and immediately resaves any persisted build
-path that cannot resolve within the browser's `/app/user/` mount. This migrates
-desktop Windows path overrides without user action while preserving valid
-browser-local custom paths. The prepared desktop checkout and upstream defaults
-remain unchanged, and PoB continues to load and save explicit user choices
-through its existing setting fields.
+loading settings in the writable browser UI environment, it also resets and
+immediately resaves any persisted build path that cannot resolve within the
+browser's `/app/user/` mount. Read-only headless helper interpreters skip that
+migration. This migrates desktop Windows path overrides without user action
+while preserving valid browser-local custom paths. The prepared desktop checkout
+and upstream defaults remain unchanged, and PoB continues to load and save
+explicit user choices through its existing setting fields.
 
 `Driver.attachToDOM` accepts an optional external toolbar target. The overlay
 portals its existing controls into the localhost shell header and releases the

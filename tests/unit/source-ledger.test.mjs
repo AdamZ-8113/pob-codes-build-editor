@@ -28,7 +28,7 @@ test("desktop PoB overlay ledger owns six ordered PRs, two Power Report optimiza
 test("browser UI defaults adapter rejects changed Main.lua identities", async () => {
   const pin = JSON.parse(await readFile(join(appDir, "source-pin.json"), "utf8"));
   for (const mutate of [
-    candidate => { candidate.adapters.browserUiDefaults.version = 3; },
+    candidate => { candidate.adapters.browserUiDefaults.version = 4; },
     candidate => { candidate.adapters.browserUiDefaults.sourceBlobHashes["src/Modules/Main.lua"] = "0".repeat(40); },
     candidate => { candidate.adapters.browserUiDefaults.resultBlobHashes["src/Modules/Other.lua"] = "0".repeat(40); },
   ]) {

@@ -13,6 +13,7 @@ test("browser package defaults animations off and repairs desktop-only build pat
   assert.doesNotMatch(result, /\tself\.showAnimations = true/);
   assert.match(result, /self\.showAnimations = node\.attrib\.showAnimations == "true"/);
   assert.match(result, /controls\.showAnimations\.state = self\.showAnimations/);
+  assert.match(result, /local browserStorageMounted = type\(self\.userPath\) == "string" and self\.userPath:sub\(1, 10\) == "\/app\/user\/"\s+if browserStorageMounted then/);
   assert.match(result, /self\.buildPath:sub\(1, 10\) == "\/app\/user\/"/);
   assert.match(result, /self\.buildPath = self\.defaultBuildPath\s+self\.browserBuildPathNeedsSave = true/);
   assert.match(result, /if self\.browserBuildPathNeedsSave and self\.mode then\s+self\.browserBuildPathNeedsSave = nil\s+self:SaveSettings\(\)/);
