@@ -171,6 +171,7 @@ export function createDebugReportV1(input: DebugReportInputV1) {
         lastRetiredBytes: finiteNumberArray(helpers.lastRetiredBytes, 3),
         completed: finite(helpers.completed),
         recycled: finite(helpers.recycled),
+        reduced: finite(helpers.reduced),
         gcPause: finite(helpers.gcPause),
         recentErrorKinds: helperErrorKinds(helpers.errors),
         memoryLimits: {

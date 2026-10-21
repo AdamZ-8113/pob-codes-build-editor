@@ -35,6 +35,7 @@ test("debug report keeps useful aggregate evidence and excludes private strings"
           localCompleted:50, completed:true, privateBuild:secret} },
       helpers: {
         ready: 0,
+        reduced: 1,
         errors: [`Error: ${secret}`, "Helper timeout"],
         memory: { helperMaximum: 1024 },
       },
@@ -62,6 +63,7 @@ test("debug report keeps useful aggregate evidence and excludes private strings"
   assert.equal(report.runtime.calculations.powerReport.remoteCompleted, 150);
   assert.equal(report.runtime.calculations.powerReport.completed, true);
   assert.deepEqual(report.runtime.helpers.recentErrorKinds, ["other", "timeout"]);
+  assert.equal(report.runtime.helpers.reduced, 1);
   assert.deepEqual(report.runtime.filesystem.operations, { read: 9 });
   assert.equal(report.runtime.filesystem.payload.loadedPackageCount, 1);
   assert.deepEqual(report.diagnostics[0].data, { reason: "helper-memory", helperBytes: [123, 456] });

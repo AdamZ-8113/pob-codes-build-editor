@@ -30,6 +30,13 @@ export function runtimeStatusNotice(
       3_000,
     );
   }
+  if (diagnostic.event === "helpers-reduced") {
+    return notice(
+      `Memory use is high. Continuing with ${count || "fewer"} calculation helper${count === 1 ? "" : "s"}.`,
+      "warning",
+      9_000,
+    );
+  }
   if (diagnostic.event === "helpers-fallback") {
     if (reason === "helper-memory") {
       return notice(

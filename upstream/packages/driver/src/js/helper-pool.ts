@@ -19,6 +19,14 @@ type Member = { id: number; worker: Worker; bytes: number; identity?: string;
   pending: Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void }> };
 export const HELPER_MEMORY = { hardBytes: 6 * 2 ** 30, admissionBytes: 5.5 * 2 ** 30,
   uiMaximum: 2 * 2 ** 30, helperMaximum: 2 ** 30, maximumCount: 3 };
+export const DESKTOP_HELPER_MEMORY = { ...HELPER_MEMORY, hardBytes: 7 * 2 ** 30, admissionBytes: 6.5 * 2 ** 30 };
+export function helperMemoryPolicy(device: { userAgent: string; deviceMemory?: number }) {
+  // Firefox does not expose deviceMemory. Missing RAM information is not a
+  // measurement of free memory; retain a bounded desktop estimate in that case.
+  const desktop = !/Android|iPhone|iPad|Mobile/i.test(device.userAgent) &&
+    (device.deviceMemory === undefined || Number.isFinite(device.deviceMemory) && device.deviceMemory >= 8);
+  return { ...(desktop ? DESKTOP_HELPER_MEMORY : HELPER_MEMORY) };
+}
 const GiB = 2 ** 30;
 
 export class HelperPool {
@@ -38,6 +46,7 @@ export class HelperPool {
   private completed = 0;
   private requested = 0;
   private recycled = 0;
+  private reduced = 0;
   private lastRetiredBytes: number[] = [];
   constructor(private createWorker: () => Worker,
     private attach: (id: number, port: MessagePort) => Promise<void>,
@@ -45,7 +54,8 @@ export class HelperPool {
     private availability: (ready: boolean) => void = () => {},
     private timeoutMs = 15000, private gcPause = 400,
     private onDiagnostic: HelperDiagnostic = () => {},
-    private setPurpose: (id: number, purpose: 'demand' | 'comparison') => Promise<void> = async () => {}) {}
+    private setPurpose: (id: number, purpose: 'demand' | 'comparison') => Promise<void> = async () => {},
+    private readonly memory = HELPER_MEMORY) {}
   profile() { return { requested: this.requested, ready: this.members.filter(m => m.bytes).length,
     state: this.closed ? 'closed' : this.starting ? 'booting' : this.members.length ? 'ready'
       : this.armed ? 'armed' : this.requested ? 'retired' : 'disabled',
@@ -54,12 +64,12 @@ export class HelperPool {
       ? performance.now() - this.bootStartedAt : this.startupMs,
     bytes: this.members.map(m => m.bytes), lastRetiredBytes: this.lastRetiredBytes.slice(),
     errors: this.errors.slice(-5), completed: this.completed,
-    recycled: this.recycled, gcPause: this.gcPause, memory: HELPER_MEMORY }; }
+    recycled: this.recycled, reduced: this.reduced, gcPause: this.gcPause, memory: { ...this.memory } }; }
   // Declare eligible capacity without allocating interpreters. Lua may then
   // delegate the first actual sort request, which boots this pool on demand.
   prepare(count = this.requested) {
     if (this.closed || !Number.isInteger(count) || count < 1) return 0;
-    this.requested = Math.min(count, HELPER_MEMORY.maximumCount);
+    this.requested = Math.min(count, this.memory.maximumCount);
     this.armed = true;
     return this.requested;
   }
@@ -73,7 +83,8 @@ export class HelperPool {
     this.bootStartedAt = performance.now();
     this.onDiagnostic('helpers-starting', {count: this.requested});
     try {
-      for (let i = 0; i < this.requested && !this.closed; i++) {
+      await Promise.all(Array.from({length: this.requested}, async () => {
+        if (this.closed) return;
         const worker = this.createWorker();
         const member: Member = { id: ++this.sequence, worker, bytes: 0, pending: new Map() };
         this.members.push(member);
@@ -93,11 +104,12 @@ export class HelperPool {
         const channel = new MessageChannel();
         try {
           await this.attach(member.id, channel.port1);
-          if (this.closed) { channel.port2.close(); await this.detach(member.id); return; }
+          if (this.closed || !this.members.includes(member)) { channel.port2.close(); await this.detach(member.id); return; }
           await this.send(member, { kind: 'boot', port: channel.port2, gcPause: this.gcPause }, [channel.port2]);
         } catch (error) { channel.port1.close(); channel.port2.close(); throw error; }
         if (this.closed) return;
-      }
+      }));
+      if (this.closed) return;
       this.availability(this.members.length === this.requested);
       this.onDiagnostic('helpers-ready', {count: this.members.length});
     } catch (error) {
@@ -129,20 +141,39 @@ export class HelperPool {
     // Calibrated against Windows process-tree private commit, not just Wasm.
     // Conservative admission model, not an OS process-memory limiter.
     if (!Number.isSafeInteger(uiBytes) || uiBytes <= 0) return 'invalid-memory';
-    if (uiBytes > HELPER_MEMORY.uiMaximum) return 'ui-memory';
-    if (this.members.some(member => member.bytes > HELPER_MEMORY.helperMaximum)) return 'helper-memory';
+    if (uiBytes > this.memory.uiMaximum) return 'ui-memory';
+    if (this.members.some(member => member.bytes > this.memory.helperMaximum)) return 'helper-memory';
     if (1.75 * GiB + uiBytes + this.members.reduce((sum, member) =>
-        sum + Math.max(member.bytes + .125 * GiB, .5 * GiB), 0) > HELPER_MEMORY.admissionBytes) {
+        sum + Math.max(member.bytes + .125 * GiB, .5 * GiB), 0) > this.memory.admissionBytes) {
       return 'aggregate-memory';
     }
     return undefined;
+  }
+  private reduceToFit(uiBytes: number) {
+    // Only call at a quiescent boundary: no boot, import, hover or chunk RPC
+    // may be discarded. Per-interpreter/invalid-memory failures still retire.
+    if (this.starting || this.members.some(member => member.pending.size)) return;
+    let removed = 0;
+    while (this.members.length > 1 && this.admissionFailure(uiBytes) === 'aggregate-memory') {
+      const largest = this.members.reduce((a, b) => a.bytes >= b.bytes ? a : b);
+      this.members.splice(this.members.indexOf(largest), 1);
+      largest.worker.terminate();
+      void this.detach(largest.id).catch(() => {});
+      removed++;
+    }
+    if (removed) {
+      this.reduced += removed;
+      this.availability(true);
+      this.onDiagnostic('helpers-reduced', {reason: 'aggregate-memory', count: this.members.length,
+        helperBytes: this.members.map(member => member.bytes)});
+    }
   }
   private reportFallback(reason: string, error?: unknown) {
     this.onDiagnostic('helpers-fallback', {
       reason,
       error: error instanceof Error ? error.message : error ? String(error) : undefined,
-      helperMaximumBytes: HELPER_MEMORY.helperMaximum,
-      uiMaximumBytes: HELPER_MEMORY.uiMaximum,
+      helperMaximumBytes: this.memory.helperMaximum,
+      uiMaximumBytes: this.memory.uiMaximum,
       helperBytes: this.members.map(member => member.bytes),
     });
   }
@@ -194,11 +225,14 @@ export class HelperPool {
     const identity = `${nodePower ? 'nodePower' : 'unique'}:${job.identity}`;
     const generation = ++this.generation;
     const run = async () => {
+      if (this.starting) await this.startupFinished;
       if (this.closed || generation !== this.generation || this.starting || (!this.members.length && !this.armed)) return null;
+      this.reduceToFit(job.uiBytes);
       const initialFailure = this.admissionFailure(job.uiBytes);
       if (initialFailure) { this.reportFallback(initialFailure); this.retire(); return null; }
       if (!this.members.length) await this.start();
       if (this.closed || generation !== this.generation || this.starting || !this.members.length) return null;
+      this.reduceToFit(job.uiBytes);
       const bootFailure = this.admissionFailure(job.uiBytes);
       if (bootFailure) { this.reportFallback(bootFailure); this.retire(); return null; }
       try {
@@ -212,26 +246,34 @@ export class HelperPool {
         if (generation !== this.generation) return null;
         const values: unknown[] = Array(job.items.length);
         let cursor = 0, completed = 0;
-        await Promise.all(this.members.map(async member => {
-          let first = true;
-          while (cursor < job.items.length && generation === this.generation) {
-            if (!this.admitted(job.uiBytes)) throw new Error('Helper memory reserve exhausted');
-            const offset = cursor; cursor += first || member.bytes > .4 * GiB ? 25 : 100;
-            first = false;
-            const items = job.items.slice(offset, cursor);
-            const details = 'kind' in job ? {kind: job.kind, metric: job.metric}
-              : {sortMode: job.sortMode, weaponSet: job.weaponSet};
-            const results = await this.send(member, { job: { identity: job.identity, operation: generation,
-              ...details, items } }) as unknown[];
-            if (generation !== this.generation) return;
-            if (!Array.isArray(results) || results.length !== items.length || results.some(v =>
-                nodePower ? !nodePowerResult(v) : v !== '-inf' && !numberText(v))) throw new Error('Invalid helper result');
-            results.forEach((value, index) => values[offset + index] = value);
-            this.completed += results.length;
-            completed += results.length;
-            onProgress(completed);
-          }
-        }));
+        do {
+          this.reduceToFit(job.uiBytes);
+          if (!this.admitted(job.uiBytes)) throw new Error('Helper memory reserve exhausted');
+          await Promise.all(this.members.map(async member => {
+            let first = true;
+            while (cursor < job.items.length && generation === this.generation) {
+              // Stop dispatching and drain the other in-flight chunks before
+              // reducing the pool. Keep validated results and the shared cursor.
+              if (!this.admitted(job.uiBytes)) return;
+              const offset = cursor; cursor += first || member.bytes > .4 * GiB ? 25 : 100;
+              first = false;
+              const items = job.items.slice(offset, cursor);
+              const details = 'kind' in job ? {kind: job.kind, metric: job.metric}
+                : {sortMode: job.sortMode, weaponSet: job.weaponSet};
+              const results = await this.send(member, { job: { identity: job.identity, operation: generation,
+                ...details, items } }) as unknown[];
+              if (generation !== this.generation) return;
+              if (!Array.isArray(results) || results.length !== items.length || results.some(v =>
+                  nodePower ? !nodePowerResult(v) : v !== '-inf' && !numberText(v))) throw new Error('Invalid helper result');
+              results.forEach((value, index) => values[offset + index] = value);
+              this.completed += results.length;
+              completed += results.length;
+              onProgress(completed);
+            }
+          }));
+          if (generation !== this.generation) return null;
+        } while (cursor < job.items.length);
+        this.reduceToFit(job.uiBytes);
         if (!this.admitted(job.uiBytes)) throw new Error('Helper memory reserve exhausted');
         return generation === this.generation ? values : null;
       } catch (error) {

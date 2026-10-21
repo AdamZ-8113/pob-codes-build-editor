@@ -29,10 +29,21 @@ const diagnostics = 'local observedToastIds = {}\n' + (await readFile(new URL('.
 const overlay = rewriteCorePackage(await readCorePackage(origin), [{path:'Classes/TreeTab.lua', transform: text => text + '\n' + diagnostics}]);
 const browser = await chromium.launch({headless:true, channel:browserChannel()});
 try {
-  for (const helpers of [true, false]) {
+  for (const mode of ['parallel', 'reduced', 'serial']) {
+    const helpers = mode !== 'serial';
     const context = await browser.newContext({viewport:{width:1600,height:1000}});
     try {
       await routeCorePackage(context, overlay);
+      let injectedPressure = false;
+      if (mode === 'reduced') await context.route(/\/src\/js\/helper-pool\.ts(?:\?|$)/, async route => {
+        const response = await route.fetch(), source = await response.text();
+        const marker = 'admissionFailure(uiBytes) {';
+        assert.ok(source.includes(marker)); injectedPressure = true;
+        // Exercise real worker retirement and driver capacity updates without
+        // allocating large heaps. Numeric admission boundaries have unit tests.
+        await route.fulfill({response, body:source.replace(marker,
+          `${marker}\n if (this.members.length > 2) return 'aggregate-memory';`)});
+      });
       let heldReply = false;
       if (helpers) await context.route(/\/src\/js\/worker\.ts\?worker_file/, async route => {
         const response = await route.fetch(), source = await response.text();
@@ -77,7 +88,12 @@ try {
       if (helpers) {
         const deadline = performance.now()+45000;
         while (!(await profile()).helperAvailability.count) {
-          assert.ok(performance.now()<deadline,'Helpers ready'); await page.waitForTimeout(100);
+          if (performance.now() >= deadline) {
+            const runtime = await profile();
+            const device = await page.evaluate(() => ({cores:navigator.hardwareConcurrency, memory:navigator.deviceMemory}));
+            assert.fail(`Helpers ready: ${JSON.stringify({device, helpers:runtime.helpers, availability:runtime.helperAvailability})}`);
+          }
+          await page.waitForTimeout(100);
         }
         assert.ok(heldReply);
       }
@@ -105,6 +121,16 @@ try {
       assert.equal(completed.toastShown,false);
       assert.equal(completed.reportToasts,0);
       assert.equal(completed.retainedReportToasts,0,'Completion removes the notification without waiting for animation frames');
+      if (mode === 'reduced') {
+        assert.ok(injectedPressure);
+        const runtime = await profile();
+        assert.equal(runtime.helpers.ready, 2);
+        assert.equal(runtime.helpers.reduced, 1);
+        assert.equal(runtime.helpers.recycled, 0);
+        assert.equal(runtime.helperAvailability.count, 2);
+        assert.equal(runtime.samples.powerReport.mode, 'parallel');
+        assert.ok(runtime.samples.powerReport.remoteCompleted > 0);
+      }
       await page.waitForTimeout(200);
       assert.equal((await state()).retainedReportToasts,0,'The idle completed report has no stale percentage notification');
       assert.equal(completed.runs.find(r => r.id === pending.runs.at(-1).id).reportCallbacks,0);
@@ -131,7 +157,7 @@ try {
       }
       assert.deepEqual(faults,[]);
       assert.deepEqual(await page.evaluate(() => window.__DESKTOP_POB__.errors),[]);
-      console.log(`Persistent report indicator, restart, completion, hide/reopen and import: helpers=${helpers} passed`);
+      console.log(`Persistent report indicator, restart, completion, hide/reopen and import: ${mode} passed`);
     } finally { await context.close(); }
   }
 } finally { await browser.close(); }

@@ -357,7 +357,7 @@ The patch includes focused upstream specs for absent/partial/full delegation,
 zero and invalid-slot values. Those specs were run in a disposable patched
 checkout, separately from browser tests.
 
-The driver owns up to three headless workers, starts them sequentially after
+The driver owns up to three headless workers, starts them concurrently after
 readiness, and delegates immutable XML build snapshots plus active weapon set,
 sort mode and exact candidate raw data. Build lifetime/revision and operation
 generations reject stale replies. The UI worker computes an equal share
@@ -381,9 +381,21 @@ payload capacity is bounded at 4 MiB; larger HTTP responses use disposable buffe
 This reduces startup and reload allocation churn while preserving the shared
 memory protocol and its existing 120-second deadline.
 
-Whole-browser acceptance uses a 6 GiB hard budget and 5.5 GiB admission ceiling.
+The original whole-browser acceptance used a 6 GiB hard budget and 5.5 GiB
+admission ceiling. That remains the conservative policy. Desktop user agents
+with at least 8 GiB reported RAM, or unavailable RAM information (including
+Firefox), use a 7 GiB budget and 6.5 GiB admission ceiling. CPU count controls
+helper eligibility separately; it does not select the memory policy. These
+device signals do not measure available RAM or guarantee allocation success.
 Each helper may reserve up to 1 GiB of Wasm memory, subject to the aggregate
 admission model; the pool is not guaranteed three helpers at that maximum.
+The main interpreter's 2 GiB cap and maximum of three helpers are unchanged.
+On aggregate pressure, batch dispatch pauses until in-flight chunks finish,
+then the pool releases excess helpers, retaining validated results and continuing
+with two or one helpers as needed. Per-interpreter limits, invalid results and
+worker errors still retire the pool for serial fallback. Diagnostics distinguish
+helper reduction from retirement. Regression tests cover both memory policies,
+combined Power Report fields, exact ordering, in-flight growth and cancellation.
 Conservative runtime guards reserve space beyond observed Wasm capacities;
 they are not an OS process-memory limiter. Mobile, low-core/low-memory devices
 and unadmitted UI heaps remain serial. `?helpers=0` forces serial comparison.
@@ -411,6 +423,16 @@ delegates work. Pool profiling distinguishes armed capacity, booting and ready
 workers, recording start count and startup duration. Both policies preserve
 admission, cancellation, failure fallback and exact sort/export equivalence;
 lazy startup reduces pre-sort allocations but adds first-sort latency.
+
+Eligible eager capacity is advertised while the pool boots. Reports and sorts
+submitted during startup await the existing startup promise before checking
+generation and admission, allowing the first operation to use helpers instead
+of falling back merely because boot is incomplete. Concurrent boot preserves
+the three-worker limit, cancellation, memory admission and serial fallback;
+failure retires all workers, and detached members cannot continue booting.
+Helper-pool unit tests cover early submission, cancellation while waiting,
+teardown and partial boot failure. First-operation gains depend on helper
+readiness; active-report peak memory can increase when helpers perform work.
 
 The item-hover experiment replaces the raw calculator-output cache with a bounded
 cache of exact comparison `AddLine`/`AddSeparator` calls. It wraps only

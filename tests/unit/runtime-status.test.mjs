@@ -4,6 +4,14 @@ import { runtimeStatusNotice } from "../../src/runtime-status.ts";
 
 const diagnostic = (phase, event, data = {}) => ({ phase, event, data, level: "info" });
 
+test("helper reduction explains continued parallel work", () => {
+  for (const count of [1, 2]) {
+    const status = runtimeStatusNotice(diagnostic("worker", "helpers-reduced", {count}));
+    assert.equal(status.message, `Memory use is high. Continuing with ${count} calculation helper${count === 1 ? "" : "s"}.`);
+    assert.equal(status.tone, "warning");
+  }
+});
+
 test("helper memory diagnostics explain the safe serial fallback", () => {
   assert.deepEqual(runtimeStatusNotice(diagnostic("worker", "helpers-fallback", { reason: "helper-memory" })), {
     message: "A helper exceeded the 1 GB memory cap. Memory was released; continuing with serial processing.",

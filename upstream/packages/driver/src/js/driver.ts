@@ -20,7 +20,7 @@ import type { DriverWorker, HostCallbacks } from "./worker.ts";
 import type { PayloadProgress } from "./payload.ts";
 // @ts-types="./vite-worker.d.ts"
 import WorkerObject from "./worker.ts?worker";
-import { HelperPool, type HelperJob } from './helper-pool.ts';
+import { HelperPool, helperMemoryPolicy, type HelperJob } from './helper-pool.ts';
 import type { ItemComparisonJob } from './item-comparison.ts';
 import { runtimeGcPause } from './gc-policy.ts';
 // @ts-types="./vite-worker.d.ts"
@@ -189,6 +189,7 @@ export class Driver {
         15000, runtimeGcPause(location.search, 'helper'),
         (event, data, level) => this.diagnostic('worker', event, data, level),
         (id, purpose) => this.broker!.setHelperPurpose(id, purpose),
+        helperMemoryPolicy(navigator as Navigator & { deviceMemory?: number }),
       );
       const channel = new MessageChannel();
       const eventChannel = new MessageChannel();
@@ -320,7 +321,10 @@ export class Driver {
     if (eligible) {
       const count = Math.min(requested, 3, navigator.hardwareConcurrency - 2);
       if (this.eagerHelpers) {
-        // Keep first-sort latency low; lazy startup remains an opt-in experiment.
+        // Announce eligible capacity while eager boot is in progress. Jobs wait
+        // for that boot and retain the existing serial fallback on failure.
+        const capacity = this.helpers?.prepare(count) ?? 0;
+        void this.driverWorker?.configureUniqueHelpers(capacity).catch(() => {});
         void this.helpers?.start(count);
       } else {
         const capacity = this.helpers?.prepare(count) ?? 0;
