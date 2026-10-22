@@ -1,4 +1,4 @@
-// Fresh-process actual-app A/B smoke for experiment-only Lua read-ahead.
+// Fresh-process actual-app A/B smoke for native buffering and bytecode experiments.
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
@@ -9,23 +9,22 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from '@playwright/test';
 import { inflateSync } from 'node:zlib';
 import { canonicalExportTree } from '../../../../scripts/lib/canonical-export.mjs';
-import { createReadAheadRpc } from './read-ahead.mjs';
 
 const root = resolve(fileURLToPath(new URL('../../../../', import.meta.url)));
 const sha256 = value => createHash('sha256').update(value).digest('hex');
 const option = name => process.argv.find(arg => arg.startsWith(`--${name}=`))?.slice(name.length + 3);
 const rounds = Number(option('rounds') ?? 3);
 const origin = 'http://127.0.0.1:3010';
-const variants = (option('variants') ?? 'baseline,read-ahead').split(',');
-const allowedVariants = new Set(['baseline', 'read-ahead', 'bytecode-read-ahead', 'stdio-256k']);
+const variants = (option('variants') ?? 'baseline').split(',');
+const allowedVariants = new Set(['baseline', 'bytecode', 'stdio-256k']);
 const bytecodeOverlayOption = option('bytecode-overlay');
 const driverDirectoryOption = option('driver-dir');
 assert.ok(Number.isSafeInteger(rounds) && rounds > 0 && rounds <= 10, 'rounds must be 1..10');
 assert.equal(new Set(variants).size, variants.length, 'variants must be unique');
 assert.ok(variants.length > 0 && variants.every(value => allowedVariants.has(value)), 'unsupported variant');
-const usesBytecode = variants.includes('bytecode-read-ahead');
+const usesBytecode = variants.includes('bytecode');
 const usesStdio = variants.includes('stdio-256k');
-assert.equal(usesBytecode, Boolean(bytecodeOverlayOption), 'bytecode-read-ahead requires an explicit bytecode overlay, which is rejected when the arm is absent');
+assert.equal(usesBytecode, Boolean(bytecodeOverlayOption), 'bytecode requires an explicit bytecode overlay, which is rejected when the arm is absent');
 assert.equal(usesBytecode || usesStdio, Boolean(driverDirectoryOption), 'experimental driver arms require an explicit --driver-dir, which is rejected when those arms are absent');
 const originUrl = new URL(origin);
 
@@ -61,16 +60,15 @@ try {
   assert.equal(playerStatHashes.size, 1, 'Actual-app exported PlayerStat values differ across arms');
   const report = {
     generatedAt: new Date().toISOString(),
-    experiment: 'actual-app-read-ahead-smoke',
+    experiment: 'actual-app-source-loading-smoke',
     scope: {
       app: 'normal displayed release runtime through window.__DESKTOP_POB__',
       fixture: 'public guided import fixture; raw fixture and exports omitted',
       network: 'owned watch-free Vite server on loopback; payload bytes pinned in memory; external requests blocked',
       cache: 'one excluded Vite preflight, then a fresh Chrome process and profile for every sample',
       query: 'none; shipped local defaults (eager helpers and payload prefetch) run in every arm',
-      readAheadTarget: 'displayed main worker only; eager calculation helpers remain on the normal RPC path',
       bytecodeTarget: usesBytecode ? 'bytecode arm only: retained payload overlay and explicit isolated full driver; helper worker source remains unchanged' : undefined,
-      stdioTarget: usesStdio ? 'stdio arm only: normal source payload with an explicit unprofiled 256 KiB stdio driver; read-ahead disabled' : undefined,
+      stdioTarget: usesStdio ? 'stdio arm only: normal source payload with an explicit unprofiled 256 KiB stdio driver' : undefined,
       instrumentation: 'payload and worker-response routing is symmetric; no profile RPC occurs before the timed first import completes; post-import profile snapshots retain immutable startup marks',
       payloadSnapshotTiming: 'post-import diagnostic snapshot; startup package/request sequencing is not inferred from this later snapshot',
       parity: 'canonical exported XML and saved PlayerStat elements; transient unsaved calculation tables are outside this smoke',
@@ -81,7 +79,6 @@ try {
       manifestSha256: sha256(Buffer.from(JSON.stringify(manifest))),
       packageSha256: manifest.packages.map(entry => ({ id: entry.id, sha256: entry.sha256 })),
       harnessSha256: sha256(await readFile(new URL(import.meta.url))),
-      readAheadModuleSha256: sha256(await readFile(new URL('./read-ahead.mjs', import.meta.url))),
       workerSourceSha256: sha256(await readFile(resolve(root, 'upstream/packages/driver/src/js/worker.ts'))),
       viteConfigSha256: sha256(await readFile(resolve(root, 'upstream/vite.local.config.ts'))),
       bytecode: bytecode?.identity,
@@ -118,7 +115,7 @@ async function runSample(variant, round, excluded) {
         await route.abort('blockedbyclient');
         return;
       }
-      const isBytecode = variant === 'bytecode-read-ahead';
+      const isBytecode = variant === 'bytecode';
       const isStdio = variant === 'stdio-256k';
       const experimentalDriver = isBytecode ? bytecode : isStdio ? stdio : undefined;
       if (requestUrl.pathname === '/payload/manifest.json') {
@@ -148,10 +145,8 @@ async function runSample(variant, round, excluded) {
         routeStats.worker++;
         const response = await route.fetch();
         const before = await response.text();
-        const readAhead = variant === 'read-ahead' || variant === 'bytecode-read-ahead';
-        const after = patchWorkerResponse(before, readAhead);
-        workerResponse.push({ sourceSha256: sha256(before), servedSha256: sha256(after), patched: readAhead });
-        await route.fulfill({ response, body: after });
+        workerResponse.push({ sourceSha256: sha256(before), servedSha256: sha256(before), patched: false });
+        await route.fulfill({ response, body: before });
         return;
       }
       await route.continue();
@@ -187,13 +182,7 @@ async function runSample(variant, round, excluded) {
     assert.equal(routeStats.worker, 1, 'Expected exactly one displayed-runtime worker response');
     assert.equal(routeStats.manifest, 1, 'Expected exactly one payload manifest request');
     assert.ok(routeStats.packages > 0, 'Expected pinned payload package requests');
-    if (variant === 'read-ahead' || variant === 'bytecode-read-ahead') {
-      assert.ok(result.profile.expandedReadAhead?.enabled, 'Read-ahead worker instrumentation did not run');
-      assert.ok(result.profile.expandedReadAhead.windowFetches > 0, 'Read-ahead made no window fetches');
-    } else {
-      assert.equal(result.profile.expandedReadAhead, undefined, 'Baseline unexpectedly used read-ahead');
-    }
-    if (variant === 'bytecode-read-ahead' || variant === 'stdio-256k') {
+    if (variant === 'bytecode' || variant === 'stdio-256k') {
       assert.ok(routeStats.driverMjs > 0 && routeStats.driverWasm > 0, `${variant} arm did not load the explicit isolated driver`);
     }
 
@@ -217,7 +206,6 @@ async function runSample(variant, round, excluded) {
       navigationToFirstImportCompleteMs, processToFirstImportCompleteMs,
       startupPhases: result.profile.startupPhases,
       payload: result.profile.filesystem?.payload,
-      readAhead: result.profile.expandedReadAhead,
       frames: result.frames,
       routeStats,
       workerResponse,
@@ -232,24 +220,6 @@ async function runSample(variant, round, excluded) {
     await context?.close().catch(() => {});
     await removeOwnedProfile(profileDirectory);
   }
-}
-
-function patchWorkerResponse(source, enabled) {
-  const rpcAnchor = 'const rpcCall = createRpcClient(rpcPort);';
-  const profileAnchor = 'startupPhases: { ...this.startupPhases },';
-  checkedOccurrence(source, rpcAnchor, 'worker RPC client');
-  checkedOccurrence(source, profileAnchor, 'worker startup profile');
-  if (!enabled) return source;
-  const injected = `const createExpandedReadAheadRpc = ${createReadAheadRpc.toString()};\n`;
-  let result = source.replace(rpcAnchor, `const rpcCall = createExpandedReadAheadRpc(createRpcClient(rpcPort));
-    globalThis.__compiledCalcsReadAheadProfile = rpcCall.profile;`);
-  result = result.replace(profileAnchor, `${profileAnchor}
-      expandedReadAhead: globalThis.__compiledCalcsReadAheadProfile?.(),`);
-  return injected + result;
-}
-
-function checkedOccurrence(source, anchor, label) {
-  assert.equal(source.split(anchor).length, 2, `${label} anchor must occur exactly once in served worker source`);
 }
 
 async function loadBytecodeInputs(overlayOption, driverOption) {
@@ -382,7 +352,7 @@ function compare(values) {
 
 function renderSummary(report) {
   const lines = [
-    '# Actual-app read-ahead smoke', '',
+    '# Actual-app source-loading smoke', '',
     `Fresh recorded browser processes: ${report.samples.length}.`,
     `Canonical export parity: ${new Set(report.samples.map(sample => sample.output.canonicalExportSha256)).size === 1 ? 'exact' : 'mismatch'}.`,
     `Saved PlayerStat parity: ${new Set(report.samples.map(sample => sample.output.playerStatsSha256)).size === 1 ? 'exact' : 'mismatch'}.`, '',

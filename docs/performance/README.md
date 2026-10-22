@@ -65,7 +65,7 @@ runtime, browser, payload or fixture change.
 
 | Scenario | Most useful measured gain | What it says | Status |
 | --- | ---: | --- | --- |
-| Cold application engine, complete first result | JS read-ahead ~6%; native buffered loading ~4-6% headless | Small-read transport matters, but is not the dominant remaining work | Experiment |
+| Cold application engine, complete first result | Historical JS read-ahead ~6%; native buffered loading ~4-6% headless | Small-read transport matters; current-baseline JS confirmation failed noise admission | [JS declined](READ_AHEAD_DECISION.md); native experiment |
 | Cold ordinary app, first complete import | Native buffering ~7% median | Directional support from two pairs/one fixture | Experiment smoke |
 | Cold input-aware initialization | 1.29-2.24% | Avoiding the unnamed/default build alone is small | Experiment, not promoted |
 | First Power Report on an already loaded build | Stage pruning 8-70%; eligible helpers ~70% | Report cost is PoB stage/evaluation work, not Wasm startup | Shipped mechanisms |
@@ -103,10 +103,10 @@ load. It is not comparable to a cold application process. See the taxonomy in
   for `Modules/Data`, `Data/ModCache` and demanded passive-tree structures. The
   input-aware startup experiment saved only 1-2%, showing that avoiding the
   unnamed initial build is not the dominant remaining cost.
-- For a lower-risk cold improvement, productionize and revalidate native file
-  buffering or bounded JavaScript read-ahead. Keep their coverage difference in
-  mind: native buffering applies to every runtime, including helpers; the tested
-  JS overlay applied only to the displayed worker.
+- For a smaller cold improvement, revalidate native file buffering before
+  considering integration; it applies to every runtime, including helpers.
+  [JavaScript read-ahead is declined](READ_AHEAD_DECISION.md): current-baseline
+  main-only and all-worker trials did not clear the frozen acceptance gates.
 - For Power Report and sort work, first eliminate irrelevant calculations and
   then use the bounded helper pool where evaluations are independent and merge
   semantics remain exact.

@@ -232,12 +232,18 @@ tree, explaining part of their larger import/hydration phase.
 
 ### Source-loading read-ahead and native buffering
 
-The accepted four-fixture matrix used four rounds per fixture with balanced
+JavaScript read-ahead was **declined on 2026-10-22** and its runnable prototype
+removed. [The current-baseline decision](READ_AHEAD_DECISION.md) records paired
+results, excessive timing noise, exact correctness and resource tradeoffs for
+main-only and main-plus-helper candidates. Native buffering remains separate.
+The older measurements below are historical, not current-baseline gains.
+
+The historical four-fixture matrix used four rounds per fixture with balanced
 forward/reverse order and exact calculated-output checks.
 
 | Candidate | Baseline/candidate geometric mean | Median paired saving | Positive pairs | Status |
 | --- | ---: | ---: | ---: | --- |
-| JavaScript 256 KiB read-ahead | 1.06047x | 221.82 ms | 8/8 | Promising experiment |
+| JavaScript 256 KiB read-ahead | 1.06047x | 221.82 ms | 8/8 | Subsequently declined |
 | Native 64 KiB stdio buffer | 1.04351x | 155.52 ms | 8/8 | Promising experiment |
 | Native 256 KiB stdio buffer | 1.05617x | 180.15 ms | 8/8 | Preferred native candidate |
 

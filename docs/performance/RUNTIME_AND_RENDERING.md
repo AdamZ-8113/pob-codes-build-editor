@@ -51,7 +51,9 @@ Cold source profiles found thousands of small reads crossing the broker/runtime
 boundary. In the final matrix, native 256 KiB buffering reduced median reads from
 5,122 to 777 without changing delivered bytes and saved a median 180 ms headless.
 JavaScript read-ahead reduced reads to 417 with a modest over-read and saved
-222 ms. See [Cold start](COLD_START.md) for the full result and caveats.
+222 ms. These are historical measurements. JS read-ahead was subsequently
+[declined after current-baseline confirmation](READ_AHEAD_DECISION.md);
+see [Cold start](COLD_START.md) for the older result and caveats.
 
 This is a runtime/transport optimization whose visible effect occurs while PoB
 loads source. It should not be called a calculation-kernel improvement.
@@ -161,7 +163,7 @@ Keep those scopes explicit when comparing changes.
 | --- | --- |
 | Long time before the worker/runtime exists | Browser module loading, broker, fonts, Wasm fetch/instantiate |
 | Runtime exists but first build is still loading | PoB Lua modules, data/tree construction, catalog and import |
-| Thousands of tiny reads | Native file API or bounded JS read-ahead |
+| Thousands of tiny reads | Native file API; [JS read-ahead declined](READ_AHEAD_DECISION.md) after current-baseline confirmation |
 | High memory in every Lua-heavy worker | Lua value layout, GC policy, representations and helper count |
 | Slow node report or unique sort | PoB relevance/stages, cache correctness, helper delegation |
 | High idle renderer CPU | Frame reuse, redraw causes, image load completion and animation state |

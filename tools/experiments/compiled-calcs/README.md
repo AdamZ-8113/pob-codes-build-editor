@@ -67,11 +67,11 @@ calculation-kernel rewrite. Its runner supports fresh-process, alternating-order
 comparisons across the three public builds and a checked Full DPS variant:
 
 ```powershell
-node tools/experiments/compiled-calcs/expanded/run.mjs --mode=profile --variants=baseline,read-ahead,loadf-64k,calc-only-read-ahead --rounds=4 --alternate-order
+node tools/experiments/compiled-calcs/expanded/run.mjs --mode=profile --variants=baseline,loadf-64k,calc-only --rounds=4 --alternate-order
 node tools/experiments/compiled-calcs/expanded/run.mjs --mode=profile --variants=baseline,architecture-profile --rounds=2 --alternate-order --port=80
 node tools/experiments/compiled-calcs/expanded/app-smoke.mjs --rounds=3
 node tools/experiments/compiled-calcs/expanded/loadf-validate.mjs
-node --test tests/unit/compiled-calcs-experiment.test.mjs tests/unit/compiled-calcs-read-ahead.test.mjs tests/unit/compiled-calcs-bootstrap.test.mjs
+node --test tests/unit/compiled-calcs-experiment.test.mjs tests/unit/compiled-calcs-rpc-profile.test.mjs tests/unit/compiled-calcs-bootstrap.test.mjs
 ```
 
 Builds finish before timing. The headless runner disables Vite HMR/watch and
@@ -91,13 +91,12 @@ zero-duration calls as free work.
 The optional loopback-only `--port` avoids an unrelated development server;
 the runner still refuses to reuse an occupied listener.
 
-The read-ahead candidate caches at most one 256 KiB window per eligible,
-broker-authorized immutable Lua file, with a 4 MiB aggregate ceiling. It preserves
-explicit offsets and returned-buffer ownership, invalidates on mutations, and
-evicts on close. It can transfer extra filesystem RPC bytes; HTTP packages are
-unchanged. The control retains the same
-accounting wrapper with read-ahead disabled; the separate app smoke compares
-against the unwrapped app. `loadf-64k` and `loadf-256k` instead enlarge only Lua's
+JavaScript read-ahead and its combined variants were retired on 2026-10-22;
+see the [decision and measurements](../../../docs/performance/READ_AHEAD_DECISION.md).
+The profiler retains pass-through RPC accounting, with no read cache or enlarged
+requests. The app smoke defaults to a baseline control and supports explicit
+`stdio-256k` and standalone `bytecode` arms; it no longer rewrites the worker.
+`loadf-64k` and `loadf-256k` enlarge only Lua's
 local file-reading buffer in a checked scratch source overlay; they preserve the
 global `luaL_Buffer` ABI and transfer the same file bytes.
 
@@ -110,7 +109,7 @@ suite includes accepted/rejected deep parser syntax under the actual 1 MiB stack
 large inputs, binary/error paths, nested/repeated loads and piped stdin.
 
 ```powershell
-node tools/experiments/compiled-calcs/expanded/run.mjs --mode=profile --variants=baseline,read-ahead,stdio-64k,stdio-256k --rounds=2 --alternate-order
+node tools/experiments/compiled-calcs/expanded/run.mjs --mode=profile --variants=baseline,stdio-64k,stdio-256k --rounds=2 --alternate-order
 node tools/experiments/compiled-calcs/expanded/loadf-validate.mjs --output=tmp/compiled-calcs-expanded/new-review/loader-validation
 ```
 
@@ -121,12 +120,11 @@ authoritative helper boot and pass the printed content-addressed directory:
 
 ```powershell
 node tools/experiments/compiled-calcs/expanded/run.mjs --mode=profile --variants=stdio-256k --build-only --unprofiled-driver
-node tools/experiments/compiled-calcs/expanded/app-smoke.mjs --variants=baseline,read-ahead,stdio-256k --rounds=2 --driver-dir=.runtime/compiled-calcs-expanded/<printed-identity-prefix>
+node tools/experiments/compiled-calcs/expanded/app-smoke.mjs --variants=baseline,stdio-256k --rounds=2 --driver-dir=.runtime/compiled-calcs-expanded/<printed-identity-prefix>
 ```
 
 The app runner rejects a profiling-helper driver for this comparison. Native
-stdio applies to the main runtime and eager helpers sharing that binary; the JS
-read-ahead app arm changes only the displayed main worker. Both retain normal
+stdio applies to the main runtime and eager helpers sharing that binary, retaining normal
 HTTP source packages. App output validation compares canonical exported XML and
 saved PlayerStats, not compressed build-code bytes or every transient table.
 Full runtime-profile collection runs after the timed first import; its payload

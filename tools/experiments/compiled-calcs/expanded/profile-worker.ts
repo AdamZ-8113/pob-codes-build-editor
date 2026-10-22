@@ -1,5 +1,5 @@
 import { createRpcClient } from '../../../../upstream/packages/driver/src/js/rpc.ts';
-import { createReadAheadRpc } from './read-ahead.mjs';
+import { createProfiledRpc } from './rpc-profile.mjs';
 
 type ProfileModule = EmscriptenModule & { cwrap: typeof cwrap };
 let module: ProfileModule | undefined;
@@ -12,7 +12,7 @@ self.onmessage = async ({ data }) => {
     if (data.kind === 'boot') {
       const initStarted = performance.now();
       const factory = (await import(/* @vite-ignore */ data.driverUrl)).default;
-      const rpc = createReadAheadRpc(createRpcClient(data.port, true), { enabled: data.variant.includes('read-ahead'), chunkBytes: 262144, maxRetainedBytes: 4 * 1024 * 1024 });
+      const rpc = createProfiledRpc(createRpcClient(data.port, true));
       transportProfile = () => rpc.profile();
       module = await factory({
         print: () => {},
@@ -38,8 +38,8 @@ self.onmessage = async ({ data }) => {
     if (!text) throw new Error(lastError || 'Profile helper calculation failed');
     const value: Record<string, unknown> = { ...JSON.parse(text), jobRoundTripMs };
     // Capture transport state on the first target result as well as the later
-    // diagnostic. Bytecode acceptance needs the pre-diagnostic descriptor and
-    // read-ahead-window balance; detach must not hide deferred cleanup.
+    // diagnostic. Bytecode acceptance needs the pre-diagnostic descriptor
+    // balance; detach must not hide deferred cleanup.
     value.transportProfile = transportProfile?.();
     self.postMessage({ id: data.id, ok: true, value, bytes: module.HEAPU8.buffer.byteLength });
   } catch (error) {
