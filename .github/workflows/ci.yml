@@ -31,7 +31,9 @@ jobs:
 
   native-and-browser:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'runtime')
-    runs-on: ubuntu-latest
+    # Playwright 1.59.1 does not support the Ubuntu 26 image now selected by
+    # ubuntu-latest. Keep release-browser acceptance on its supported image.
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
@@ -114,7 +116,7 @@ jobs:
 
   browser-harnesses:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'runtime')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
