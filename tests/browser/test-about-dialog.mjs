@@ -22,7 +22,7 @@ try {
       const rect = element => element.getBoundingClientRect().toJSON();
       return {
         header: rect(document.querySelector("header")),
-        launch: rect(document.querySelector("#launch-build")),
+        actions: ["fullscreen", "desktop-pob", "launch-build"].map(id => rect(document.getElementById(id))),
         about: rect(document.querySelector("#about-legal")),
         tools: [...document.querySelectorAll("#editor-accessibility button")].map(rect),
         overflow: document.querySelector(".site-header-inner").scrollWidth - document.documentElement.clientWidth,
@@ -30,9 +30,13 @@ try {
     });
     const layout = await measure();
     assert.equal(layout.tools.length, 2);
-    assert.ok(layout.launch.right <= layout.about.left && layout.about.right <= layout.tools[0].left,
-      `${width}px: About sits between Launch and the toolbar`);
-    for (const box of [layout.launch, layout.about, ...layout.tools]) {
+    for (let index = 1; index < layout.actions.length; index++) {
+      assert.ok(layout.actions[index - 1].right <= layout.actions[index].left,
+        `${width}px: primary actions remain ordered without overlap`);
+    }
+    assert.ok(layout.actions.at(-1).right <= layout.about.left && layout.about.right <= layout.tools[0].left,
+      `${width}px: About sits between the primary actions and the toolbar`);
+    for (const box of [...layout.actions, layout.about, ...layout.tools]) {
       assert.ok(box.left >= 0 && box.right <= width && box.bottom <= layout.header.bottom, `${width}px: header controls fit`);
     }
     assert.ok(layout.overflow <= 0, `${width}px: header must not overflow horizontally`);
@@ -47,14 +51,14 @@ try {
     const without = await measure();
     await page.evaluate(() => { document.querySelector("#about-legal").style.display = ""; });
     assert.equal(layout.header.height, without.header.height, `${width}px: About must not change the header height`);
-    console.log(`About ${width}px: placed between Launch and the toolbar without changing the header.`);
+    console.log(`About ${width}px: placed between the primary actions and the toolbar without changing the header.`);
   }
 
-  // Keyboard: Tab reaches About from the header links, Enter opens, Escape closes and returns focus.
+  // Keyboard: Tab reaches About from the header links and enabled actions, Enter opens, Escape closes and returns focus.
   await page.setViewportSize({ width: 1440, height: 900 });
   await page.locator(".site-discord-link").focus();
   await page.keyboard.press("Tab");
-  if (await activeId() === "launch-build") await page.keyboard.press("Tab");
+  while (["fullscreen", "desktop-pob", "launch-build"].includes(await activeId())) await page.keyboard.press("Tab");
   assert.equal(await activeId(), "about-legal", "Tab reaches About after the header links");
   await page.keyboard.press("Enter");
   await dialog.waitFor({ state: "visible" });

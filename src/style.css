@@ -107,7 +107,7 @@ dialog h1 { font-size: 20px; }
   .site-header-actions { transform: translateX(clamp(-300px, calc(550px - 50vw), -110px)); }
   /* Center the three primary actions over PoB's class/ascendancy dropdowns
      without disturbing the trailing tools aligned over Loadouts. */
-  #fullscreen, #desktop-pob, #launch-build { transform: translateX(100px); }
+  #fullscreen, #desktop-pob, #launch-build { transform: translateX(clamp(0px, calc(100vw - 1384px), 100px)); }
   /* Line up the trailing tools with PoB's Loadouts control. The offset tapers
      before the desktop action row runs out of horizontal room. */
   .site-about-button { margin-left: clamp(8px, calc(100vw - 1384px), 216px); }
