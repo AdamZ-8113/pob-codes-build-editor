@@ -78,7 +78,7 @@ policy, and 2 for incomplete collection or invalid invocation. The default
 fails on changed/absorbed entries. `--fail-on=never` still fails incomplete
 collection. Report output is written before applying the classification exit.
 
-JSON schema version 2 includes entry-catalog version 2, the fixed public
+JSON schema version 2 includes entry-catalog version 3, the fixed public
 `repository`, `editorSha`, `workflowRunId`/`workflowRunAttempt` (null locally),
 UTC `capturedAt`, `targetRef`/`targetSha`, `pinSha`, `completion`, sanitized
 `errorCode`, bounded `entries` and `counts`, informational PR states, and fetch
@@ -129,6 +129,10 @@ For an upstream pin bump:
 - Native driver changes: add `npm run test:native`.
 - Payload, adapter, or pinned-source changes: add `npm run pack` and relevant
   `tests/browser/` harnesses.
+- Passive-tree culling or retained-drawing changes: add `node scripts/test-tree-connectors.mjs`
+  for retained LuaJIT/Busted tree specs, geometry bounds and drag-cache lifecycle, plus
+  `npm run test:browser -- --only test-tree-connector-culling` for original/adapted
+  pixel parity and drag work at DPR 1 and 2.
 - Browser UI or integration changes: add `npm run test:e2e`.
 - Driver, renderer or payload integration changes: add `npm run test:browser`
   for the registered development-server harnesses, after preparing and packing
@@ -215,6 +219,38 @@ packed payload outputs must still be regenerated from these authored sources.
 All automated browser runs are headless. Ordinary local tests must not be aimed
 at production. `npm run test:e2e:production-smoke` is the explicit live-site
 opt-in and is appropriate only for release verification.
+
+### Retained passive-tree drawing improvements
+
+Every build and source refresh must retain both parts of the passive-tree
+dragging optimization:
+
+- PoB: `patches/tree-connector-culling.patch`, applied by
+  `scripts/patches/tree-connector-culling-patch.mjs` through the packer. The
+  `treeConnectorCulling` adapter and `tree-connector-culling` overlay in
+  `source-pin.json` lock both `PassiveTree.lua` and `PassiveTreeView.lua`.
+- WASM: packed escape colors and bounded drawing capture/replay in
+  `upstream/packages/driver/src/c/draw.c`, with texture-generation invalidation
+  in `image.c`/`image.h`. Preserve these adaptations when refreshing pob-web.
+
+Normal `npm run pack` automatically applies the PoB patch, validates its hash
+and exact source/result identities, and records it in payload provenance.
+Native changes require `npm run test:native` to rebuild and test the driver;
+packing alone does not rebuild WASM. `npm run build:release` runs both steps.
+Do not copy an older interpreter into a newly packed release: the Lua fallback
+supports hosts without drawing-cache APIs, but editor releases require them.
+
+For a PoB pin bump, use the drift/identity procedure above to rebase the checked
+patch and update its ledger identities. Never patch the prepared source by hand
+or bypass a hash failure. Retain the patch until equivalent upstream behavior
+is verified and its removal is recorded. Run the source-ledger and tree-patch
+unit tests, LuaJIT/Busted tree specs, native tests and DPR 1/2 browser parity
+harness from the validation routes above. Check drag release, zoom/resize,
+state invalidation, live-drawing fallbacks and cache cleanup as well as pixels.
+
+See [the bundled inventory](BUNDLED_POB_CHANGES.md#pack-time-pob-patches),
+[runtime provenance](../upstream/PROVENANCE.md), and
+[release requirements](RELEASING.md#required-passive-tree-improvements-in-release-artifacts).
 
 ### Retained Power Report relevance pruning and environment reuse
 

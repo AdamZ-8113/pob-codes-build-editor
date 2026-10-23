@@ -1,0 +1,175 @@
+diff --git a/src/Classes/PassiveTree.lua b/src/Classes/PassiveTree.lua
+index 2692c70301b6c5b7f6eb1008ad00036cb178403f..31e2ccaa476f9d4b534ac3ff9297f97acabc0f02 100644
+--- a/src/Classes/PassiveTree.lua
++++ b/src/Classes/PassiveTree.lua
+@@ -932,6 +932,27 @@
+ 	data.width, data.height = data.handle:ImageSize()
+ end
+ 
++-- Bounds cover every artwork state, including both halves of a split arc.
++-- Rebuilt with the connector geometry, including regenerated cluster subgraphs.
++function PassiveTreeClass:BuildConnectorBounds(connector)
++	local minX, minY, maxX, maxY = math.huge, math.huge, -math.huge, -math.huge
++	connector.bounds = nil
++	for _, vert in pairs(connector.vert) do
++		for i = 1, 8, 2 do
++			local x, y = vert[i], vert[i + 1]
++			-- Unknown geometry must stay on the original rendering path.
++			if not x or not y or x ~= x or y ~= y or math.abs(x) == math.huge or math.abs(y) == math.huge then
++				return
++			end
++			minX, minY = m_min(minX, x), m_min(minY, y)
++			maxX, maxY = m_max(maxX, x), m_max(maxY, y)
++		end
++	end
++	if minX <= maxX and minY <= maxY then
++		connector.bounds = { minX, minY, maxX, maxY }
++	end
++end
++
+ -- Generate the quad used to render the line between the two given nodes
+ function PassiveTreeClass:BuildConnector(node1, node2)
+ 	local connector = {
+@@ -993,6 +1014,7 @@
+ 	connector.c[13], connector.c[14] = endS, 0
+ 	connector.c[15], connector.c[16] = endS, 1
+ 	connector.vert = { Normal = connector, Intermediate = connector, Active = connector }
++	self:BuildConnectorBounds(connector)
+ 	return { connector }
+ end
+ 
+@@ -1036,6 +1058,7 @@
+ 	connector.c[11], connector.c[12] = 0, p
+ 	connector.c[13], connector.c[14] = 0, 0
+ 	connector.c[15], connector.c[16] = p, 0
++	self:BuildConnectorBounds(connector)
+ end
+ 
+ function PassiveTreeClass:CalcOrbitAngles(nodesInOrbit)
+diff --git a/src/Classes/PassiveTreeView.lua b/src/Classes/PassiveTreeView.lua
+index c7f8976b473c2fe169b914138ff019498c304366..2f68b3846d772cefd83896f3fd907d3624361a54 100644
+--- a/src/Classes/PassiveTreeView.lua
++++ b/src/Classes/PassiveTreeView.lua
+@@ -554,6 +554,22 @@
+ 		DrawImage(bg.handle, viewPort.x, viewPort.y, viewPort.width, viewPort.height, (self.zoomX + viewPort.width/2) / -bgSize, (self.zoomY + viewPort.height/2) / -bgSize, (viewPort.width/2 - self.zoomX) / bgSize, (viewPort.height/2 - self.zoomY) / bgSize)
+ 	end
+ 
++	-- Retain only a drag's stable world artwork. Input, the tiled background,
++	-- jewel radii and all exceptional states continue through the live path.
++	self._assetScreenWidth, self._assetScreenHeight = GetVirtualScreenSize()
++	self._captureTreeArtwork = false
++	local canRetainArtwork = CaptureDrawCache and ReplayDrawCache and ReleaseDrawCache
++		and self.dragging and not hoverNode and not hoverCompareNode
++		and not self.compareSpec and not self.showHeatMap and not self.traceMode
++		and (not self.searchStr or self.searchStr == "") and #inputEvents == 0
++		and not launch.devModeAlt and not build.buildFlag and not main.popups[1]
++		and not IsKeyDown("SHIFT") and not IsKeyDown("CTRL") and not IsKeyDown("ALT")
++	if not canRetainArtwork or self._dragArtworkSpec ~= spec or self._dragArtworkTree ~= tree
++		or self._dragArtworkRevision ~= build.outputRevision or self._dragArtworkScale ~= scale
++		or self._dragArtworkWidth ~= viewPort.width or self._dragArtworkHeight ~= viewPort.height then
++		self:ClearDragArtwork()
++	end
++	local function drawTreeArtwork()
+ 	-- Hack to draw class background art, the position data doesn't seem to be in the tree JSON yet
+ 	if build.spec.curClassId == 1 then
+ 		local scrX, scrY = treeToScreen(-2750, 1600)
+@@ -666,6 +682,18 @@
+ 		end
+ 	end
+ 
++	-- Tree drawing uses the full screen viewport; surrounding controls cover its
++	-- margins later. Cull against that same viewport, not the smaller tree panel.
++	-- Leave two logical pixels for DPI/Float32 rounding at the GPU boundary.
++	local screenWidth, screenHeight = GetVirtualScreenSize()
++	local visibleMinX, visibleMinY = screenToTree(-2, -2)
++	local visibleMaxX, visibleMaxY = screenToTree(screenWidth + 2, screenHeight + 2)
++	local function connectorVisible(connector)
++		local bounds = connector.bounds
++		return self._captureTreeArtwork or not bounds or not (bounds[3] < visibleMinX or bounds[1] > visibleMaxX
++			or bounds[4] < visibleMinY or bounds[2] > visibleMaxY)
++	end
++
+ 	local connectorColor = { 1, 1, 1 }
+ 	local function setConnectorColor(r, g, b)
+ 		connectorColor[1], connectorColor[2], connectorColor[3] = r, g, b
+@@ -683,6 +711,9 @@
+ 		return state
+ 	end
+ 	local function renderConnector(connector)
++		if not connectorVisible(connector) then
++			return
++		end
+ 		local node1, node2 = spec.nodes[connector.nodeId1], spec.nodes[connector.nodeId2]
+ 		local connectorDefaultColor = "^xFFFFFF"
+ 
+@@ -758,7 +789,7 @@
+ 				for _, connector in pairs(subGraph.connectors) do
+ 					local cNode1 = self.compareSpec.nodes[connector.nodeId1]
+ 					local cNode2 = self.compareSpec.nodes[connector.nodeId2]
+-					if cNode1 and cNode2 and cNode1.alloc and cNode2.alloc and connector.vert then
++					if cNode1 and cNode2 and cNode1.alloc and cNode2.alloc and connector.vert and connectorVisible(connector) then
+ 						local state = "Active"
+ 						local vert = connector.vert[state] or connector.vert["Normal"]
+ 						if vert then
+@@ -1164,6 +1195,25 @@
+ 		end
+ 	end
+ 
++	end
++	if not (self._dragArtwork and ReplayDrawCache(self._dragArtwork,
++		offsetX - self._dragArtworkX, offsetY - self._dragArtworkY)) then
++		if self._dragArtwork then self:ClearDragArtwork() end
++		if canRetainArtwork and not self._dragArtworkUnavailable then
++			self._captureTreeArtwork = true
++			self._dragArtwork = CaptureDrawCache(drawTreeArtwork)
++			-- A failed/oversized capture uses live culling for the rest of this drag.
++			self._dragArtworkUnavailable = not self._dragArtwork
++			self._captureTreeArtwork = false
++			self._dragArtworkX, self._dragArtworkY = offsetX, offsetY
++			self._dragArtworkSpec, self._dragArtworkTree = spec, tree
++			self._dragArtworkRevision, self._dragArtworkScale = build.outputRevision, scale
++			self._dragArtworkWidth, self._dragArtworkHeight = viewPort.width, viewPort.height
++		else
++			drawTreeArtwork()
++		end
++	end
++
+ 	-- Draw ring overlays for jewel sockets
+ 	local function drawJewelRadius(jewel, scrX, scrY, tint)
+ 		-- Abyss jewels do not show radius art in game.
+@@ -1282,6 +1332,20 @@
+ 	DrawImageQuad(handle, x1, y1, x2, y2, x3, y3, x4, y4, ...)
+ end
+ 
++-- Release native storage promptly on mouse-up or invalidation; the host's
++-- userdata finalizer also handles view destruction and exceptional exits.
++function PassiveTreeViewClass:ClearDragArtwork()
++	if self._dragArtwork then
++		ReleaseDrawCache(self._dragArtwork)
++		self._dragArtwork = nil
++	end
++	self._dragArtworkUnavailable = nil
++	self._dragArtworkSpec, self._dragArtworkTree = nil, nil
++	self._dragArtworkRevision, self._dragArtworkScale = nil, nil
++	self._dragArtworkWidth, self._dragArtworkHeight = nil, nil
++	self._dragArtworkX, self._dragArtworkY = nil, nil
++end
++
+ -- Draws the given asset at the given position
+ function PassiveTreeViewClass:DrawAsset(data, x, y, scale, isHalf)
+ 	if not data then
+@@ -1295,6 +1359,14 @@
+ 	end
+ 	local width = data.width * scale * 1.33
+ 	local height = data.height * scale * 1.33
++	-- Use complete artwork extents, including both halves of large groups.
++	-- Retained captures include offscreen art so it can enter view during a pan.
++	local extentX, extentY = math.abs(width), math.abs(height) * (isHalf and 2 or 1)
++	if not self._captureTreeArtwork and self._assetScreenWidth
++		and (x + extentX < -2 or y + extentY < -2
++			or x - extentX > self._assetScreenWidth + 2 or y - extentY > self._assetScreenHeight + 2) then
++		return
++	end
+ 	if isHalf then
+ 		DrawImage(data.handle, x - width, y - height * 2, width * 2, height * 2)
+ 		DrawImage(data.handle, x - width, y, width * 2, height * 2, 0, 1, 1, 0)

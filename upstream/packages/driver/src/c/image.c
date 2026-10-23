@@ -98,6 +98,8 @@ static VfsEntry *lookup_vfs_entry(const char *name) {
 static const char *IMAGE_HANDLE_TYPE = "ImageHandle";
 
 static int st_next_handle = 0;
+static unsigned st_generation;
+unsigned image_generation(void) { return st_generation; }
 static const char st_image_resources = 0;
 
 // Intern immutable texture identities in the Lua state's registry. Repeated UI
@@ -196,7 +198,12 @@ static int ImageHandle_Load(lua_State *L) {
         }
     }
 
-    if (image_resource_id(L, filename, flags, image_handle)) EM_ASM({
+    int previous_handle = image_handle->handle;
+    int is_new = image_resource_id(L, filename, flags, image_handle);
+    // Resource IDs are immutable and retained by the registry. New resources
+    // or repurposing an existing handle invalidate retained drawing commands.
+    if (is_new || (previous_handle >= 0 && previous_handle != image_handle->handle)) st_generation++;
+    if (is_new) EM_ASM({
                Module.imageLoad($0, UTF8ToString($1), $2);
            }, image_handle->handle, filename, flags);
 
@@ -216,6 +223,7 @@ int image_init(lua_State *L) {
     // Parse vfs.tsv
     if (!parse_vfs_tsv()) return 0;
     st_next_handle = 0;
+    st_generation++;
 
     lua_newtable(L);
     lua_rawsetp(L, LUA_REGISTRYINDEX, &st_image_resources);

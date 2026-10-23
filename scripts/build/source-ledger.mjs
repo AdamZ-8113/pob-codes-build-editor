@@ -60,7 +60,7 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
     throw new Error("Power-report environment-reuse source overlay identity or composition changed");
   }
   const local = pin.overlays.filter((entry) => entry.kind === "local-patch" && entry.applicationStage !== "source-composite");
-  if (JSON.stringify(local.map((overlay) => overlay.id)) !== JSON.stringify(["gem-dropdown-hover", "limited-unique-item-comparisons", "importtab-host-capabilities", "preferred-export-site", "calculation-only-jewel-specs", "node-power-delegation", "compact-status-text", "power-node-depth-default", "build-list-pending-folders"]) ||
+  if (JSON.stringify(local.map((overlay) => overlay.id)) !== JSON.stringify(["gem-dropdown-hover", "limited-unique-item-comparisons", "importtab-host-capabilities", "preferred-export-site", "calculation-only-jewel-specs", "node-power-delegation", "compact-status-text", "power-node-depth-default", "build-list-pending-folders", "tree-connector-culling"]) ||
       local.some((overlay) => overlay.applicationStage !== "pack-time")) {
     throw new Error("Desktop PoB local overlay ownership changed");
   }
@@ -184,6 +184,17 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
       Object.keys(pendingFolders.sourceBlobHashes).length !== 1 ||
       Object.keys(pendingFolders.resultBlobHashes).length !== 1) {
     throw new Error("Build-list pending-folder overlay identities differ");
+  }
+  const treeCulling = pin.adapters.treeConnectorCulling;
+  const treeOverlay = local[9];
+  const treePaths = ["src/Classes/PassiveTree.lua", "src/Classes/PassiveTreeView.lua"];
+  if (treeCulling?.version !== 1 || treeCulling.patchFile !== treeOverlay.patchFile ||
+      treeCulling.patchSha256 !== treeOverlay.patchSha256 ||
+      JSON.stringify(Object.keys(treeCulling.sourceBlobHashes ?? {})) !== JSON.stringify(treePaths) ||
+      JSON.stringify(Object.keys(treeCulling.resultBlobHashes ?? {})) !== JSON.stringify(treePaths) ||
+      [...Object.values(treeCulling.sourceBlobHashes), ...Object.values(treeCulling.resultBlobHashes)]
+        .some(hash => !/^[a-f0-9]{40}$/.test(hash))) {
+    throw new Error("Tree connector culling overlay identities differ");
   }
   // Generated at pack time (scripts/build/mod-cache) and appended to PoB's own
   // ModCache.lua. Entries are exact parseMod memoization; the hashes pin the bytes.

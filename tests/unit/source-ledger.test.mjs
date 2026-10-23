@@ -7,9 +7,9 @@ import { validateSourceLedger } from "../../scripts/build/source-ledger.mjs";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 
-test("desktop PoB overlay ledger owns six ordered PRs, two Power Report optimizations and nine pack-time local patches", async () => {
+test("desktop PoB overlay ledger owns six ordered PRs, two Power Report optimizations and ten pack-time local patches", async () => {
   const { pin, compositeBytes } = await validateSourceLedger(appDir);
-  assert.deepEqual(pin.overlays.map((entry) => entry.number ?? entry.id), [10360, 10371, 10372, 10373, 10313, 10381, "power-report-relevance-pruning", "power-report-environment-reuse", "gem-dropdown-hover", "limited-unique-item-comparisons", "importtab-host-capabilities", "preferred-export-site", "calculation-only-jewel-specs", "node-power-delegation", "compact-status-text", "power-node-depth-default", "build-list-pending-folders"]);
+  assert.deepEqual(pin.overlays.map((entry) => entry.number ?? entry.id), [10360, 10371, 10372, 10373, 10313, 10381, "power-report-relevance-pruning", "power-report-environment-reuse", "gem-dropdown-hover", "limited-unique-item-comparisons", "importtab-host-capabilities", "preferred-export-site", "calculation-only-jewel-specs", "node-power-delegation", "compact-status-text", "power-node-depth-default", "build-list-pending-folders", "tree-connector-culling"]);
   assert.equal(pin.compositePatch.files.includes("src/Classes/GemSelectControl.lua"), true);
   assert.equal(compositeBytes.includes(Buffer.from("GemSelectControl.lua")), true);
   assert.equal(pin.compositePatch.resultBlobHashes["src/Classes/GemSelectControl.lua"], pin.adapters.gemDropdownHover.sourceBlobHashes["src/Classes/GemSelectControl.lua"]);
@@ -80,6 +80,21 @@ test("jewel spec overlay rejects changed provenance, identities, stage and appli
     const candidate = structuredClone(pin);
     mutate(candidate);
     await assert.rejects(validateSourceLedger(appDir, Buffer.from(JSON.stringify(candidate))), /ownership changed|inventory mismatch|identities differ|provenance changed|overlay chain changed|identity inventory changed/);
+  }
+});
+
+test("passive-tree optimization remains mandatory in the source ledger", async () => {
+  const pin = JSON.parse(await readFile(join(appDir, "source-pin.json"), "utf8"));
+  for (const mutate of [
+    candidate => { candidate.overlays = candidate.overlays.filter(entry => entry.id !== "tree-connector-culling"); },
+    candidate => { delete candidate.adapters.treeConnectorCulling; },
+    candidate => { candidate.overlays.find(entry => entry.id === "tree-connector-culling").applicationStage = "checkout"; },
+    candidate => { candidate.overlays.find(entry => entry.id === "tree-connector-culling").files.push("src/Classes/Other.lua"); },
+    candidate => { candidate.adapters.treeConnectorCulling.patchSha256 = "0".repeat(64); },
+  ]) {
+    const candidate = structuredClone(pin);
+    mutate(candidate);
+    await assert.rejects(validateSourceLedger(appDir, Buffer.from(JSON.stringify(candidate))), /ownership changed|inventory mismatch|identities differ/);
   }
 });
 

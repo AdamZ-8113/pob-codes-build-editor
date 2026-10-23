@@ -11,5 +11,6 @@ typedef struct {
 
 extern int image_init(lua_State *L);
 extern void image_destroy(void);
+extern unsigned image_generation(void);
 
 #endif //DRIVER_IMAGE_H

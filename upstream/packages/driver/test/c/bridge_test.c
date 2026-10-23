@@ -102,6 +102,43 @@ static void test_draw_color_escapes(void) {
     check_color(color, 1.0f, 0.0f, 0.0f, 1.0f);
 }
 
+static void test_packed_draw_colors(void) {
+    lua_State *L = luaL_newstate();
+    luaL_openlibs(L);
+    draw_init(L);
+    EM_ASM({ Module.getScreenScale = () => 1; });
+    draw_begin();
+    const char *script =
+        "for i=0,9 do SetDrawColor('^'..i) end\n"
+        "SetDrawColor('^xA1b2C3 ignored ^1')\n"
+        "SetDrawColor('^X0000FF')\n"
+        "SetDrawColor('^8'); local r,g,b,a=GetDrawColor(); assert(math.abs(r-.7)<1e-6 and r==g and g==b and a==1)\n"
+        "SetDrawColor(.7,.4,1,.5)\n"
+        "assert(not pcall(SetDrawColor,'^x12zz56'))\n"
+        "assert(not pcall(SetDrawColor,'plain'))\n"
+        "for i=0,255 do SetDrawColor(string.format('^x%02x%02X%02x',i,255-i,i)) end\n";
+    CHECK(luaL_dostring(L, script) == LUA_OK);
+    void *buffer; size_t size;
+    draw_get_buffer(&buffer, &size);
+    const unsigned char colors[][4] = {
+        {0,0,0,255}, {255,0,0,255}, {0,255,0,255}, {0,0,255,255},
+        {255,255,0,255}, {255,0,255,255}, {0,255,255,255}, {255,255,255,255},
+        {179,179,179,255}, {102,102,102,255}, {161,178,195,255}, {0,0,255,255},
+        {179,179,179,255}, {178,102,255,127},
+    };
+    CHECK(size == (14 + 256) * 5);
+    const unsigned char *bytes = buffer;
+    for (int i = 0; i < 14; i++) {
+        CHECK(bytes[i * 5] == 4);
+        CHECK(!memcmp(bytes + i * 5 + 1, colors[i], 4));
+    }
+    for (int i = 0; i < 256; i++) {
+        const unsigned char expected[] = {4, i, 255-i, i, 255};
+        CHECK(!memcmp(bytes + (14+i) * 5, expected, 5));
+    }
+    draw_end(); draw_destroy(); lua_close(L);
+}
+
 static void test_dpi_scaling(void) {
     dpi_set_override_percent(0);
     dpi_render_init(NULL);
@@ -262,6 +299,96 @@ static void test_draw_frame_reuse(void) {
     draw_end();
     draw_destroy();
     lua_close(L);
+}
+
+static void test_translated_draw_cache(void) {
+    lua_State *L = luaL_newstate();
+    luaL_openlibs(L);
+    draw_init(L);
+    dpi_render_init("DPI_AWARE");
+    dpi_set_override_percent(0);
+    EM_ASM({ Module.scale = 1.5; Module.getScreenScale = () => Module.scale;
+        Module.getScreenWidth = () => 1600; Module.getScreenHeight = () => 1000; });
+    draw_begin();
+    CHECK(luaL_dostring(L,
+        "function initial() SetDrawLayer(10,2); SetDrawColor(1,1,1) end\n"
+        "function artwork(x,y)\n"
+        " SetDrawLayer(nil,5); SetDrawColor('^8')\n"
+        " DrawImage(nil,10.123456789+x,20.987654321+y,-5,6,0,1,1,0)\n"
+        " DrawImageQuad(nil,10.123456789+x,20+y,30+x,21+y,31+x,40+y,11+x,39+y)\n"
+        " DrawString(20.123456789+x,40.987654321+y,'LEFT',14,'FIXED','label ^1red')\n"
+        "end\n"
+        "initial(); retained = CaptureDrawCache(function() artwork(0,0) end); assert(retained)\n") == LUA_OK);
+    draw_end();
+    for (int i = 0; i < 4; i++) {
+        const double offsets[] = {0, .125, 137.99999, -2.25};
+        lua_pushnumber(L, offsets[i]); lua_setglobal(L, "delta");
+        draw_begin();
+        CHECK(luaL_dostring(L, "initial(); artwork(delta,delta)") == LUA_OK);
+        void *buffer; size_t expected_size;
+        draw_get_buffer(&buffer, &expected_size);
+        void *expected = malloc(expected_size);
+        memcpy(expected, buffer, expected_size);
+        draw_end(); draw_begin();
+        CHECK(luaL_dostring(L,
+            "initial(); assert(ReplayDrawCache(retained,delta,delta)); local r,g,b,a=GetDrawColor(); assert(r==1 and g==0 and b==0 and a==1)") == LUA_OK);
+        size_t size; draw_get_buffer(&buffer, &size);
+        CHECK(size == expected_size && !memcmp(buffer, expected, size));
+        free(expected);
+        draw_end();
+    }
+    // Scale/state mismatch must emit nothing and let the caller draw normally.
+    EM_ASM({ Module.scale = 2; });
+    draw_begin();
+    CHECK(luaL_dostring(L, "initial(); assert(not ReplayDrawCache(retained,0,0))") == LUA_OK);
+    void *buffer; size_t size; draw_get_buffer(&buffer, &size); CHECK(size == 10);
+    draw_end();
+    EM_ASM({ Module.scale = 1.5; });
+    draw_begin();
+    CHECK(luaL_dostring(L,
+        "initial(); SetDrawColor(0,1,0); assert(not ReplayDrawCache(retained,0,0))\n"
+        "initial(); SetDrawLayer(nil,3); assert(not ReplayDrawCache(retained,0,0))\n"
+        "ReleaseDrawCache(retained); ReleaseDrawCache(retained); initial(); assert(not ReplayDrawCache(retained,0,0))\n"
+        "assert(CaptureDrawCache(function() SetViewport(1,2,3,4) end)==nil)\n"
+        "assert(not pcall(CaptureDrawCache,function() error('capture failure') end))\n"
+        "assert(not pcall(CaptureDrawCache,function() CaptureDrawCache(function() end) end))\n"
+        "initial(); retained=CaptureDrawCache(function() DrawImage(nil,2000,20,10,10) end); assert(retained)\n") == LUA_OK);
+    draw_end(); draw_begin();
+    CHECK(luaL_dostring(L, "initial(); assert(ReplayDrawCache(retained,0,0))") == LUA_OK);
+    draw_get_buffer(&buffer, &size); CHECK(size == 10);
+    draw_end(); draw_begin();
+    CHECK(luaL_dostring(L, "initial(); assert(ReplayDrawCache(retained,-1900,0))") == LUA_OK);
+    draw_get_buffer(&buffer, &size); CHECK(size == 55);
+    CHECK(luaL_dostring(L,
+        "ReleaseDrawCache(retained)\n"
+        "local large=string.rep('x',65535)\n"
+        "assert(CaptureDrawCache(function() for i=1,70 do DrawString(0,0,'LEFT',14,'FIXED',large) end end)==nil)\n") == LUA_OK);
+    // A cache allocation failure does not interrupt ordinary drawing.
+    byte_buffer_fail_allocation = 1;
+    CHECK(luaL_dostring(L, "assert(CaptureDrawCache(function() DrawImage(nil,10,10,20,20) end)==nil)") == LUA_OK);
+    byte_buffer_fail_allocation = 0;
+    CHECK(luaL_dostring(L,
+        "initial(); SetDrawColor('^8'); retained=CaptureDrawCache(function() DrawImage(nil,10,10,20,20) end)\n"
+        "SetDrawColor(.7,.7,.7); assert(not ReplayDrawCache(retained,0,0)); ReleaseDrawCache(retained)\n"
+        "initial(); retained=CaptureDrawCache(function() artwork(0,0) end); retained=nil; collectgarbage('collect')") == LUA_OK);
+    CHECK(strstr(get_draw_profile(), "\"allocatedBytes\":0}}") != NULL);
+    FILE *manifest = fopen(".image.tsv", "w");
+    CHECK(manifest != NULL);
+    fputs("icon-a.png\t32\t48\nicon-b.png\t80\t96\n", manifest);
+    fclose(manifest);
+    CHECK(image_init(L));
+    EM_ASM({ Module.imageLoad = () => {}; });
+    CHECK(luaL_dostring(L,
+        "initial(); a=NewImageHandle(); b=NewImageHandle(); a:Load('icon-a.png'); b:Load('icon-b.png')\n"
+        "retained=CaptureDrawCache(function() DrawImage(a,10,10,20,20) end); assert(retained)\n"
+        "assert(ReplayDrawCache(retained,0,0))\n"
+        "a:Load('icon-b.png'); assert(not ReplayDrawCache(retained,0,0)); ReleaseDrawCache(retained)\n"
+        "local empty=NewImageHandle(); assert(CaptureDrawCache(function() DrawImage(empty,10,10,20,20) end)==nil)\n") == LUA_OK);
+    draw_end();
+    draw_destroy();
+    lua_close(L);
+    image_destroy();
+    remove(".image.tsv");
 }
 
 static void test_text_width_cache_bounds(void) {
@@ -537,10 +664,12 @@ int main(void) {
     test_subscript_values_round_trip();
     test_large_buffer_append();
     test_draw_color_escapes();
+    test_packed_draw_colors();
     test_dpi_scaling();
     test_image_resource_reuse();
     test_image_index_bounds();
     test_draw_frame_reuse();
+    test_translated_draw_cache();
     test_text_width_cache_bounds();
     test_draw_string_width_cache();
     test_compression_errors_and_growth();

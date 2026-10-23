@@ -13,18 +13,20 @@ import { transformPreferredExportSitePatch } from '../patches/preferred-export-s
 import { transformNodePowerPatch } from '../patches/node-power-patch.mjs';
 import { transformStatusTextPatch } from '../patches/status-text-patch.mjs';
 import { transformPowerNodeDepthPatch } from '../patches/power-node-depth-patch.mjs';
+import { transformTreeConnectorCullingPatch } from '../patches/tree-connector-culling-patch.mjs';
 import { disableAnimationsByDefault } from '../../upstream/packages/packer/src/ui-defaults-adapter.ts';
 import { sha256, validateSourceLedger } from './source-ledger.mjs';
 import { classifyPatch, parseDriftPatch } from './drift-patch.mjs';
 
 export const PUBLIC_REPOSITORY = 'AdamZ-8113/pob-codes-build-editor';
 export const DRIFT_SCHEMA_VERSION = 2;
-export const DRIFT_ENTRY_CATALOG_VERSION = 2;
+export const DRIFT_ENTRY_CATALOG_VERSION = 3;
 export const DRIFT_ENTRY_IDS = [
   'composite', 'pr-10360', 'pr-10371', 'pr-10372', 'pr-10373', 'pr-10313', 'pr-10381',
   'power-report-relevance-pruning', 'power-report-environment-reuse', 'limitedUniqueItemComparisons',
   'gemDropdownHover', 'uniqueSortDelegation', 'calculationOnlyJewelSpecs', 'importTabHostCapabilities',
   'preferredExportSite', 'nodePowerDelegation', 'compactStatusText', 'powerNodeDepthDefault',
+  'treeConnectorCulling',
   'calculationScheduling', 'browserUiDefaults', 'uniqueComparisonDelay', 'sparseTimelessSeeds',
 ];
 export const PACK_STAGES = [
@@ -37,6 +39,7 @@ export const PACK_STAGES = [
   ['nodePowerDelegation', transformNodePowerPatch],
   ['compactStatusText', transformStatusTextPatch],
   ['powerNodeDepthDefault', transformPowerNodeDepthPatch],
+  ['treeConnectorCulling', transformTreeConnectorCullingPatch],
 ];
 const classes = ['untouched', 'touched-applies', 'conflict', 'absorbed', 'partial'];
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), '../..');

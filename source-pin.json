@@ -183,6 +183,19 @@
       "resultBlobHashes": {
         "src/Modules/BuildListHelpers.lua": "6c43043282a4ad064a49528e485def0f8353a8f4"
       }
+    },
+    "treeConnectorCulling": {
+      "version": 1,
+      "patchFile": "patches/tree-connector-culling.patch",
+      "patchSha256": "3c0704836431dae77d25e34bdd019aa576e7b0d22a31f37185d9c7801a8e2afa",
+      "sourceBlobHashes": {
+        "src/Classes/PassiveTree.lua": "2692c70301b6c5b7f6eb1008ad00036cb178403f",
+        "src/Classes/PassiveTreeView.lua": "c7f8976b473c2fe169b914138ff019498c304366"
+      },
+      "resultBlobHashes": {
+        "src/Classes/PassiveTree.lua": "31e2ccaa476f9d4b534ac3ff9297f97acabc0f02",
+        "src/Classes/PassiveTreeView.lua": "2f68b3846d772cefd83896f3fd907d3624361a54"
+      }
     }
   },
   "overlays": [
@@ -518,6 +531,17 @@
       "applicationStage": "pack-time",
       "upstreamPr": null,
       "lastObserved": "2026-10-12"
+    },
+    {
+      "kind": "local-patch",
+      "id": "tree-connector-culling",
+      "applicationStage": "pack-time",
+      "patchFile": "patches/tree-connector-culling.patch",
+      "patchSha256": "3c0704836431dae77d25e34bdd019aa576e7b0d22a31f37185d9c7801a8e2afa",
+      "files": [
+        "src/Classes/PassiveTree.lua",
+        "src/Classes/PassiveTreeView.lua"
+      ]
     }
   ],
   "compositePatch": {

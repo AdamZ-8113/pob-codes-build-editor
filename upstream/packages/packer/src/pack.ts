@@ -22,6 +22,7 @@ import { applyImportTabHostPatch } from "../../../../scripts/patches/importtab-h
 import { applyPreferredExportSitePatch } from "../../../../scripts/patches/preferred-export-site-patch.mjs";
 import { applyBuildListPendingPatch } from "../../../../scripts/patches/build-list-pending-patch.mjs";
 import { applyPowerNodeDepthPatch } from "../../../../scripts/patches/power-node-depth-patch.mjs";
+import { applyTreeConnectorCullingPatch } from "../../../../scripts/patches/tree-connector-culling-patch.mjs";
 import { appendModCacheSupplement } from "../../../../scripts/patches/mod-cache-supplement-patch.mjs";
 import { sha256, stalePackageHashes, validatePayloadManifest } from "../../../payload-manifest.ts";
 
@@ -52,6 +53,7 @@ const importTabHostPatch = await Deno.readFile(new URL(`../../../../${pin.adapte
 const preferredExportSitePatch = await Deno.readFile(new URL(`../../../../${pin.adapters.preferredExportSite.patchFile}`, import.meta.url));
 const buildListPendingPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.buildListPendingFolders.patchFile}`, import.meta.url));
 const powerNodeDepthPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.powerNodeDepthDefault.patchFile}`, import.meta.url));
+const treeConnectorCullingPatch = await Deno.readFile(new URL(`../../../../${pin.adapters.treeConnectorCulling.patchFile}`, import.meta.url));
 await ensureDir(payloadDir);
 await zstd.init();
 
@@ -115,6 +117,10 @@ for (const entry of entries) {
           new TextDecoder().decode(newContent), Buffer.from(statusTextPatch), pin.adapters.compactStatusText, `src/${relPath}`,
         ),
         Buffer.from(powerNodeDepthPatch), pin.adapters.powerNodeDepthDefault, `src/${relPath}`,
+      ))
+      : relPath === "Classes/PassiveTree.lua" || relPath === "Classes/PassiveTreeView.lua"
+      ? new TextEncoder().encode(applyTreeConnectorCullingPatch(
+        new TextDecoder().decode(newContent), Buffer.from(treeConnectorCullingPatch), pin.adapters.treeConnectorCulling, `src/${relPath}`,
       ))
       : relPath === "Modules/ToastNotification.lua"
       ? new TextEncoder().encode(applyStatusTextPatch(

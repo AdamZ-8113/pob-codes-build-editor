@@ -168,6 +168,29 @@ authority. Production credentials stay exclusively with the private operator.
 Every generation carries the pinned Path of Building license and provenance.
 Keep those bytes and their identities in the complete release inventory.
 
+### Required passive-tree improvements in release artifacts
+
+All future candidates must include the `tree-connector-culling` PoB overlay
+and its companion WASM drawing cache and packed escape-color implementation.
+Follow the affected checks and source-refresh procedure in
+[DEVELOPMENT.md](DEVELOPMENT.md#retained-passive-tree-drawing-improvements).
+`npm run build:release` and the CI candidate build compile the native driver
+and pack the hash-checked PoB patch. Packing alone is insufficient after native
+source changes.
+
+When reviewing a candidate or upstream refresh, confirm that its
+`payload/provenance.json` records the `treeConnectorCulling` adapter and
+`tree-connector-culling` overlay with the identities from `source-pin.json`.
+The release record binds the source ledger, native binaries and payload provenance
+to the exact candidate. The source-ledger checks reject a missing overlay or
+adapter; patch application rejects changed source or result bytes.
+
+Promote and deploy the verified exact-SHA static package through the existing
+private operator handoff. These changes are already bundled; deployment must
+not apply another patch or rebuild them. Keep carrying both parts until
+equivalent upstream behavior is verified and the source ledger, provenance,
+bundled inventory and regression coverage are updated together.
+
 ### Required Power Report optimization in release artifacts
 
 All future candidates must include the `power-report-relevance-pruning` and

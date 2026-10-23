@@ -114,6 +114,39 @@ reporting. Comlink, MessagePorts, SharedArrayBuffer/Atomics, broker/subworkers,
 the Lua host ABI, WebGL2 renderer, OffscreenCanvas, and original Lua UI remain
 the upstream architecture.
 
+The checked `treeConnectorCulling` pack-time adapter caches conservative bounds
+when PoB constructs straight and arc connectors, including cluster connectors.
+The tree view rejects connectors outside the full screen before preparing native
+draw commands. Bounds include all artwork states and a two-pixel viewport margin;
+unknown geometry keeps the original draw path. The patch, both source blobs and
+both resulting blobs are pinned in `source-pin.json`. The prepared source and
+calculation behavior are unchanged. `node scripts/test-tree-connectors.mjs`
+exercises the adapted geometry and retained tree-view specs with LuaJIT/Busted.
+
+The same adapter retains stable world artwork during an ordinary tree drag,
+using optional `CaptureDrawCache`, `ReplayDrawCache` and `ReleaseDrawCache` host
+functions. Input and hit testing, the tiled background and jewel radii remain
+live. Hover, search, comparison, heat-map, trace, modifier-key and pending-edit
+states use ordinary drawing. Revisions, spec/tree changes, zoom, viewport changes
+and mouse release discard the cache. Hosts without the capability retain the
+ordinary drawing path. Asset culling accounts for full image extents and both
+halves of large group backgrounds.
+
+The native host owns bounded command buffers, retains original double
+coordinates, and translates before the existing float/DPI conversion. Replay
+culls offscreen images/quads and preserves layer, color and text semantics.
+Texture identity or DPI changes reject replay. Capture errors, unsupported
+viewport commands and the four-MiB recording limit fall back or clean up;
+explicit release and a Lua finalizer reclaim storage. This reuses native drawing
+commands, not GPU buffers, and does not change the renderer protocol.
+
+The native draw bridge emits parsed escape colors through the existing packed
+RGBA command. This removes per-color string allocation, copying and JavaScript
+parsing while preserving Lua's floating-point draw-color state and the exact
+indexed/hex palette (including the rounded `^8` gray). Numeric-color truncation
+and the legacy escape-command decoder remain compatible. Native regression tests
+cover indexed colors, mixed-case hex, suffixes, rejected escapes and all byte values.
+
 Right-button input begins a browser clipboard read inside the input gesture.
 The driver carries a per-click read identity through the worker and broker,
 and drains that click at its original position before releasing the snapshot.

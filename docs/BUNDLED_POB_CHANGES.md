@@ -85,6 +85,20 @@ These patches are applied after the upstream-plus-local source composite, in thi
 | `compact-status-text` (`compactStatusText`) | Fits three browser-constrained status messages into PoB's ordinary control text without changing other typography. |
 | `power-node-depth-default` (`powerNodeDepthDefault`) | Defaults the node-power search depth to 5 while retaining the existing 10, 15, All, and Custom choices. |
 | `build-list-pending-folders` (`buildListPendingFolders`) | Keeps tokened, incomplete browser folder imports out of PoB's recursive build scan until the broker removes the exact pending sentinel. |
+| `tree-connector-culling` (`treeConnectorCulling`) | Culls offscreen connectors and asset artwork, including cluster/comparison connectors and half-group images. Retains stable tree artwork during ordinary drags through optional native capture/translation functions; invalidates on state changes and keeps dynamic states on PoB's live drawing path. |
+
+**Carry the passive-tree improvements in every future bundle and deployment.**
+The retained PoB patch is
+[`tree-connector-culling.patch`](../patches/tree-connector-culling.patch); the
+companion WASM implementation provides bounded artwork capture/replay and packed
+escape colors in the adopted driver. Both parts must survive source refreshes.
+The optional Lua capability check preserves compatibility with desktop hosts;
+it is not a reason to omit the native implementation from an editor build.
+The source ledger rejects a missing overlay or adapter. On a PoB pin update,
+rebase and validate the patch until equivalent upstream behavior is verified,
+then update the ledger, regression coverage and this inventory together. See
+[the maintenance steps](DEVELOPMENT.md#retained-passive-tree-drawing-improvements)
+and [release requirements](RELEASING.md#required-passive-tree-improvements-in-release-artifacts).
 
 ## Other checked PoB source adapters
 

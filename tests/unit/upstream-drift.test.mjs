@@ -95,8 +95,8 @@ test('exit policies retain incomplete failure and Markdown never echoes raw diag
 
 test('the cross-repository drift entry catalog is explicit and fail-closed', () => {
   assert.equal(DRIFT_SCHEMA_VERSION, 2);
-  assert.equal(DRIFT_ENTRY_CATALOG_VERSION, 2);
-  assert.equal(DRIFT_ENTRY_IDS.length, 22);
+  assert.equal(DRIFT_ENTRY_CATALOG_VERSION, 3);
+  assert.equal(DRIFT_ENTRY_IDS.length, 23);
   const entries = DRIFT_ENTRY_IDS.map(id => ({ id }));
   assert.doesNotThrow(() => validateDriftEntryCatalog(entries));
   assert.throws(() => validateDriftEntryCatalog(entries.slice(1)), /entry-catalog-mismatch/);
@@ -136,7 +136,7 @@ test('pack-time inventory and actual chained transforms produce source and resul
   // Build each minimal runtime input from its retained exact contexts. Include
   // the original whitespace: no fixture downloads or prepared-source dependency.
   for (const [name] of PACK_STAGES) patches[pin.adapters[name].patchFile] = await readFile(pin.adapters[name].patchFile);
-  for (const name of ['limitedUniqueItemComparisons', 'gemDropdownHover', 'uniqueSortDelegation', 'importTabHostCapabilities', 'nodePowerDelegation']) {
+  for (const name of ['limitedUniqueItemComparisons', 'gemDropdownHover', 'uniqueSortDelegation', 'importTabHostCapabilities', 'nodePowerDelegation', 'treeConnectorCulling']) {
     for (const section of parseDriftPatch(patches[pin.adapters[name].patchFile])) {
       if (section.path.startsWith('src/')) raw[section.path] = section.blocks.map(block => block.before).join('\nseparation\n');
     }

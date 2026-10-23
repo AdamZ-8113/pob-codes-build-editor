@@ -105,6 +105,8 @@ const inputHash = sha256(Buffer.concat([
   await readFile(join(appDir, pin.adapters.preferredExportSite.patchFile)),
   await readFile(join(appDir, pin.adapters.buildListPendingFolders.patchFile)),
   await readFile(join(appDir, pin.adapters.powerNodeDepthDefault.patchFile)),
+  await readFile(join(appDir, 'scripts/patches/tree-connector-culling-patch.mjs')),
+  await readFile(join(appDir, pin.adapters.treeConnectorCulling.patchFile)),
   await readFile(join(appDir, 'upstream/payload-manifest.ts')),
   await readFile(join(appDir, 'upstream/deno.json')),
   await readFile(join(appDir, 'upstream/deno.lock')),
