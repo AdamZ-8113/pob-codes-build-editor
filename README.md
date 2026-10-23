@@ -116,8 +116,8 @@ profiles, reports, credentials, and private build data must remain untracked.
 
 Production is a static browser application. Build-code paste, build-file import,
 public-account character import, and the build-link sources accepted by the
-PoB Codes `/b/` importer are supported. Link imports and the one-click
-`Launch in PoB.Codes` action use the existing guarded PoB Codes API; local
+PoB Codes `/b/` importer are supported. Link imports plus the `Open Build` and
+`Desktop PoB` actions use the existing guarded PoB Codes API; local
 development keeps those network calls disabled. Character requests also go only
 to existing guarded PoB Codes routes, which apply request bounds, rate limits,
 cooldowns, and upstream error handling. The full `pob-web` application has an

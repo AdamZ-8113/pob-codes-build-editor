@@ -180,8 +180,9 @@ explicit user choices through its existing setting fields.
 `Driver.attachToDOM` accepts an optional external toolbar target. The overlay
 portals its existing controls into the localhost shell header and releases the
 canvas's old toolbar gutter. The default in-canvas toolbar remains available to
-other hosts. Header mode opens zoom controls downward and fullscreen includes
-the shell so its exit control remains reachable. Native PoB controls and
+other hosts. Header mode opens zoom controls downward. The PoB Codes shell owns
+the fullscreen control so the entire shell enters fullscreen and its exit control
+remains reachable; fullscreen is therefore omitted from the embedded tools menu. Native PoB controls and
 calculations are unchanged. The editable canvas host explicitly retains the
 default arrow cursor so its keyboard-input surface does not expose a text I-beam.
 

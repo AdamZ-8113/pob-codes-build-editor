@@ -8,10 +8,11 @@ pob.codes, poe.ninja, Pastebin, and PoEDB. The editor then reads the resolved
 raw code by its returned build ID. Arbitrary client-side proxy targets,
 credentials, and redirects are not accepted by the editor.
 
-The single `Launch in PoB.Codes` action exports the displayed build, uploads it
-to the same `POST https://api.pob.codes/pob/plain` endpoint used by PoB's native
-`pob.codes` sharing-site entry, and opens the resulting canonical
-`https://pob.codes/b/<token>` viewer. Browser writes carry the API's required
+The `Open Build` and `Desktop PoB` actions export the displayed build and upload
+it to the same `POST https://api.pob.codes/pob/plain` endpoint used by PoB's
+native `pob.codes` sharing-site entry. `Open Build` opens the resulting canonical
+`https://pob.codes/b/<token>` viewer; `Desktop PoB` hands the same token to the
+`pob://pobcodes/<token>` link used by that viewer. Browser writes carry the API's required
 `x-pobcodes-client: web` header. A failed request retains that exact exported
 snapshot; retry does not re-export potentially changed editor state. Requests
 time out after 12 seconds, including response-body consumption. Raw codes are

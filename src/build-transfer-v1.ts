@@ -15,6 +15,12 @@ const BUILD_ID = /^[A-Za-z0-9_-]{5,90}$/;
 const IMPORT_HOSTS = new Set(["maxroll.gg", "planners.maxroll.gg", "pobb.in", "pob.codes", "poe.ninja", "pastebin.com", "poedb.tw"]);
 const APP_HEADERS = Object.freeze({ "content-type": "text/plain; charset=utf-8", "x-pobcodes-client": "web" });
 
+export function desktopBuildUrl(sharedUrl: string) {
+  const id = ownedBuildId(sharedUrl);
+  if (!id) throw new Error("Desktop PoB launch requires a PoB Codes build link.");
+  return `pob://pobcodes/${encodeURIComponent(id)}`;
+}
+
 // Preserve the optional factory argument while requiring the callback when supplied.
 export function createBuildTransferV1(options?: CreateBuildTransferV1Options): BuildTransferV1;
 export function createBuildTransferV1({ apiBaseUrl, fetchImpl = fetch, getBuildCode, timeoutMs = 12_000 }: Partial<CreateBuildTransferV1Options> = {}): BuildTransferV1 {

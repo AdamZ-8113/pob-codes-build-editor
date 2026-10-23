@@ -261,7 +261,7 @@ test("candidate imports, edits, recalculates, shares and persists the displayed 
   }
   expect(exported).toMatch(/=$/);
   const popupPromise = context.waitForEvent("page");
-  await page.getByRole("button", { name: "Launch in PoB.Codes" }).click();
+  await page.getByRole("button", { name: "Open Build" }).click();
   const popup = await popupPromise;
   await expect(page.locator("#status")).toHaveText("Build opened in PoB.Codes");
   await expect(popup).toHaveURL("https://pob.codes/b/fixture-build");

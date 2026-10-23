@@ -139,6 +139,7 @@ export const OverlayContainer: React.FC<OverlayContainerProps> = ({
         currentZoom={currentZoom}
         currentCanvasSize={currentCanvasSize}
         isFixedSize={isFixedSize}
+        showFullscreen={!toolbarTarget}
         externalComponent={externalComponent}
       />
     </div>

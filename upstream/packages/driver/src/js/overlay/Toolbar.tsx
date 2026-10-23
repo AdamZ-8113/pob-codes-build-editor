@@ -19,6 +19,7 @@ interface ToolbarProps {
   currentZoom?: number;
   currentCanvasSize?: { width: number; height: number };
   isFixedSize?: boolean;
+  showFullscreen?: boolean;
   externalComponent?: React.ComponentType<{ position: ToolbarPosition; isLandscape: boolean }>;
 }
 
@@ -32,6 +33,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   currentZoom = 1.0,
   currentCanvasSize = { width: 1520, height: 800 },
   isFixedSize = false,
+  showFullscreen = true,
   externalComponent: ExternalComponent,
 }) => {
   const [toolsMenuVisible, setToolsMenuVisible] = useState(false);
@@ -85,7 +87,6 @@ export const Toolbar: React.FC<ToolbarProps> = ({
   const containerClasses = `pw:navbar pw:bg-base-200/95 pw:shadow-lg pw:select-none pw:relative pw:gap-1 ${
     isLandscape ? "pw:flex-col pw:justify-center pw:h-full" : "pw:flex-row pw:justify-center pw:w-full"
   }`;
-
   const fullscreenIcon = isFullscreen ? <MdFullscreenExit size={24} /> : <MdFullscreen size={24} />;
   const fullscreenTooltip = isFullscreen ? "Exit Fullscreen" : "Enter Fullscreen";
 
@@ -98,7 +99,7 @@ export const Toolbar: React.FC<ToolbarProps> = ({
           icon={<HiOutlineWrenchScrewdriver size={24} />}
           tooltip="WebAssembly tools"
           onClick={handleToolsToggle}
-          isActive={toolsMenuVisible || panModeEnabled || keyboardVisible || zoomControlVisible || isFullscreen}
+          isActive={toolsMenuVisible || panModeEnabled || keyboardVisible || zoomControlVisible || (showFullscreen && isFullscreen)}
           ariaHaspopup="menu"
           ariaExpanded={toolsMenuVisible}
         />
@@ -126,12 +127,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({
               active={zoomControlVisible}
               onClick={handleZoomToggle}
             />
-            <ToolMenuButton
-              icon={fullscreenIcon}
-              label={fullscreenTooltip}
-              active={isFullscreen}
-              onClick={handleFullscreenToggle}
-            />
+            {showFullscreen && (
+              <ToolMenuButton
+                icon={fullscreenIcon}
+                label={fullscreenTooltip}
+                active={isFullscreen}
+                onClick={handleFullscreenToggle}
+              />
+            )}
           </div>
         )}
       </div>

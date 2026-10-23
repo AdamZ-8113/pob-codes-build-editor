@@ -14,12 +14,13 @@ try {
   await page.waitForFunction(() => window.__DESKTOP_POB__?.ready, null, { timeout: 120_000 });
   assert.equal(await page.locator('[contenteditable="true"]').evaluate(element => getComputedStyle(element).cursor), "default",
     "PoB canvas uses the arrow cursor instead of the editable-text I-beam");
-  for (const width of [1600, 721, 720, 390, 320]) {
+  for (const width of [2000, 1600, 721, 720, 390, 320]) {
     await page.setViewportSize({width,height:900});
     await page.waitForTimeout(250);
     const layout = await page.evaluate(() => {
       const rect = selector => document.querySelector(selector).getBoundingClientRect().toJSON();
-      return {header:rect("header"),nav:rect("nav"),controls:rect("#editor-accessibility"),canvas:rect("canvas"),
+      return {header:rect("header"),nav:rect("nav"),actions:rect(".site-header-actions"),controls:rect("#editor-accessibility"),canvas:rect("canvas"),
+        fullscreen:rect("#fullscreen"),launch:rect("#launch-build"),about:rect("#about-legal"),
         buttons:[...document.querySelectorAll("#editor-accessibility button")].map(e=>e.getBoundingClientRect().toJSON())};
     });
     assert.equal(layout.buttons.length,2);
@@ -30,6 +31,13 @@ try {
     assert.ok(layout.canvas.top >= layout.header.bottom,"Header must not obscure the canvas");
     if (width <= 720) assert.ok(layout.controls.top >= layout.nav.bottom,"Mobile controls belong below links");
     else assert.ok(layout.controls.top < layout.nav.bottom,"Desktop controls share the navigation row");
+    if (width === 2000) {
+      const primaryActionsOffset = layout.fullscreen.left - layout.actions.left;
+      assert.ok(primaryActionsOffset >= 99 && primaryActionsOffset <= 101,
+        "Wide-screen primary actions align over PoB's dropdown controls");
+      assert.ok(layout.about.left >= 1720 && layout.about.left <= 1750,
+        "Moving primary actions does not disturb the Loadouts-aligned tools");
+    }
     const tools = page.getByRole("button",{name:"WebAssembly tools",exact:true});
     await tools.click();
     const menu = page.getByRole("menu",{name:"WebAssembly tools",exact:true});
@@ -106,6 +114,7 @@ try {
     assert.equal(statusLayout.header.height,headerHeight,"Errors must not add a header row");
     assert.equal(statusLayout.font,"500","Match the site's computed font weight");
     if (width === 1600) {
+      assert.ok(layout.actions.left < 925,"Build actions shift toward the native dropdown controls");
       assert.equal(statusLayout.brand.x,119.5,"Match the site header's actual navigation position");
       assert.equal(statusLayout.brand.y,10,"Match the core site's top spacing");
       assert.equal(layout.canvas.top,49,"Keep 10px beneath the 29px header row");
@@ -122,12 +131,10 @@ try {
     console.log(`Header ${width}px: navigation, accessibility controls and fixed-height status passed.`);
   }
   await page.setViewportSize({width:1600,height:1000});
-  await page.getByRole("button",{name:"WebAssembly tools",exact:true}).click();
-  await page.getByRole("menuitemcheckbox",{name:"Enter Fullscreen",exact:true}).click();
+  await page.getByRole("button",{name:"Enter Fullscreen",exact:true}).click();
   await page.waitForFunction(()=>document.fullscreenElement === document.documentElement);
   assert.ok(await page.getByRole("navigation",{name:"Primary"}).isVisible());
-  await page.getByRole("button",{name:"WebAssembly tools",exact:true}).click();
-  await page.getByRole("menuitemcheckbox",{name:"Exit Fullscreen",exact:true}).click();
+  await page.getByRole("button",{name:"Exit Fullscreen",exact:true}).click();
   await page.waitForFunction(()=>!document.fullscreenElement);
   assert.deepEqual(await page.evaluate(()=>window.__DESKTOP_POB__.errors),[]);
   assert.deepEqual(faults,[]);

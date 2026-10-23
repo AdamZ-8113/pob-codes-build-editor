@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
-import { createBuildTransferV1 } from "../../src/build-transfer-v1.ts";
+import { createBuildTransferV1, desktopBuildUrl } from "../../src/build-transfer-v1.ts";
 
 const code = "abcDEF_0123456789-xyz";
 const response = (body, { status = 200, cache = "no-store" } = {}) => new Response(
@@ -50,13 +50,21 @@ test("external links use the same guarded resolver as the /b/ importer", async (
   }
 });
 
-test("shell exposes one Launch in PoB.Codes action and no Contribute link", async () => {
+test("shell exposes the ordered fullscreen and build launch actions", async () => {
   const [html, main] = await Promise.all([readFile("index.html", "utf8"), readFile("src/main.ts", "utf8")]);
-  assert.match(html, /id="launch-build"[^>]*disabled>Launch in PoB\.Codes/);
+  const fullscreen = html.indexOf('id="fullscreen"');
+  const desktop = html.indexOf('id="desktop-pob"');
+  const open = html.indexOf('id="launch-build"');
+  assert.ok(fullscreen >= 0 && fullscreen < desktop && desktop < open);
+  assert.match(html, /id="fullscreen" class="btn header-action-button"[^>]*aria-label="Enter Fullscreen"[^>]*><span[^>]*>Fullscreen<\/span><svg [^>]*class="header-action-icon"/);
+  assert.match(html, /id="desktop-pob" class="btn header-action-button"[^>]*disabled><span[^>]*>Desktop PoB<\/span><svg [^>]*class="header-action-icon"/);
+  assert.match(html, /id="launch-build"[^>]*disabled>Open Build/);
   assert.doesNotMatch(html, />Contribute</);
   assert.doesNotMatch(html, /id="shared-build"/);
   assert.match(main, /window\.open\("about:blank", "_blank"\)/);
   assert.match(main, /buildTransfer!\.share\(\)/);
+  assert.equal(desktopBuildUrl("https://pob.codes/b/share_123"), "pob://pobcodes/share_123");
+  assert.throws(() => desktopBuildUrl("https://example.com/b/share_123"), /requires a PoB Codes build link/);
 });
 
 test("sharing uses PoB's native pob.codes plain endpoint and retries the exact snapshot", async () => {

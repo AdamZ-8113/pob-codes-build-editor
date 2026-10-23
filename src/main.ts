@@ -1,5 +1,6 @@
 import { Driver } from "../upstream/packages/driver/src/js/driver.ts";
 import { assertDriverCapabilities } from "../upstream/packages/driver/src/js/capability.ts";
+import { toggleFullscreen } from "../upstream/packages/driver/src/js/fullscreen.ts";
 import type { PayloadProgress } from "../upstream/packages/driver/src/js/payload.ts";
 import { createStartupPresenter, createStartupReadiness } from "./startup.ts";
 import "./style.css";
@@ -8,7 +9,7 @@ import type { CharacterTransportV1 } from "./character-host-v1.ts";
 import { createTelemetryV1 } from "./telemetry-v1.ts";
 import { createConfigurationBridgeV1 } from "./configuration-v1.ts";
 import type { ConfigurationRequestV1 } from "./configuration-v1.ts";
-import { createBuildTransferV1 } from "./build-transfer-v1.ts";
+import { createBuildTransferV1, desktopBuildUrl } from "./build-transfer-v1.ts";
 import { payloadHintsForBuildCode } from "./launch-payload-hints.ts";
 import { bindAboutDialog } from "./about-dialog.ts";
 import { createDebugReportV1, sanitizeDiagnosticV1 } from "./debug-report.ts";
@@ -42,6 +43,21 @@ if (import2Preview) performance.mark(`${performancePrefix}-shell-start`);
 const element = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 // Bind before startup so the legal notices stay reachable if PoB fails to start.
 bindAboutDialog({ trigger: element<HTMLButtonElement>("about-legal"), dialog: element<HTMLDialogElement>("about-dialog") });
+const fullscreenButton = element<HTMLButtonElement>("fullscreen");
+const fullscreenIconPath = document.getElementById("fullscreen-icon-path") as unknown as SVGPathElement;
+const syncFullscreenButton = () => {
+  const active = Boolean(document.fullscreenElement);
+  const label = active ? "Exit Fullscreen" : "Enter Fullscreen";
+  fullscreenButton.setAttribute("aria-label", label);
+  fullscreenButton.title = label;
+  fullscreenButton.setAttribute("aria-pressed", String(active));
+  fullscreenIconPath.setAttribute("d", active
+    ? "M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"
+    : "M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z");
+};
+fullscreenButton.onclick = () => void toggleFullscreen(document.documentElement);
+document.addEventListener("fullscreenchange", syncFullscreenButton);
+syncFullscreenButton();
 const status = element<HTMLOutputElement>("status");
 const calculationStatus = element<HTMLOutputElement>("calculation-status");
 const startupReadiness = createStartupReadiness();
@@ -269,8 +285,13 @@ async function main() {
     applyConfiguration: request => driver!.applyConfiguration(request),
   });
   const launchButton = element<HTMLButtonElement>("launch-build");
-  launchButton.disabled = true;
-  launchButton.title = publicRuntime.apiBaseUrl ? "Generate, share, and open this build on PoB.Codes" : "PoB.Codes launch is not configured for this release";
+  const desktopButton = element<HTMLButtonElement>("desktop-pob");
+  const shareButtons = [desktopButton, launchButton];
+  const setShareButtonsDisabled = (disabled: boolean) => { for (const button of shareButtons) button.disabled = disabled; };
+  const shareDisplayedBuild = () => buildTransfer!.hasPendingShare ? buildTransfer!.retry() : buildTransfer!.share();
+  setShareButtonsDisabled(true);
+  launchButton.title = publicRuntime.apiBaseUrl ? "Generate, share, and open this build on PoB.Codes" : "PoB.Codes sharing is not configured for this release";
+  desktopButton.title = publicRuntime.apiBaseUrl ? "Generate, share, and open this build in the Path of Building desktop app" : "PoB.Codes sharing is not configured for this release";
   launchButton.onclick = async () => {
     const launched = window.open("about:blank", "_blank");
     if (launched) {
@@ -278,16 +299,25 @@ async function main() {
       launched.document.title = "Opening PoB.Codes…";
       launched.document.body.textContent = "Opening build in PoB.Codes…";
     }
-    launchButton.disabled = true; setHeaderStatus("Launching build in PoB.Codes...");
+    setShareButtonsDisabled(true); setHeaderStatus("Opening build on PoB.Codes...");
     try {
-      const url = buildTransfer!.hasPendingShare ? await buildTransfer!.retry() : await buildTransfer!.share();
+      const url = await shareDisplayedBuild();
       if (launched && !launched.closed) launched.location.replace(url);
       else location.assign(url);
       setHeaderStatus("Build opened in PoB.Codes", "info", 4_000);
     } catch (error) {
       launched?.close();
       setHeaderStatus(error instanceof Error ? error.message : "PoB.Codes launch failed", "error");
-    } finally { launchButton.disabled = !ready || !publicRuntime.apiBaseUrl; }
+    } finally { setShareButtonsDisabled(!ready || !publicRuntime.apiBaseUrl); }
+  };
+  desktopButton.onclick = async () => {
+    setShareButtonsDisabled(true); setHeaderStatus("Opening build in Desktop PoB...");
+    try {
+      location.assign(desktopBuildUrl(await shareDisplayedBuild()));
+      setHeaderStatus("Build sent to Desktop PoB", "info", 4_000);
+    } catch (error) {
+      setHeaderStatus(error instanceof Error ? error.message : "Desktop PoB launch failed", "error");
+    } finally { setShareButtonsDisabled(!ready || !publicRuntime.apiBaseUrl); }
   };
   await driver.start({
     legacyPayload: options.get("legacyPayload") === "1",
@@ -330,7 +360,7 @@ async function main() {
   // The driver's focus attempt happens while its surface is hidden. Restore
   // initial keyboard focus without stealing it from About or another control.
   if (document.activeElement === document.body) element("editor-window").querySelector<HTMLElement>('[contenteditable="true"]')?.focus();
-  launchButton.disabled = !publicRuntime.apiBaseUrl;
+  setShareButtonsDisabled(!publicRuntime.apiBaseUrl);
   telemetry.emit("build_editor_ready_v1", { result: "ready", actionTarget: "cold", durationMs: Math.round(performance.now() - startupAt) });
   await driver.markPayloadReady();
   if (import2Preview) performance.mark(`${performancePrefix}-payload-ready`);

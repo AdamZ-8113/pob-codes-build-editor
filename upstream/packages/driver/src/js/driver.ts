@@ -544,7 +544,7 @@ export class Driver {
       },
       onLayoutChange: () => {},
       onFullscreenToggle: () => {
-        // Keep the shell's header controls available while fullscreen is open.
+        // Header mode owns its own control; retain fullscreen for the default in-canvas toolbar.
         if (toolbarTarget) void toggleFullscreen(document.documentElement);
         else void this.toggleFullscreen();
       },

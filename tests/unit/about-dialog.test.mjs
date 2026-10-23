@@ -12,12 +12,15 @@ const entities = { copy: "©", middot: "·", iacute: "í", amp: "&", nbsp: " " }
 const text = (markup) => markup.replace(/<[^>]+>/g, "").replace(/&(\w+);/g, (_, name) => entities[name] ?? `&${name};`).replace(/\s+/g, " ").trim();
 const attribute = (tag, name) => tag.match(new RegExp(`\\s${name}="([^"]*)"`))?.[1];
 
-test("About sits between Launch and the PoB toolbar with an accessible icon button", () => {
+test("About follows the build actions and precedes the PoB toolbar with an accessible icon button", () => {
   const actions = html.match(/<div class="site-header-actions">([\s\S]*?)\n {8}<\/div>/)?.[1] ?? "";
+  const fullscreen = actions.indexOf('id="fullscreen"');
+  const desktop = actions.indexOf('id="desktop-pob"');
   const launch = actions.indexOf('id="launch-build"');
   const about = actions.indexOf('id="about-legal"');
   const toolbar = actions.indexOf('id="editor-accessibility"');
-  assert.ok(launch >= 0 && launch < about && about < toolbar, "About must follow Launch and precede the toolbar");
+  assert.ok(fullscreen >= 0 && fullscreen < desktop && desktop < launch && launch < about && about < toolbar,
+    "About must follow the ordered actions and precede the toolbar");
   const button = actions.match(/<button id="about-legal"[^>]*>/)[0];
   assert.equal(attribute(button, "type"), "button");
   assert.equal(attribute(button, "aria-haspopup"), "dialog");
