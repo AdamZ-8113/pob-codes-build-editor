@@ -13,7 +13,7 @@ export const manifest = Object.freeze({
   // These are LF-normalized source locks, not generated artifact identities.
   sourceLocks: Object.freeze({
     'upstream/packages/driver/CMakeLists.txt': 'be5e62d44921b7848b012c0cba54ea903e2d95bd1da5b8d0ae9a7a08dba69a85',
-    'upstream/packages/driver/helper-boot.lua': 'f091264014ddc8c75b98c992364a923adda18211c70c3eb7cb973d6bec0b7e81',
+    'upstream/packages/driver/helper-boot.lua': '1455f5c0cefd53a36aabfbe280daaf99f5c9c27fb9ce9eca00c2be993442b2c2',
     'upstream/packages/driver/runtime-profile.lua': '0754e88caf7c26fc41eef767da742d078acd748f7dbca927336dfb88a4083e21',
     'Modules/CalcDefence.lua': '9e82a0c71ebb4b6005c6fd850ea0057cf2e6668c3c8e480b8d5310149d3db331',
   }),

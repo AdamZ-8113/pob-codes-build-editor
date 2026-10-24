@@ -1,10 +1,11 @@
 return function(install)
     local native = collectgarbage
-    local calls, current = {}, 400
+    local calls, current, heapKiB = {}, 400, 123
     local original = function(option, ...)
         calls[#calls+1] = {option, ...}
         if option == 'setpause' then local old=current; current=(...); return old end
         if option == 'invalid' then error('original GC error') end
+        if option == 'count' then return heapKiB, 'second return' end
         return 123, 'second return'
     end
     collectgarbage = original
@@ -24,7 +25,7 @@ return function(install)
     -- Helpers lower the pause before node-power import and restore the caller's
     -- configured unique-sort pause, including the original unwrapped policy.
     for _, configured in ipairs({100,200,400}) do
-        collectgarbage, current, calls = original, 400, {}
+        collectgarbage, current, calls, heapKiB = original, 400, {}, 123
         install('helper', configured)
         local policy = runtimeGCPolicy
         assert(policy.pause==configured and policy.configuredPause==configured)
@@ -48,10 +49,17 @@ return function(install)
         policy.applyWorkload('unique')
         assert(current==configured)
         assert(not pcall(policy.applyWorkload,'unknown'))
+        heapKiB=650*1024-1
+        local before=#calls
+        assert(not policy.collectUniqueBatch() and #calls==before+1 and calls[#calls][1]=='count')
+        heapKiB=650*1024
+        before=#calls
+        assert(policy.collectUniqueBatch() and #calls==before+2 and calls[#calls-1][1]=='count' and calls[#calls][1]=='collect')
     end
     collectgarbage=original
     install('ui',200)
     assert(not pcall(runtimeGCPolicy.applyWorkload,'nodePower') and current==200)
+    assert(not pcall(runtimeGCPolicy.collectUniqueBatch))
     for _,pause in ipairs({0,99,401,200.5,math.huge,'200'}) do assert(not pcall(install,'ui',pause)) end
     assert(not pcall(install,'unknown',200))
     collectgarbage = native

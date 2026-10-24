@@ -20,6 +20,12 @@ return function(role, pause)
         local activePause = kind == 'nodePower' and 100 or pause
         if policy.pause ~= activePause then apply(activePause) end
     end
+    policy.collectUniqueBatch = function()
+        assert(role == 'helper', 'Unique batch collection requires a helper runtime')
+        if original('count') < 650 * 1024 then return false end
+        original('collect')
+        return true
+    end
     -- Preserve original-policy boot and restore its unwrapped function when a
     -- helper returns from node-power work to its configured unique-sort policy.
     if pause ~= 400 then apply(pause) end

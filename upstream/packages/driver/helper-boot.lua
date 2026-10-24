@@ -134,6 +134,6 @@ function helperCall(text)
         result[index] = value == -math.huge and '-inf' or string.format('%.17g', value)
     end
     local encoded = json.encode(result)
-    collectgarbage('collect')
+    runtimeGCPolicy.collectUniqueBatch()
     return encoded
 end
