@@ -36,6 +36,7 @@ return function(build)
         local id = BeginUniqueSort(json.encode({identity=tostring(buildEpoch)..':'..tostring(revision), xml=xml,
             sortMode=mode, weaponSet=weaponSet, items=items}))
         local result, localIndex, remoteDone = {}, 1, false
+        local remoteProgress = 0
         local calc = self.itemsTab.build.calcsTab:GetMiscCalculator(self.build)
         while true do
             if epoch ~= buildEpoch or current ~= generation or build.outputRevision ~= revision or
@@ -46,14 +47,24 @@ return function(build)
             local reply = not remoteDone and PollUniqueSort(id)
             if reply then
                 local values = json.decode(reply)
-                if type(values) ~= 'table' or #values ~= #remoteItems then return end
-                for index, item in ipairs(remoteItems) do
-                    local value = values[index]
-                    value = value == '-inf' and -math.huge or tonumber(value)
-                    if type(value) ~= 'number' then return end
-                    result[item] = value
+                if type(values) == 'table' and values.completed ~= nil then
+                    local count = values.completed
+                    if type(count) ~= 'number' or count ~= math.floor(count) or count < remoteProgress or count > #remoteItems then
+                        CancelUniqueSort()
+                        return
+                    end
+                    remoteProgress = count
+                else
+                    if type(values) ~= 'table' or #values ~= #remoteItems then return end
+                    for index, item in ipairs(remoteItems) do
+                        local value = values[index]
+                        value = value == '-inf' and -math.huge or tonumber(value)
+                        if type(value) ~= 'number' then return end
+                        result[item] = value
+                    end
+                    remoteDone = true
+                    remoteProgress = #remoteItems
                 end
-                remoteDone = true
             end
             -- Use the already-loaded UI instance for one equal share. Only
             -- scheduling lives here; PoB's shared evaluator owns every score.
@@ -65,8 +76,8 @@ return function(build)
                 if GetTime() >= deadline then break end
             end
             if remoteDone and localIndex > #localItems then return result end
-            local completed = localIndex - 1 + (remoteDone and #remoteItems or 0)
-            self.defaultText = string.format('^7Sorting... (%d%%)', math.floor(completed / #list * 100))
+            local completed = localIndex - 1 + remoteProgress
+            self.defaultText = string.format('^7Sorting... (%d%%)', math.min(99, math.floor(completed / #list * 100)))
             coroutine.yield()
         end
     end

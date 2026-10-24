@@ -234,8 +234,8 @@ export class Driver {
             if ('kind' in job && job.kind === 'nodePower' &&
                 (this.build !== 'release' || !this.nodePowerHelpers)) return Promise.resolve(null);
             return this.helpers?.run(job, completed => {
-              if ('kind' in job && job.kind === 'nodePower' && requestId !== undefined) {
-                void this.driverWorker?.reportNodePowerProgress(requestId, completed).catch(() => {});
+              if (requestId !== undefined) {
+                void this.driverWorker?.reportHelperProgress(requestId, completed).catch(() => {});
               }
             }) ?? Promise.resolve(null);
           }),

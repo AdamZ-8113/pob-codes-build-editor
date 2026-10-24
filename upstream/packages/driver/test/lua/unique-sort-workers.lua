@@ -10,10 +10,10 @@ return function(install)
     CancelUniqueSort = function() cancellations = cancellations + 1 end
     BeginUniqueSort = function() return 1 end
     PollUniqueSort = function() return reply and 'encoded reply' end
-    local function setup()
+    local function setup(count)
         reply = nil
         local list, db = {}, {db={list={}}, sortMode='Life', sortDetail={stat='Life'}}
-        for i = 1, 25 do
+        for i = 1, count or 25 do
             local item = {index=i, BuildRaw=function() return 'raw-' .. i end}
             list[i], db.db.list['key-'..i] = item, item
         end
@@ -44,6 +44,13 @@ return function(install)
     assert(db.defaultText=='^7Sorting... (24%)', 'Waiting does not invent helper progress')
     assert(sent.xml=='complete build XML' and sent.sortMode=='Life' and #sent.items==19)
     assert(sent.items[1].key=='key-1' and sent.items[1].raw=='raw-1')
+    for _, update in ipairs({{0,24}, {5,44}, {5,44}, {18,96}, {19,99}, {19,99}}) do
+        reply={completed=update[1]}
+        local progressOk, premature=coroutine.resume(co)
+        assert(progressOk and premature==nil and coroutine.status(co)=='suspended')
+        assert(db.defaultText==string.format('^7Sorting... (%d%%)',update[2]),
+            'Count completed chunks without completing the sort before its results arrive')
+    end
     reply = {}; for i,item in ipairs(sent.items) do reply[i]=item.key:match('%d+') end; reply[1],reply[2]='0','-inf'
     local ok, values = coroutine.resume(co); assert(ok, values)
     assert(values[list[1]]==0 and values[list[2]]==-math.huge and values[list[25]]==25)
@@ -52,6 +59,29 @@ return function(install)
     reply={}; for i=1,19 do reply[i]=string.format('%.17g', precise) end
     local exactOk,exactValues=coroutine.resume(exactPending)
     assert(exactOk and exactValues[exactList[1]]==precise)
+    -- A final reply replaces the chunk count even if UI work is still pending.
+    local _, largeDB, largeList, largeStart=setup(800); local largePending=largeStart()
+    reply={completed=25}
+    local progressOk=coroutine.resume(largePending); assert(progressOk)
+    assert(largeDB.defaultText=='^7Sorting... (11%)')
+    reply={}; for i,item in ipairs(sent.items) do reply[i]=item.key:match('%d+') end
+    local finalOk, largeValues=coroutine.resume(largePending); assert(finalOk and largeValues==nil)
+    assert(largeDB.defaultText=='^7Sorting... (88%)', 'The final batch does not double-count completed chunks')
+    repeat finalOk,largeValues=coroutine.resume(largePending); assert(finalOk,largeValues)
+    until coroutine.status(largePending)=='dead'
+    for i,item in ipairs(largeList) do assert(largeValues[item]==i) end
+    for _, invalid in ipairs({-1, 1.5, '1', 20, 0/0, math.huge, false}) do
+        local _,_,_,begin=setup(); local pending=begin(); local before=cancellations
+        reply={completed=invalid}
+        local success, rejected=coroutine.resume(pending)
+        assert(success and rejected==nil and coroutine.status(pending)=='dead' and cancellations>before)
+    end
+    local _,_,_,begin=setup(); local regressing=begin()
+    reply={completed=5}; assert(coroutine.resume(regressing))
+    local before=cancellations
+    reply={completed=4}
+    local regressed, rejected=coroutine.resume(regressing)
+    assert(regressed and rejected==nil and coroutine.status(regressing)=='dead' and cancellations>before)
     for _, mutate in ipairs({
         function(b) b.outputRevision=b.outputRevision+1 end,
         function(_,d) d.sortMode='Armour' end,
@@ -61,10 +91,12 @@ return function(install)
     }) do
         local b,d,_,s=setup(); local pending=s(); local previous=cancellations
         mutate(b,d,s)
-        reply={}; for i=1,25 do reply[i]=999 end
+        reply={completed=19}
         local success, stale=coroutine.resume(pending); assert(success and stale==nil)
         assert(cancellations>previous)
     end
+    local _, freshDB, _, freshStart=setup(); freshStart()
+    assert(freshDB.defaultText=='^7Sorting... (24%)', 'Replacement sorts start with their own completed count')
     local _,_,_,s=setup(); local pending=s(); reply={1,2}
     local success, malformed=coroutine.resume(pending); assert(success and malformed==nil)
 end

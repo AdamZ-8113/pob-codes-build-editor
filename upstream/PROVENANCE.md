@@ -621,7 +621,9 @@ respects dismissal, restores the indicator when reopening a pending heatmap,
 and removes stale report toasts on build replacement/shutdown. This changes no
 calculation scheduling or helper policy; PoB's existing toast throttle applies.
 The unique-item sorting adapter likewise displays the percentage of evaluated
-items while waiting, counting UI evaluations and validated helper replies.
+items while waiting, counting UI evaluations and each validated helper chunk
+through the same request-scoped progress channel. It rejects invalid or regressing
+counts, counts final replies once, and stays below 100% until results are ready.
 
 If helpers finish before the UI share, one handoff moves at least 25 remaining
 serializable evaluations to the idle pool. Completed evaluations keep their

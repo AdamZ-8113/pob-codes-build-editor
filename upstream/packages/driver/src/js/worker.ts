@@ -78,9 +78,9 @@ type Imports = {
 
 export class DriverWorker {
   private uniqueHelpersEnabled = 0;
-  private nodePowerProgress?: { id: number; total: number; completed: number; finished: boolean };
-  reportNodePowerProgress(id: number, completed: number) {
-    const progress = this.nodePowerProgress;
+  private helperProgress?: { id: number; total: number; completed: number; finished: boolean };
+  reportHelperProgress(id: number, completed: number) {
+    const progress = this.helperProgress;
     if (!progress || progress.id !== id || progress.finished || !Number.isSafeInteger(completed) ||
         completed <= progress.completed || completed > progress.total) return;
     progress.completed = completed;
@@ -244,17 +244,16 @@ export class DriverWorker {
       nodePowerAvailable: () => this.nodePowerHelpersEnabled ? this.uniqueHelpersEnabled : 0,
       cancelUniqueSort: () => {
         sortSequence++; sortReplies.clear();
-        this.nodePowerProgress = undefined;
+        this.helperProgress = undefined;
         void sortRequest(null).catch(() => {});
       },
       beginUniqueSort: (text: string) => {
         const id = ++sortSequence; sortReplies.clear();
         const job = { ...JSON.parse(text), uiBytes: module.HEAPU8.buffer.byteLength };
-        this.nodePowerProgress = job.kind === 'nodePower'
-          ? { id, total: job.items.length, completed: 0, finished: false } : undefined;
+        this.helperProgress = { id, total: job.items.length, completed: 0, finished: false };
         const finish = (value: string) => {
           if (id !== sortSequence) return;
-          if (this.nodePowerProgress) this.nodePowerProgress.finished = true;
+          if (this.helperProgress) this.helperProgress.finished = true;
           sortReplies.set(id, value); this.invalidate();
         };
         void sortRequest(job, id).then(values => finish(JSON.stringify(values)), () => finish('null'));
@@ -265,7 +264,7 @@ export class DriverWorker {
         const value = sortReplies.get(id);
         if (value !== undefined) sortReplies.delete(id);
         if (value !== undefined) return value;
-        const progress = this.nodePowerProgress;
+        const progress = this.helperProgress;
         if (progress && !progress.finished) return JSON.stringify({ completed: progress.completed });
       },
     });

@@ -49,10 +49,13 @@ try {
         const response = await route.fetch(), source = await response.text();
         const marker = 'sortRequest(job, id)';
         assert.ok(source.includes(marker)); heldReply = true;
+        const profileMarker = 'const samples = JSON.parse(profile);';
+        assert.ok(source.includes(profileMarker));
         // Guarantee a waiting interval even on fast machines. Work still runs
         // through the real pool, then its result is delayed only in this test.
-        await route.fulfill({response, body:source.replace(marker,
-          `Promise.all([${marker}, new Promise(resolve => setTimeout(resolve, 3000))]).then(([values]) => values)`)});
+        await route.fulfill({response, body:source.replace(profileMarker,
+          `${profileMarker}\n samples.testHelperProgress = this.helperProgress && {...this.helperProgress};`).replace(marker,
+          `${marker}.then(values => new Promise(resolve => setTimeout(() => resolve(values), 3000)))`)});
       });
       const page = await context.newPage(), faults = [];
       page.on('pageerror', error => faults.push(error.name));
@@ -61,7 +64,10 @@ try {
       await page.evaluate(code => window.__DESKTOP_POB__.loadBuildFromCode(code), input.buildCode);
       const flush = () => page.evaluate(() => window.__DESKTOP_POB__.flushInput());
       const profile = () => page.evaluate(() => window.__DESKTOP_POB__.getRuntimeProfile());
-      const state = async () => (await profile()).samples.nodePower;
+      const state = async () => {
+        const {samples} = await profile();
+        return {...samples.nodePower, helperProgress:samples.testHelperProgress};
+      };
       const click = async (x,y) => {
         const canvas = page.locator('canvas'), bounds = await canvas.boundingBox();
         const [width,height] = await canvas.evaluate(c => [c.width,c.height]);
@@ -151,6 +157,11 @@ try {
         const sorting = await until(s => s.itemSortPending && /Sorting\.\.\. \(([1-9]\d*)%\)/.test(s.itemSortMessage),
           'Items sorting displays measured percentage before completion');
         assert.match(sorting.itemSortMessage,/^\^7Sorting\.\.\. \(\d+%\)$/);
+        const chunks = await until(s => s.itemSortPending && s.helperProgress?.completed > 0 &&
+          !s.helperProgress.finished && Number(s.itemSortMessage?.match(/\((\d+)%\)/)?.[1]) > 50,
+          'Completed item-sort chunks advance beyond the UI share before the batch returns');
+        assert.ok(Number(chunks.itemSortMessage.match(/\((\d+)%\)/)[1]) < 100,
+          'Sorting stays below 100% until results arrive');
         const sorted = await until(s => !s.itemSortPending, 'Unique item sorting completes');
         assert.ok(sorted.itemCount > 0);
         console.log('Items sorting percentage and completion with helpers passed');
