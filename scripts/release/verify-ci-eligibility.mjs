@@ -4,7 +4,8 @@ import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 export const CI_WORKFLOW_PATH = ".github/workflows/ci.yml";
-export const REQUIRED_CI_JOBS = ["fast-gates", "native-and-browser", "browser-harnesses"];
+export const REQUIRED_CI_JOBS = ["fast-gates", "native-and-browser", "browser-harnesses",
+  "browser-harnesses-comparisons", "browser-harnesses-interaction-and-loading"];
 const MAX_CANDIDATE_ARTIFACT_BYTES = 1_400 * 1024 * 1024;
 
 const fullSha = value => /^[a-f0-9]{40}$/.test(value);
@@ -31,7 +32,7 @@ export function verifyRequiredCiJobs(jobs, runAttempt) {
   for (const name of REQUIRED_CI_JOBS) {
     const matches = jobs.filter((job) => job.name === name && Number(job.run_attempt) === Number(runAttempt));
     if (matches.length !== 1 || matches[0].status !== "completed" || matches[0].conclusion !== "success") {
-      throw new Error(`Required ci.yml job did not complete successfully in attempt ${runAttempt}: ${name}`);
+      throw new Error(`Required ci.yml job did not complete successfully in attempt ${runAttempt}: ${name}. Rerun the complete CI workflow; partial attempts cannot authorize a release.`);
     }
   }
 }

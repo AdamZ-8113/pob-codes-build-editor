@@ -38,8 +38,16 @@ test("runner selects only registered harnesses", () => {
   assert.equal(selectHarnesses(registry, ["--all"]).length, discovered.length);
   assert.deepEqual(selectHarnesses(registry, ["--only", "test-header"]), ["test-header.mjs"]);
   assert.deepEqual(selectHarnesses(registry, ["--only", "test-lan-dev.mjs"]), ["test-lan-dev.mjs"]);
-  for (const args of [["--only"], ["--only", "../test-unknown"], ["--all", "--only", "test-header"]]) {
+  for (const [group, files] of Object.entries(registry.groups)) assert.deepEqual(selectHarnesses(registry, ["--group", group]), files);
+  for (const args of [["--only"], ["--only", "../test-unknown"], ["--all", "--only", "test-header"], ["--group", "missing"], ["--group", "__proto__"]]) {
     assert.throws(() => selectHarnesses(registry, args), /Usage:/);
+  }
+});
+
+test("CI groups partition all required harnesses and exclude manual tests", () => {
+  for (const groups of [undefined, {}, { one: [] }, { one: registry.ci.slice(1) },
+    { one: registry.ci, duplicate: [registry.ci[0]] }, { one: [...registry.ci, "test-header.mjs"] }]) {
+    assert.throws(() => validateRegistry({ ...registry, groups }, discovered), /partition/);
   }
 });
 
@@ -67,12 +75,12 @@ test("runner refuses an occupied loopback port without replacing its listener", 
 
 test("CI discovers the registered browser command in an independently prepared job", async () => {
   const workflow = await readFile(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8");
-  const jobStart = workflow.indexOf("\n  browser-harnesses:");
+  const jobStart = workflow.indexOf("\n  browser-harness-group:");
   assert.ok(jobStart > 0, "Dedicated browser harness job must exist");
   const harnessJob = workflow.slice(jobStart);
   assert.match(harnessJob, /persist-credentials: false/);
   assert.match(harnessJob, /npm ci --ignore-scripts/);
-  for (const command of ["npm run prepare", "npm run test:native", "npm run pack", "playwright install --with-deps chromium"]) {
+  for (const command of ["npm run prepare", "node scripts/build/build-runtime.mjs", "npm run pack", "playwright install --with-deps chromium"]) {
     assert.ok(harnessJob.indexOf(command) >= 0 && harnessJob.indexOf(command) < harnessJob.indexOf("npm run test:browser"), command);
   }
   assert.match(harnessJob, /BUILD_EDITOR_BROWSER_CHANNEL:\s*""/);
@@ -81,8 +89,18 @@ test("CI discovers the registered browser command in an independently prepared j
   // the actual runner result and must be visible in the job log and summary.
   assert.match(harnessJob, /if: always\(\)[\s\S]*steps\.browser-harnesses\.outcome/);
   assert.match(harnessJob, /GITHUB_STEP_SUMMARY/);
+  assert.doesNotMatch(harnessJob, /npm run test:native|build-runtime\.mjs --test/);
+  assert.match(harnessJob, /fail-fast: false/);
+  assert.match(harnessJob, /npm run test:browser -- --group \$\{\{ matrix.group \}\}/);
+  assert.match(harnessJob, /group: \[comparisons, interaction-and-loading\]/);
+  assert.deepEqual(Object.keys(registry.groups), ["comparisons", "interaction-and-loading"]);
+  const aggregate = workflow.slice(workflow.indexOf("\n  browser-harnesses:"));
+  assert.match(aggregate, /if: always\(\)/);
+  assert.match(aggregate, /needs: \[browser-harness-group\]/);
+  assert.match(aggregate, /test "\$GROUP_RESULT" = success/);
   const nativeJob = workflow.slice(workflow.indexOf("\n  native-and-browser:"), jobStart);
   assert.match(nativeJob, /npm run test:e2e:release/);
+  assert.match(nativeJob, /npm run test:native/);
   assert.doesNotMatch(nativeJob, /npm run test:browser/);
   const scripts = JSON.parse(await readFile(new URL("../../package.json", import.meta.url), "utf8")).scripts;
   assert.equal(scripts["test:browser"], "node scripts/test-browser.mjs");

@@ -7,6 +7,10 @@
     "test-startup-paths.mjs",
     "test-unique-database.mjs"
   ],
+  "groups": {
+    "comparisons": ["test-item-comparisons.mjs", "test-unique-database.mjs"],
+    "interaction-and-loading": ["test-about-dialog.mjs", "test-input-latency.mjs", "test-payload-browser.mjs", "test-startup-paths.mjs"]
+  },
   "localOnly": {
     "test-tree-connector-culling.mjs": "Original/live/retained tree pixels during and after drags, cache cleanup and profiling at DPR 1/2; run for tree geometry, culling or retained drawing changes with the real packed runtime.",
     "test-build-folder-import.mjs": "Feature-specific real-OPFS transaction and injected-failure acceptance; run while changing the import commit or recovery protocol.",

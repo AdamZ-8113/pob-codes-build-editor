@@ -114,10 +114,15 @@ jobs:
           echo "- Source: CI run $GITHUB_RUN_ID attempt $GITHUB_RUN_ATTEMPT at $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
           echo "- Artifact: $ARTIFACT_ID ($ARTIFACT_DIGEST)" >> "$GITHUB_STEP_SUMMARY"
 
-  browser-harnesses:
+  browser-harness-group:
+    name: browser-harnesses-${{ matrix.group }}
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'runtime')
     runs-on: ubuntu-24.04
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        group: [comparisons, interaction-and-loading]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
         with:
@@ -131,14 +136,16 @@ jobs:
           deno-version: v2.7.12
       - run: npm ci --ignore-scripts
       - run: npm run prepare
-      - run: npm run test:native
+      # Native tests run once in native-and-browser. This lane needs only the
+      # interpreter and payload to exercise the real browser integration.
+      - run: node scripts/build/build-runtime.mjs
       - run: npm run pack
       - run: npx playwright install --with-deps chromium
       - name: Run development browser harnesses
         id: browser-harnesses
         env:
           BUILD_EDITOR_BROWSER_CHANNEL: ""
-        run: npm run test:browser
+        run: npm run test:browser -- --group ${{ matrix.group }}
       - name: Report development browser harness outcome
         if: always()
         env:
@@ -146,3 +153,13 @@ jobs:
         run: |
           echo "Development browser harnesses: $HARNESS_OUTCOME"
           echo "Development browser harnesses: $HARNESS_OUTCOME" >> "$GITHUB_STEP_SUMMARY"
+
+  browser-harnesses:
+    if: always() && (github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'runtime'))
+    needs: [browser-harness-group]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Require every browser group to succeed
+        env:
+          GROUP_RESULT: ${{ needs.browser-harness-group.result }}
+        run: test "$GROUP_RESULT" = success

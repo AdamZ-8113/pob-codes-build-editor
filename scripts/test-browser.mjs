@@ -21,6 +21,11 @@ export function validateRegistry(registry, discovered) {
       Object.values(localOnly).some(reason => typeof reason !== "string" || !reason.trim())) {
     throw new Error("Browser harness registry is stale: classify every harness exactly once and explain local-only entries");
   }
+  if (!registry.groups || Array.isArray(registry.groups) || typeof registry.groups !== "object" ||
+      Object.entries(registry.groups).some(([name, files]) => !/^[a-z][a-z0-9-]*$/.test(name) || !Array.isArray(files) || !files.length) ||
+      JSON.stringify(Object.values(registry.groups).flat().sort()) !== JSON.stringify([...ci].sort())) {
+    throw new Error("Browser harness groups must partition the CI set exactly once");
+  }
   return registry;
 }
 
@@ -40,7 +45,8 @@ export function selectHarnesses(registry, args) {
     const name = args[1].endsWith(".mjs") ? args[1] : `${args[1]}.mjs`;
     if (registry.ci.includes(name) || Object.hasOwn(registry.localOnly, name)) return [name];
   }
-  throw new Error("Usage: npm run test:browser -- [--all | --only <test-name>]");
+  if (args.length === 2 && args[0] === "--group" && Object.hasOwn(registry.groups, args[1])) return registry.groups[args[1]];
+  throw new Error("Usage: npm run test:browser -- [--all | --only <test-name> | --group <group-name>]");
 }
 
 async function portIsListening() {

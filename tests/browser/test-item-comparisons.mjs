@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { inflateSync } from 'node:zlib';
 import { browserChannel } from '../../scripts/lib/browser-channel.mjs';
+import { pasteNativeText, timedNativePhase } from '../helpers/native-input.mjs';
 
 const origin = process.env.DESKTOP_POB_ORIGIN || 'http://127.0.0.1:3010';
 const code = (await readFile(new URL('../../fixtures/guided import parity desktop 329.txt', import.meta.url), 'utf8')).trim();
@@ -14,6 +15,7 @@ const baseline = new Map();
 try {
   for (const background of [false, true]) {
     const context = await browser.newContext({viewport: {width: 1600, height: 1000}});
+    await context.grantPermissions(['clipboard-read', 'clipboard-write'], { origin });
     const page = await context.newPage();
     const errors = [];
     page.on('pageerror', error => errors.push(error.message));
@@ -25,6 +27,7 @@ try {
       await route.continue();
     });
     try {
+      const startupAt = performance.now();
       await page.goto(`${origin}/?payloadPrefetch=0&helpers=0&itemComparisons=${background ? 1 : 0}`);
       await page.waitForFunction(() => window.__DESKTOP_POB__?.ready, null, {timeout: 120_000});
       await page.evaluate(code => window.__DESKTOP_POB__.loadBuildFromCode(code), code);
@@ -34,6 +37,7 @@ try {
         return [...xml.matchAll(/<PlayerStat\b[^>]*>/g)].map(match => match[0]).sort();
       };
       const initial = await stats();
+      console.log(JSON.stringify({phase: 'startup-import', background, ms: Math.round(performance.now() - startupAt)}));
       await page.keyboard.press('Control+3');
       const flush = () => page.evaluate(() => window.__DESKTOP_POB__.flushInput());
       const profile = () => page.evaluate(() => window.__DESKTOP_POB__.getRuntimeProfile());
@@ -55,8 +59,7 @@ try {
         const p = await point(x + w / 2, y + h / 2);
         await page.mouse.click(p.x, p.y);
         await page.keyboard.press('Control+a');
-        await page.keyboard.type(name);
-        await flush();
+        await timedNativePhase('search-input', () => pasteNativeText(page, name), {background, name});
         const state = await profile();
         assert(state.samples.uniqueDbCount > 0, name);
         const [dx,dy,dw] = state.samples.uniqueDbBounds;
@@ -68,7 +71,16 @@ try {
         const [,,,,x,y,w,h] = (await profile()).samples.itemListTooltip.bounds;
         const p = await point(x + w / 2, y + h / 2);
         await page.mouse.click(p.x, p.y);
-        await page.keyboard.press('Control+a'); await page.keyboard.type(name); await flush();
+        await page.keyboard.press('Control+a');
+        await timedNativePhase('owned-input', async () => {
+          // Keep a real character edit, then paste the rest into the focused
+          // native field. Exact tooltip parity below checks the selected item.
+          if (name === 'Demon Barb') {
+            await page.keyboard.type('D');
+            await flush();
+            await pasteNativeText(page, name.slice(1));
+          } else await pasteNativeText(page, name);
+        }, {background, name});
         const before = (await profile()).samples.itemComparisons;
         const [dx,dy,dw] = (await profile()).samples.itemListTooltip.bounds;
         const hover = await point(dx + dw / 2, dy + 8);
@@ -141,6 +153,6 @@ try {
       assert.deepEqual(await stats(), initial, 'Comparisons do not change player stats');
       assert.deepEqual(errors, []);
       assert.deepEqual(await page.evaluate(() => window.__DESKTOP_POB__.errors), []);
-    } finally { release(); await context.close(); }
+    } finally { release(); await timedNativePhase('context-teardown', () => context.close(), {background}); }
   }
 } finally { await browser.close(); }

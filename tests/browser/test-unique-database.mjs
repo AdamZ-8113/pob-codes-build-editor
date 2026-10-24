@@ -3,6 +3,7 @@ import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
 import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { inflateSync } from "node:zlib";
+import { pasteNativeText, timedNativePhase } from "../helpers/native-input.mjs";
 
 // The optional private build stays in the caller's file. Reports contain only
 // public database names, timings and aggregate diagnostics, never build XML.
@@ -11,6 +12,13 @@ const fixture = buildFile ?? new URL("../../fixtures/guided import parity deskto
 const code = (await readFile(fixture, "utf8")).trim();
 const browser = await chromium.launch({ headless: true, channel: browserChannel() });
 const faults = [];
+const timings = {};
+let phaseStarted = performance.now();
+const endPhase = name => {
+  timings[name] = Math.round(performance.now() - phaseStarted);
+  console.log(JSON.stringify({ phase: name, ms: timings[name] }));
+  phaseStarted = performance.now();
+};
 let diagnosticPage;
 const families = [
   "Glorious Vanity", "Lethal Pride", "Brutal Restraint", "Militant Faith", "Elegant Hubris", "Heroic Tragedy",
@@ -18,6 +26,7 @@ const families = [
 ];
 try {
   const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: "http://127.0.0.1:3010" });
   diagnosticPage = page;
   page.on("pageerror", error => faults.push(error.message));
   await page.goto("http://127.0.0.1:3010");
@@ -33,6 +42,7 @@ try {
   await page.keyboard.press("Control+3");
   await flush();
   const before = await profile();
+  endPhase("startup-import");
   assert.equal(before.samples.uniqueDbBounds.length, 8, "Native Items database bounds must be available");
   const point = async (x, y) => {
     const canvas = page.locator("canvas");
@@ -45,7 +55,7 @@ try {
     const p = await point(x + w / 2, y + h / 2);
     await page.mouse.click(p.x, p.y);
     await page.keyboard.press("Control+a");
-    if (text) await page.keyboard.type(text);
+    if (text) await timedNativePhase("search-input", () => pasteNativeText(page, text));
     else await page.keyboard.press("Backspace");
     await flush();
   };
@@ -74,6 +84,7 @@ try {
     hovered.push({ family: index + 1, maxFrameMs: Math.max(0, ...frames.map(frame => frame.duration)),
       luaKiB: state.samples.luaKiB, wasmBytes: state.wasmBytes });
   }
+  endPhase("all-eleven-family-comparisons");
   await search("");
   const [x,y,w,h] = (await profile()).samples.uniqueDbBounds;
   const p = await point(x + w / 2, y + h / 2);
@@ -84,12 +95,13 @@ try {
       await flush();
     }
   }
+  endPhase("scroll-120-events");
   assert.deepEqual(await stats(), initialStats, "Unique database hover/scroll must preserve every exported player stat");
   assert.deepEqual(await page.evaluate(() => window.__DESKTOP_POB__.errors), []);
   assert.deepEqual(faults, []);
   const after = await profile();
   assert.equal(after.samples.timelessLoadedMask, before.samples.timelessLoadedMask, "Hover datasets stay off the UI worker");
-  const report = { allElevenFamiliesCompared: true, scrollSteps: 120, statsUnchanged: true, faults,
+  const report = { allElevenFamiliesCompared: true, scrollSteps: 120, statsUnchanged: true, faults, timings,
     before: { luaKiB: before.samples.luaKiB, wasmBytes: before.wasmBytes }, hovered,
     after: { luaKiB: after.samples.luaKiB, wasmBytes: after.wasmBytes } };
   if (outputFile) await writeFile(outputFile, JSON.stringify(report, null, 2) + "\n");
@@ -102,4 +114,5 @@ try {
   throw error;
 } finally {
   await browser.close();
+  endPhase("verification-and-teardown");
 }

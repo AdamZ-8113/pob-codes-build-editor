@@ -5,6 +5,7 @@ import { join } from "node:path";
 import test from "node:test";
 import {
   ciCandidateArtifactName,
+  REQUIRED_CI_JOBS,
   selectCiCandidateArtifact,
   selectEligibleCiRun,
   verifyRequiredCiJobs,
@@ -35,7 +36,7 @@ test("drift workflow has only read authority and uploads only its data report ev
   }
 });
 
-test("release CI eligibility requires an exact successful push/main run and all three required jobs", () => {
+test("release CI eligibility requires an exact successful push/main run, both groups and aggregate", () => {
   const repository = "AdamZ-8113/pob-codes-build-editor";
   const identity = { path: ".github/workflows/ci.yml", repository: { full_name: repository }, head_repository: { full_name: repository } };
   assert.throws(() => selectEligibleCiRun([], sha), /No completed successful/);
@@ -55,7 +56,17 @@ test("release CI eligibility requires an exact successful push/main run and all 
   ];
   assert.throws(() => verifyRequiredCiJobs(existingJobs, 2), /browser-harnesses/);
   const browserJob = { name: "browser-harnesses", run_attempt: 2, status: "completed", conclusion: "success" };
-  verifyRequiredCiJobs([...existingJobs, browserJob], 2);
+  const groupJobs = REQUIRED_CI_JOBS.filter(name => name.startsWith("browser-harnesses-")).map(name => ({...browserJob, name}));
+  assert.equal(groupJobs.length, 2);
+  const complete = [...existingJobs, browserJob, ...groupJobs];
+  verifyRequiredCiJobs(complete, 2);
+  for (const job of groupJobs) {
+    assert.throws(() => verifyRequiredCiJobs(complete.filter(j => j !== job), 2), /browser-harnesses-/);
+    for (const changed of [{ conclusion: "skipped" }, { conclusion: "failure" }, { conclusion: "cancelled" }, { run_attempt: 1 }]) {
+      assert.throws(() => verifyRequiredCiJobs(complete.map(j => j === job ? {...j, ...changed} : j), 2), /partial attempts/);
+    }
+  }
+  assert.throws(() => verifyRequiredCiJobs(complete.map(j => j.name === "native-and-browser" ? {...j, run_attempt: 1} : j), 2), /complete CI/);
   assert.throws(() => verifyRequiredCiJobs([...existingJobs, { ...browserJob, run_attempt: 1 }], 2), /browser-harnesses/);
   for (const invalid of [
     { ...browserJob, conclusion: "failure" },

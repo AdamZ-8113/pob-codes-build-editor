@@ -137,8 +137,13 @@ For an upstream pin bump:
 - Driver, renderer or payload integration changes: add `npm run test:browser`
   for the registered development-server harnesses, after preparing and packing
   the runtime.
-- Release-path changes: run `npm run build:release` followed by
+- Release tree, archive, packaging or native acceptance changes: run `npm run build:release` followed by
   `npm run verify:release`, `npm run test:e2e:release`, and the release safety tests.
+- CI scheduling and release provenance selection without changed candidate
+  bytes: run `npm run check`, `npm run test:unit`, and the affected browser group.
+  The complete hosted native/browser release gates remain required before release.
+  Reuse unchanged local evidence across commit/push/release; commits themselves
+  do not automatically run tests. Expand for changed inputs or actual failures.
 
 Install the browser for candidate checks with `npx playwright install chromium`.
 The standalone harness registry in `tests/browser-harnesses.json` classifies
@@ -150,6 +155,13 @@ server on `127.0.0.1:3010`. Stop an existing server first and unset
 override. Each harness has a ten-minute deadline, including payload probes that
 deliberately wait for transport timeouts. The server is stopped on completion,
 failure, timeout or interruption.
+
+Use `npm run test:browser -- --group comparisons` or
+`npm run test:browser -- --group interaction-and-loading` for the two CI groups.
+The registry checks they cover the CI subset exactly once. `--only` and `--all`
+retain their existing meanings. CI uses isolated runners; do not run groups
+concurrently against the same local port. Avoid editing editor files during a
+measurement: the development server reloads clients when those files change.
 
 Local runs keep installed Chrome by default. Set
 `BUILD_EDITOR_BROWSER_CHANNEL` to an empty string to use Playwright's installed

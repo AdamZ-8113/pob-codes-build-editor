@@ -7,7 +7,9 @@ other production secrets. Source ownership and deployment authority are separate
 ## Build a candidate
 
 1. Select a full reviewed commit on public `main`. Its exact-SHA `ci.yml` push
-   run must pass `fast-gates`, `native-and-browser` and `browser-harnesses`.
+   run must pass `fast-gates`, `native-and-browser`, both named jobs
+   `browser-harnesses-comparisons` and `browser-harnesses-interaction-and-loading`,
+   and the final `browser-harnesses` aggregate in one complete attempt.
 2. On push/main, `native-and-browser` builds the release tree, inventory, record,
    and tar before running the release-browser suite. It verifies the tree and
    archive both before and after two consecutive browser acceptance runs with
@@ -17,27 +19,28 @@ other production secrets. Source ownership and deployment authority are separate
    eligible source candidate.
    Archives explicitly use POSIX PAX format on every platform so long asset
    paths pass the strict streaming verifier without GNU long-link headers.
-3. Dispatch the **Build Editor Release Artifact** workflow
-   (`.github/workflows/deploy-import2.yml`, retained filename for continuity)
-   from `main`, supplying `commit_sha`.
-4. The manual workflow selects one completed successful push/main CI run and
-   its exact attempt, requires all three jobs, resolves one unexpired candidate
-   by immutable artifact ID, and verifies the downloaded outer artifact digest.
-   It streams and checks every file in the inner tar against the inventory and
-   record before re-uploading the same three inner files. Promotion does not
-   install compilers or browsers, rebuild, or rerun tests.
-5. Download `build-editor-<full-sha>` or supply the successful promotion run ID and SHA to
-   the private deployment operator. The seven-day Actions artifact contains
-   one tarball, the complete file inventory, and the release record. The record
-   binds the tarball and inventory with SHA-256 hashes. The promotion artifact's
-   outer Actions digest is transport provenance and can differ from the CI
-   artifact digest; the inner tar, inventory, record, generation, and hashes
-   must remain byte-for-byte identical.
+3. Supply the exact CI run ID, attempt, immutable artifact ID and full public
+   SHA to the private deployment operator. Its own verifier checks the public
+   repository/workflow identity, required jobs, digest and complete inventory.
+   Direct CI intake is the normal handoff; no public promotion or separate
+   private dry run is required. The candidate remains data on the upload runner.
+4. For a consumer that explicitly needs legacy promotion transport, dispatch
+   **Build Editor Release Artifact** (`.github/workflows/deploy-import2.yml`)
+   from `main` with `commit_sha`. It independently verifies the complete CI
+   attempt and one unexpired candidate, then republishes the unchanged tar,
+   inventory and record as `build-editor-<full-sha>` without building or testing.
+   A different outer ZIP digest is transport provenance; all inner bytes and
+   generation identities must remain identical. Invalid direct-CI evidence
+   must never silently fall back to this compatibility path.
 
 If the CI candidate expires, rerun the complete producer workflow attempt so
 native, browser, and harness acceptance all execute again and a new
 attempt-qualified artifact is created. Do not use an old successful SHA or a
-partial rerun as a substitute, and do not fall back to rebuilding inside the
+partial rerun as a substitute. Even a successful "re-run failed jobs" is not
+release-eligible if the native producer or any required job remains in an older
+attempt. Use a complete rerun after diagnosing a transient runner/service
+failure; it repeats native and browser acceptance and their compute cost.
+Assertion failures require a repair commit. Do not fall back to rebuilding inside the
 promotion workflow.
 
 The workflow has read-only GitHub permissions apart from its own artifact
@@ -74,7 +77,8 @@ navigation and delay the new interpreter. Native save/reopen, padded export,
 sharing and character-import assertions retain their existing phase deadlines
 and fail-closed external request routing.
 
-Each main push retains one CI candidate for seven days, and each promoted SHA
+Each main push retains one CI candidate for seven days. Direct private intake
+creates no second public transport copy; each explicitly promoted SHA
 retains a second transport copy for seven days. With the current roughly
 0.57-GiB inner archive, that is about 4 GiB-days per CI candidate and another
 4 GiB-days for a promoted copy. The promotion summary records the actual source
@@ -106,7 +110,31 @@ which operation stalled before changing the runtime or its deadlines.
 
 The repeated CI suite adds one acceptance run without rebuilding the candidate.
 Do not increase phase deadlines, remove assertions, or promote failed or flaky
-candidates to resolve a timeout. Fresh exact-SHA CI and promotion remain required.
+candidates to resolve a timeout. Fresh exact-SHA CI remains required; promotion
+is optional transport.
+
+### Browser harness scheduling
+
+The six required development harnesses run in two isolated Ubuntu 24.04 jobs:
+item comparisons plus unique database, and the four input/loading harnesses.
+Each job builds the interpreter without rerunning the native test targets;
+`native-and-browser` remains their authority. Group membership is an exact
+partition of the required registry. A skipped or failed group fails release
+eligibility even if another job or aggregate is green. Separate runners avoid
+contending native browser workers on one machine.
+
+Search strings use real clipboard paste and native input draining. A short
+typed edit, input-latency harness and release-level edit retain keystroke
+coverage. All item/tooltip parity, stale/failure/retry cases, eleven jewel
+families, stats and UI-worker loading invariants remain. The 120-scroll traversal
+is retained: its local baseline was only 2.5 seconds. Phase timings isolate
+startup, input, comparisons and scrolling rather than adding timing thresholds.
+
+Choose parallelism against post-input-fix timings and the native lane's critical
+path, not historical typing cost alone. Two groups also isolate the four other
+harnesses' observed 190-second Linux duration. Reassess balance from the next
+normal CI run; do not create benchmark deployments or assert a Linux speedup
+from a warm Windows run. Sharing large intermediate runtime archives is deferred.
 
 ## Deployment boundary
 
@@ -114,7 +142,7 @@ Production deployment belongs to a separate private operator workflow. It must:
 
 - Fetch the candidate by exact public repository, successful workflow run and
   commit, verify GitHub's artifact digest and the complete archive inventory,
-  and independently confirm all three required CI jobs, the selected attempt,
+  and independently confirm every required CI job and browser group, the selected attempt,
   public producer artifact, repository/head repository, workflow, event, and
   source SHA. Private verification must be aligned to these producer checks
   before the optimized path is treated as fully rolled out.
