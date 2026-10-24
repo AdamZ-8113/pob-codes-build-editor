@@ -3,6 +3,9 @@
 #include "lauxlib.h"
 #include "lualib.h"
 
+extern const char *helper_entry_lua;
+extern const char *helper_unique_lua;
+extern const char *helper_unique_test_lua;
 extern const char *cache_lua;
 extern const char *cache_test_lua;
 extern const char *runtime_profile_lua;
@@ -29,6 +32,10 @@ extern const char *build_list_host_test_lua;
 int main(void) {
     lua_State *L = luaL_newstate();
     luaL_openlibs(L);
+    if (luaL_dostring(L, helper_unique_test_lua) != LUA_OK) goto failure;
+    if (luaL_dostring(L, helper_unique_lua) != LUA_OK) goto failure;
+    lua_pushstring(L, helper_entry_lua);
+    if (lua_pcall(L, 2, 0, 0) != LUA_OK) goto failure;
     if (luaL_dostring(L, gc_policy_test_lua) != LUA_OK) goto failure;
     if (luaL_dostring(L, gc_policy_lua) != LUA_OK) goto failure;
     if (lua_pcall(L, 1, 0, 0) != LUA_OK) goto failure;

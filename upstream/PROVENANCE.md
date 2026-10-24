@@ -401,6 +401,17 @@ per import/chunk request. Parsed candidate reuse is bounded by database keys;
 calculated scores are never cached by this integration. Scores use 17-digit
 strings across JSON to retain full double precision.
 
+Unique-sort helpers resolve missing catalogue membership through the embedded
+`helper-unique-catalogue.lua` adapter instead of completing the entire catalogue
+after import. A lazy title index narrows candidates using PoB's original text
+normalizers; the original Item constructor must verify the exact database key.
+Unresolved keys finish the original loader, including its timeout and rejection
+behavior. The index is recreated after each XML import for tree-dependent data.
+Scoring still parses the supplied raw item and uses the existing raw-equality
+cache; the UI catalogue and score calculations are unchanged. Native regression
+fixtures exercise lazy imports, raw edits, undo/redo, reimports, stale jobs,
+metric/weapon changes, unknown keys and loader timeouts.
+
 Each helper gets a dedicated broker port restricted to immutable root reads
 and its own file descriptors. Shared verified lazy archives are reused.
 Helpers have no user storage, network, clipboard, OAuth or

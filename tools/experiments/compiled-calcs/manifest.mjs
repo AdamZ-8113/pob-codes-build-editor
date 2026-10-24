@@ -12,8 +12,8 @@ export const manifest = Object.freeze({
   primaryFixtureIds: Object.freeze(['guided-329', 'lightning-strike-328', 'dominating-blow-328']),
   // These are LF-normalized source locks, not generated artifact identities.
   sourceLocks: Object.freeze({
-    'upstream/packages/driver/CMakeLists.txt': 'be5e62d44921b7848b012c0cba54ea903e2d95bd1da5b8d0ae9a7a08dba69a85',
-    'upstream/packages/driver/helper-boot.lua': '1455f5c0cefd53a36aabfbe280daaf99f5c9c27fb9ce9eca00c2be993442b2c2',
+    'upstream/packages/driver/CMakeLists.txt': '477bf9bd25f138bb15e007e7d7146a7ec4a571c49565bc8ca9c39be442b064e6',
+    'upstream/packages/driver/helper-boot.lua': '767d4c17c4ae7844f9c58f1134ab2a597572fcb4cf735f38e33e5f6600046a15',
     'upstream/packages/driver/runtime-profile.lua': '0754e88caf7c26fc41eef767da742d078acd748f7dbca927336dfb88a4083e21',
     'Modules/CalcDefence.lua': '9e82a0c71ebb4b6005c6fd850ea0057cf2e6668c3c8e480b8d5310149d3db331',
   }),

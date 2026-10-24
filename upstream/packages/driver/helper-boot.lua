@@ -23,17 +23,25 @@ local loadedIdentity, operation, calc, calcBase, loadedKind
 -- PoB itself retains this database across builds. Raw equality also captures
 -- variants/quality and any other candidate edits from the displayed UI.
 local candidates = {}
+local resolveUnique
+local function createUniqueResolver()
+    return createHelperUniqueCatalogue(data.uniques, __mainObject__.main.uniqueDB,
+    function(raw) return new('Item'):Item(raw, 'UNIQUE', true) end,
+    function()
+        local started = GetTime()
+        while __mainObject__.main.uniqueDB.loading do
+            runCallback('OnFrame')
+            assert(GetTime() - started < 15000, 'Helper unique database timeout')
+        end
+    end, function(line) return escapeGGGString(sanitiseText(line)) end)
+end
 function helperCall(text)
     local job = assert(json.decode(text))
     runtimeGCPolicy.applyWorkload(job.kind == 'nodePower' and 'nodePower' or 'unique')
     if job.xml then
         loadBuildFromXML(job.xml, 'Calculation helper')
         assert(not __mainObject__.promptMsg, 'Helper import failed')
-        local started = GetTime()
-        while job.kind ~= 'nodePower' and job.kind ~= 'comparison' and __mainObject__.main.uniqueDB.loading do
-            runCallback('OnFrame')
-            assert(GetTime() - started < 15000, 'Helper unique database timeout')
-        end
+        resolveUnique = createUniqueResolver()
         loadedIdentity = job.identity
         loadedKind = job.kind
         operation, calc = nil, nil
@@ -120,7 +128,7 @@ function helperCall(text)
     end
     local result = {}
     for index, candidate in ipairs(job.items) do
-        assert(db.db.list[candidate.key], 'Helper candidate not found')
+        assert(resolveUnique(candidate.key), 'Helper candidate not found')
         local cached = candidates[candidate.key]
         if not cached or cached.raw ~= candidate.raw then
             cached = {raw=candidate.raw, item=new('Item'):Item(candidate.raw, 'UNIQUE', true)}
