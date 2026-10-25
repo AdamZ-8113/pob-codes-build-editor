@@ -4,7 +4,7 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { bindAboutDialog } from "../../src/about-dialog.ts";
 
-const DISCLAIMER = "PoB Codes is an unofficial fan-made Path of Exile tool. Path of Exile and related assets are © Grinding Gear Games. Not affiliated with or endorsed by Grinding Gear Games. Privacy · Terms";
+const DISCLAIMER = "PoB Codes is an unofficial fan-made Path of Exile tool. Path of Exile and related assets are © Grinding Gear Games. Not affiliated with or endorsed by Grinding Gear Games. Terms · Contact";
 const html = await readFile("index.html", "utf8");
 const notices = await readFile("THIRD_PARTY_NOTICES.md", "utf8");
 const dialogMarkup = html.match(/<dialog id="about-dialog"[\s\S]*?<\/dialog>/)?.[0] ?? "";
@@ -36,8 +36,9 @@ test("About dialog shows the exact disclaimer and policy links", () => {
   assert.match(dialogMarkup, /<form method="dialog"><button id="about-dialog-close"[^>]*aria-label="Close"/);
   const disclaimer = dialogMarkup.match(/<p id="about-disclaimer"[^>]*>([\s\S]*?)<\/p>/)[1];
   assert.equal(text(disclaimer), DISCLAIMER);
-  assert.match(disclaimer, /<a href="https:\/\/pob\.codes\/content\/privacy" target="_blank" rel="noopener noreferrer">Privacy<\/a>/);
+  assert.doesNotMatch(disclaimer, /content\/privacy|>Privacy<\/a>/);
   assert.match(disclaimer, /<a href="https:\/\/pob\.codes\/content\/terms" target="_blank" rel="noopener noreferrer">Terms<\/a>/);
+  assert.match(disclaimer, /<a href="https:\/\/pob\.codes\/content\/contact" target="_blank" rel="noopener noreferrer">Contact<\/a>/);
 });
 
 test("About dialog is static markup with safe external links", () => {

@@ -2,7 +2,7 @@ import { chromium } from "@playwright/test";
 import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
 import assert from "node:assert/strict";
 
-const DISCLAIMER = "PoB Codes is an unofficial fan-made Path of Exile tool. Path of Exile and related assets are © Grinding Gear Games. Not affiliated with or endorsed by Grinding Gear Games. Privacy · Terms";
+const DISCLAIMER = "PoB Codes is an unofficial fan-made Path of Exile tool. Path of Exile and related assets are © Grinding Gear Games. Not affiliated with or endorsed by Grinding Gear Games. Terms · Contact";
 
 const browser = await chromium.launch({ headless: true, channel: browserChannel() });
 try {
@@ -65,7 +65,8 @@ try {
   assert.equal(await page.evaluate(() => document.querySelector("#about-dialog").contains(document.activeElement)), true,
     "Opening moves focus into the dialog");
   assert.equal((await page.locator("#about-disclaimer").textContent()).replace(/\s+/g, " ").trim(), DISCLAIMER);
-  for (const [name, href] of [["Privacy", "https://pob.codes/content/privacy"], ["Terms", "https://pob.codes/content/terms"]]) {
+  assert.equal(await dialog.getByRole("link", { name: "Privacy", exact: true }).count(), 0);
+  for (const [name, href] of [["Terms", "https://pob.codes/content/terms"], ["Contact", "https://pob.codes/content/contact"]]) {
     const link = dialog.getByRole("link", { name, exact: true });
     assert.equal(await link.getAttribute("href"), href);
     assert.equal(await link.getAttribute("target"), "_blank");
