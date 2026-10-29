@@ -127,6 +127,9 @@ source-ledger checks and `npm run pack`; generation does not waive those guards.
    update `source-pin.json` and `upstream/PROVENANCE.md` together. Never hash
    prepared files by hand: chained results exist only in memory. Missing
    candidate identities mean the applicable stage must be repaired first.
+   Verify the selected upstream `LICENSE.md` against `PATH_OF_BUILDING_LICENSE.md`
+   and refresh `PATH_OF_BUILDING_LICENSE.provenance.json` to the selected revision,
+   even when the license bytes and SHA-256 have not changed.
 3. Drop an overlay only with complete target-tree absorption evidence. Update
    the fixed inventories in `scripts/build/source-ledger.mjs` and
    `tests/unit/source-ledger.test.mjs` when inventory changes. Partial absorption

@@ -3,9 +3,19 @@ import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { validateSourceLedger } from "../../scripts/build/source-ledger.mjs";
+import { sha256, validateSourceLedger } from "../../scripts/build/source-ledger.mjs";
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+
+test("PoB license provenance follows the selected source revision even when license bytes are unchanged", async () => {
+  const pin = JSON.parse(await readFile(join(appDir, "source-pin.json"), "utf8"));
+  const provenance = JSON.parse(await readFile(join(appDir, "PATH_OF_BUILDING_LICENSE.provenance.json"), "utf8"));
+  assert.equal(provenance.schemaVersion, 1);
+  assert.equal(provenance.repository, pin.repository);
+  assert.equal(provenance.revision, pin.revision);
+  assert.equal(provenance.sourcePath, "LICENSE.md");
+  assert.equal(provenance.sha256, sha256(await readFile(join(appDir, "PATH_OF_BUILDING_LICENSE.md"))));
+});
 
 test("desktop PoB overlay ledger owns five ordered PRs, two Power Report optimizations and ten pack-time local patches", async () => {
   const { pin, compositeBytes } = await validateSourceLedger(appDir);
