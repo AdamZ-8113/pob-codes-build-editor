@@ -27,7 +27,7 @@ export async function loadBuildInput({ buildFile, buildUrl }) {
   return { buildCode, xmlHash: sha256(decodeBuildCode(buildCode)) };
 }
 
-export async function readCorePackage(origin = 'http://127.0.0.1:3010/') {
+export async function readCorePackage(origin = 'http://127.0.0.1:3010/', payloadDirectory) {
   let manifest, archive;
   if (new URL(origin).hostname === 'pob.codes') {
     const html = await (await fetch(origin)).text();
@@ -37,7 +37,7 @@ export async function readCorePackage(origin = 'http://127.0.0.1:3010/') {
     manifest = await (await fetch(`${prefix}manifest.json`)).json();
     archive = Buffer.from(await (await fetch(`${prefix}packages/${manifest.packages.find(p => p.id === 'core').sha256}.zip`)).arrayBuffer());
   } else {
-    const root = new URL('../../.runtime/payload/', import.meta.url);
+    const root = payloadDirectory ? pathToFileURL(resolve(payloadDirectory) + '/') : new URL('../../.runtime/payload/', import.meta.url);
     manifest = JSON.parse(await readFile(new URL('manifest.json', root)));
     archive = await readFile(new URL(`packages/${manifest.packages.find(p => p.id === 'core').sha256}.zip`, root));
   }

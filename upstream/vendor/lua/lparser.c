@@ -1477,12 +1477,13 @@ static void funcstat (LexState *ls, int line) {
 }
 
 
-/* PoB beta uses +=. Compile it as a Lua operation, retaining its source and
+/* PoB uses += and ..=. Compile them as Lua operations, retaining source and
 ** evaluating the lvalue and its old value once before evaluating the RHS. */
-static void addassignment (LexState *ls, expdesc *var) {
+static void compoundassignment (LexState *ls, expdesc *var) {
   FuncState *fs = ls->fs;
   expdesc value, rhs;
   int line = ls->linenumber;
+  BinOpr op = ls->t.token == TK_CONCATEQ ? OPR_CONCAT : OPR_ADD;
   check_condition(ls, vkisvar(var->k), "assignment target expected");
   if (var->k == VINDEXED) {
     int table = fs->freereg;
@@ -1504,10 +1505,10 @@ static void addassignment (LexState *ls, expdesc *var) {
   }
   else value = *var;
   luaK_exp2nextreg(fs, &value);
-  luaX_next(ls);  /* += */
-  luaK_infix(fs, OPR_ADD, &value);
+  luaX_next(ls);  /* compound operator */
+  luaK_infix(fs, op, &value);
   expr(ls, &rhs);
-  luaK_posfix(fs, OPR_ADD, &value, &rhs, line);
+  luaK_posfix(fs, op, &value, &rhs, line);
   luaK_storevar(fs, var, &value);
 }
 
@@ -1517,8 +1518,8 @@ static void exprstat (LexState *ls) {
   FuncState *fs = ls->fs;
   struct LHS_assign v;
   suffixedexp(ls, &v.v);
-  if (ls->t.token == TK_ADDEQ) {
-    addassignment(ls, &v.v);
+  if (ls->t.token == TK_ADDEQ || ls->t.token == TK_CONCATEQ) {
+    compoundassignment(ls, &v.v);
   }
   else if (ls->t.token == '=' || ls->t.token == ',') { /* stat -> assignment ? */
     v.prev = NULL;

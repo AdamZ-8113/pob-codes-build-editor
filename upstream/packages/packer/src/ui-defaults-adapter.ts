@@ -17,6 +17,16 @@ export function disableAnimationsByDefault(
   if (blobHash(source) !== adapter.sourceBlobHashes[mainPath]) {
     throw new Error("Browser UI defaults adapter: Main.lua source identity changed");
   }
+  const result = transformBrowserUiDefaults(source);
+  const resultHash = blobHash(result);
+  if (resultHash !== adapter.resultBlobHashes[mainPath]) {
+    throw new Error(`Browser UI defaults adapter: Main.lua result identity changed (expected ${adapter.resultBlobHashes[mainPath]}, received ${resultHash})`);
+  }
+  return result;
+}
+
+/** Exact-anchor transform for candidate identity generation; packing stays hash checked. */
+export function transformBrowserUiDefaults(source: string): string {
   const original = "\tself.showAnimations = true";
   if (source.split(original).length !== 2) {
     throw new Error("Browser UI defaults adapter: animation default changed");
@@ -62,9 +72,5 @@ export function disableAnimationsByDefault(
     .replace(original, "\tself.showAnimations = false")
     .replace(loadSettings, repairBuildPath)
     .replace(onFrame, persistBuildPath);
-  const resultHash = blobHash(result);
-  if (resultHash !== adapter.resultBlobHashes[mainPath]) {
-    throw new Error(`Browser UI defaults adapter: Main.lua result identity changed (expected ${adapter.resultBlobHashes[mainPath]}, received ${resultHash})`);
-  }
   return result;
 }

@@ -30,3 +30,8 @@ run(['run', '--rm', '--mount', `type=bind,source=${sourceDirectory},target=/sour
 
 console.log(`Desktop PoB ${buildType} interpreter built in upstream/packages/driver/dist/${buildType.toLowerCase()}.`);
 console.log('PoB Lua source and PR changes are packaged separately; repack them without recompiling this interpreter.');
+if (test) {
+  const result = spawnSync(process.execPath, [path.join(appDirectory, 'scripts/test-compression-compatibility.mjs'), '--bridge-only'], { stdio: 'inherit', windowsHide: true });
+  if (result.error) throw result.error;
+  if (result.status !== 0) process.exit(result.status || 1);
+}

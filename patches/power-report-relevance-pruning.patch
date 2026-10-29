@@ -2,7 +2,9 @@ diff --git a/spec/System/TestPowerReport_spec.lua b/spec/System/TestPowerReport_
 index d8eea8b4b72b73355978b336eeb877ad7552ed7a..dca0ceec430ca0245183c4775b6d6c86177ebd2e 100644
 --- a/spec/System/TestPowerReport_spec.lua
 +++ b/spec/System/TestPowerReport_spec.lua
-@@ -210,21 +210,21 @@ describe("PowerBuilder calculation options", function()
+@@ -208,25 +208,25 @@
+ 		local function runPowerBuilder(powerStat, expectedOptions)
+ 			local callCount = 0
  			build.calcsTab.powerStat = powerStat
  			build.calcsTab.powerMax = nil
  			build.calcsTab.nodePowerMaxDepth = 1
@@ -25,7 +27,11 @@ index d8eea8b4b72b73355978b336eeb877ad7552ed7a..dca0ceec430ca0245183c4775b6d6c86
  		runPowerBuilder(findPowerStat("MeleeAvoidChance"), { skipEHP = true, skipFullDPS = true })
  		runPowerBuilder(data.powerStatList[1], { skipEHP = true, skipFullDPS = true })
  	end)
-@@ -354,20 +354,41 @@ describe("Power report cluster calculations", function()
+ end)
+ 
+@@ -352,24 +352,45 @@
+ 				break
+ 			end
  			calcsTab:BuildPower()
  		end
  		assert.is_nil(calcsTab.powerBuilder)
@@ -67,7 +73,11 @@ index d8eea8b4b72b73355978b336eeb877ad7552ed7a..dca0ceec430ca0245183c4775b6d6c86
  	it("distinguishes identical allocated modifiers inside and outside a jewel radius", function()
  		build.characterLevel = 100
  		build.characterLevelAutoMode = false
-@@ -459,10 +480,190 @@ Passive Skills in Radius also grant +5 to maximum Life
+ 		local spec = build.spec
+ 		for _, id in ipairs({ 60735, 3469, 12412 }) do
+@@ -457,12 +478,192 @@
+ 		scaled.modList:NewMod("PassiveSkillEffect", "INC", 100)
+ 		for _, node in ipairs({ plain, scaled }) do
  			node.pathDist = 0
  		end
  		local tab = build.calcsTab
@@ -259,10 +269,12 @@ index d8eea8b4b72b73355978b336eeb877ad7552ed7a..dca0ceec430ca0245183c4775b6d6c86
 +	end)
 +end)
 diff --git a/src/Classes/CalcsTab.lua b/src/Classes/CalcsTab.lua
-index fe46acdfe5f57129f2c41dab60881d7d7e9a68f8..8a0e2bf19b38ae560ce6274e49bc4b64a3449abb 100644
+index 4fcb9d326f81af0db861788301887b196cb6a9e7..5221d30b8e530a549d97f0fcb861755a8aacfc4b 100644
 --- a/src/Classes/CalcsTab.lua
 +++ b/src/Classes/CalcsTab.lua
-@@ -538,30 +538,35 @@ local function nodePowerCacheKey(node, radiusNodes)
+@@ -536,34 +536,39 @@
+ 	for _, mod in ipairs(node.modList) do
+ 		-- Granted skills and other structured effects can depend on their source node.
  		if mod.type == "LIST" then
  			return node
  		end
@@ -299,7 +311,13 @@ index fe46acdfe5f57129f2c41dab60881d7d7e9a68f8..8a0e2bf19b38ae560ce6274e49bc4b64
  				radiusNodes[nodeId] = true
  			end
  		end
-@@ -576,20 +581,32 @@ function CalcsTabClass:PowerBuilder()
+ 	end
+ 	local distanceMap = { }
+@@ -572,24 +577,36 @@
+ 	local newPowerMax = {
+ 		singleStat = 0,
+ 		offence = 0,
+ 		offencePerPoint = 0,
  		defence = 0,
  		defencePerPoint = 0
  	}
@@ -308,8 +326,8 @@ index fe46acdfe5f57129f2c41dab60881d7d7e9a68f8..8a0e2bf19b38ae560ce6274e49bc4b64
  	end
  	if coroutine.running() then
  		coroutine.yield()
- 	end
- 
++	end
++
 +	if not disableRelevance then
 +		local observation = self.calcs.newQueryObserver()
 +		calcOptions.queryObserver = observation
@@ -320,8 +338,8 @@ index fe46acdfe5f57129f2c41dab60881d7d7e9a68f8..8a0e2bf19b38ae560ce6274e49bc4b64
 +			error(nullOutput, 0)
 +		end
 +		relevance = self.calcs.newNodeRelevance(self.mainEnv, observation, nullOutput)
-+	end
-+
+ 	end
+ 
  	local function buildMasteryEffectNode(node, effect)
  		local effectNode = {
  			id = node.id,
@@ -336,7 +354,9 @@ diff --git a/src/Classes/ModDB.lua b/src/Classes/ModDB.lua
 index ffaf1e5ea591bd8aabbacb7f29f96c684deb79cf..81b88184602c187a5f9ef95fd096173f7b2b814a 100644
 --- a/src/Classes/ModDB.lua
 +++ b/src/Classes/ModDB.lua
-@@ -13,22 +13,22 @@ local m_min = math.min
+@@ -11,26 +11,26 @@
+ local m_floor = math.floor
+ local m_min = math.min
  local m_max = math.max
  local m_modf = math.modf
  local band = bit.band
@@ -361,11 +381,15 @@ index ffaf1e5ea591bd8aabbacb7f29f96c684deb79cf..81b88184602c187a5f9ef95fd096173f
  		self.mods[name] = { }
  	end
  	t_insert(self.mods[name], mod)
+ end
+ 
 diff --git a/src/Classes/ModList.lua b/src/Classes/ModList.lua
 index ec686674d772a7ac27d1fef77b28d8c7d18678e1..46f06f06b7d5fa3d7cc0ff28b094e4dff6715884 100644
 --- a/src/Classes/ModList.lua
 +++ b/src/Classes/ModList.lua
-@@ -12,22 +12,22 @@ local m_min = math.min
+@@ -10,26 +10,26 @@
+ local m_floor = math.floor
+ local m_min = math.min
  local m_max = math.max
  local m_modf = math.modf
  local band = bit.band
@@ -390,11 +414,15 @@ index ec686674d772a7ac27d1fef77b28d8c7d18678e1..46f06f06b7d5fa3d7cc0ff28b094e4df
  ---ReplaceModInternal
  ---  Replaces an existing matching mod with a new mod.
  ---  If no matching mod exists, then the function returns false
+ ---@param mod table
+ ---@return boolean @Whether any mod was replaced
 diff --git a/src/Classes/ModStore.lua b/src/Classes/ModStore.lua
 index 0dd30e41d664333f5532f376f2c443d90bbc97f8..40159353f12c75de02f664303eacdddeac610220 100644
 --- a/src/Classes/ModStore.lua
 +++ b/src/Classes/ModStore.lua
-@@ -30,21 +30,23 @@ end })
+@@ -28,25 +28,27 @@
+ end })
+ 
  -- TODO: very incomplete
  ---@class ModCfg
  ---@field flags number? bit mask
@@ -419,7 +447,11 @@ index 0dd30e41d664333f5532f376f2c443d90bbc97f8..40159353f12c75de02f664303eacddde
  local function getActor(self, actorType)
  	if actorType == "player" then
  		return self.actor.player or (self.actor.parent and self.actor.parent.player) or (self.actor.enemy and self.actor.enemy.player)
-@@ -163,90 +165,108 @@ end
+ 	else
+ 		return self.actor[actorType]
+@@ -161,93 +163,111 @@
+ ---@param modType string
+ ---@param cfg? ModCfg
  ---@param ... string
  ---@return number
  function ModStoreClass:Sum(modType, cfg, ...)
@@ -460,10 +492,10 @@ index 0dd30e41d664333f5532f376f2c443d90bbc97f8..40159353f12c75de02f664303eacddde
  		flags = cfg.flags or 0
  		keywordFlags = cfg.keywordFlags or 0
  		source = cfg.source
- 	end
++	end
 +	if self.queryObserver and self.queryObserver.active then
 +		self.queryObserver:Query("FLAG", flags, keywordFlags, source, ...)
-+	end
+ 	end
  	return self:FlagInternal(self, cfg, flags, keywordFlags, source, ...)
  end
  
@@ -494,10 +526,10 @@ index 0dd30e41d664333f5532f376f2c443d90bbc97f8..40159353f12c75de02f664303eacddde
  		flags = cfg.flags or 0
  		keywordFlags = cfg.keywordFlags or 0
  		source = cfg.source
- 	end
++	end
 +	if self.queryObserver and self.queryObserver.active then
 +		self.queryObserver:Query("LIST", flags, keywordFlags, source, ...)
-+	end
+ 	end
  	local result = { }
  	self:ListInternal(self, result, cfg, flags, keywordFlags, source, ...)
  	return result
@@ -514,10 +546,10 @@ index 0dd30e41d664333f5532f376f2c443d90bbc97f8..40159353f12c75de02f664303eacddde
  		flags = cfg.flags or 0
  		keywordFlags = cfg.keywordFlags or 0
  		source = cfg.source
- 	end
++	end
 +	if self.queryObserver and self.queryObserver.active then
 +		self.queryObserver:Query(modType, flags, keywordFlags, source, ...)
-+	end
+ 	end
  	local result = { }
  	self:TabulateInternal(self, result, modType, cfg, flags, keywordFlags, source, ...)
  	return result
@@ -528,7 +560,11 @@ index 0dd30e41d664333f5532f376f2c443d90bbc97f8..40159353f12c75de02f664303eacddde
  	for _, value in ipairs(self:Tabulate("MAX", cfg, ...)) do
  		local val = self:EvalMod(value.mod, cfg)
  		if val > (max or 0) then
-@@ -276,20 +296,23 @@ end
+ 			max = val
+@@ -273,24 +293,27 @@
+ ---  anything to aggregate.
+ ---@param modType string @Mod type to match
+ ---@param cfg table @Optional configuration to use - contains flags, keywordFlags, and source to match
  ---@param ... string @Mod name(s) to check for.
  ---@return boolean @true if the mod is found, false otherwise.
  function ModStoreClass:HasMod(modType, cfg, ...)
@@ -538,10 +574,10 @@ index 0dd30e41d664333f5532f376f2c443d90bbc97f8..40159353f12c75de02f664303eacddde
  		flags = cfg.flags or 0
  		keywordFlags = cfg.keywordFlags or 0
  		source = cfg.source
- 	end
++	end
 +	if self.queryObserver and self.queryObserver.active then
 +		self.queryObserver:Query(modType, flags, keywordFlags, source, ...)
-+	end
+ 	end
  	return self:HasModInternal(modType, flags, keywordFlags, source, ...)
  end
  
@@ -552,11 +588,14 @@ index 0dd30e41d664333f5532f376f2c443d90bbc97f8..40159353f12c75de02f664303eacddde
  function ModStoreClass:GetCondition(var, cfg, noMod)
  	return self.conditions[var] or (self.parent and self.parent:GetCondition(var, cfg, true)) or (not noMod and self:Flag(cfg, conditionName[var]))
  end
+ 
 diff --git a/src/Modules/CalcActiveSkill.lua b/src/Modules/CalcActiveSkill.lua
-index de16231644eeda5aeda94de612485a6712b3bf5b..0beb9bf1a560f236accfbde13386e609d309f4cf 100644
+index 938e89ff78d72b1d8f171ef9149354dcb9da0cc7..03c67a77ade7b0722a8c82e423af627ac3b14c44 100644
 --- a/src/Modules/CalcActiveSkill.lua
 +++ b/src/Modules/CalcActiveSkill.lua
-@@ -172,25 +172,25 @@ function calcs.copyActiveSkill(env, mode, skill)
+@@ -170,29 +170,29 @@
+ 		level = skill.activeEffect.level,
+ 		quality = skill.activeEffect.quality
  	}
  
  	if skill.activeEffect.srcInstance then
@@ -584,7 +623,11 @@ index de16231644eeda5aeda94de612485a6712b3bf5b..0beb9bf1a560f236accfbde13386e609
  -- Get weapon flags and info for given weapon
  local function getWeaponFlags(env, weaponData, weaponTypes)
  	local info = env.data.weaponTypeInfo[weaponData.type]
-@@ -482,21 +482,21 @@ function calcs.buildActiveSkillModList(env, activeSkill)
+ 	if not info then
+ 		return
+@@ -480,25 +480,25 @@
+ 	if skillFlags.weapon1Attack then
+ 		activeSkill.weapon1Cfg = copyTable(activeSkill.skillCfg, true)
  		activeSkill.weapon1Cfg.skillCond = setmetatable({ ["MainHandAttack"] = true }, { __index = activeSkill.skillCfg.skillCond })
  		activeSkill.weapon1Cfg.flags = bor(skillModFlags, activeSkill.weapon1Flags)
  	end
@@ -607,11 +650,15 @@ index de16231644eeda5aeda94de612485a6712b3bf5b..0beb9bf1a560f236accfbde13386e609
  		skillModList:NewMod("Speed", "MORE", 100 * activeSkill.actor.minionData.damageFixup, "Damage Fixup", ModFlag.Attack)
  	end
  
+ 	-- Mods which apply curses are not disabled by Gruthkul's Pelt
+ 	local curseApplicationSkill = activeSkill.socketGroup and activeSkill.socketGroup.sourceItem ~= nil and activeSkill.skillFlags.curse and activeSkill.activeEffect.srcInstance and activeSkill.activeEffect.srcInstance.noSupports and activeSkill.activeEffect.srcInstance.triggered
 diff --git a/src/Modules/CalcMirages.lua b/src/Modules/CalcMirages.lua
 index b6826b567ea927936791d783ae9bd388723bdef5..b7ff9a32be7aa71ae35f5bd7a0970a6129f399a6 100644
 --- a/src/Modules/CalcMirages.lua
 +++ b/src/Modules/CalcMirages.lua
-@@ -117,20 +117,23 @@ function calcs.mirages(env)
+@@ -115,24 +115,27 @@
+ 				if not env.player.mainSkill.infoMessage2 then
+ 					env.player.mainSkill.infoMessage2 = "No Mirage Archer active skill found"
  				end
  			end
  		}
@@ -635,11 +682,15 @@ index b6826b567ea927936791d783ae9bd388723bdef5..b7ff9a32be7aa71ae35f5bd7a0970a61
  							return GlobalCache.cachedData[env.mode][uuid].ActiveSkill
  						elseif GlobalCache.cachedData[env.mode][uuid].TotalDPS > usedSkillBestDps then
  							usedSkillBestDps = GlobalCache.cachedData[env.mode][uuid].TotalDPS
+ 							return GlobalCache.cachedData[env.mode][uuid].ActiveSkill
+ 						end
 diff --git a/src/Modules/CalcPerform.lua b/src/Modules/CalcPerform.lua
-index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc1ebded8f 100644
+index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..5e3b8a5966d77e1af711cef79e241ce98f43c5be 100644
 --- a/src/Modules/CalcPerform.lua
 +++ b/src/Modules/CalcPerform.lua
-@@ -35,23 +35,23 @@ local function getCachedOutputValue(env, activeSkill, ...)
+@@ -33,27 +33,27 @@
+ 	if not GlobalCache.cachedData[env.mode][uuid] or env.mode == "CALCULATOR" then
+ 		calcs.buildActiveSkill(env, env.mode, activeSkill, uuid, {uuid})
  	end
  
  	local tempValues = {}
@@ -665,7 +716,11 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  					if type(destMod.value) == "number" and mod.value > destMod.value then
  						dest[index] = mod
  					end
-@@ -1288,33 +1288,37 @@ function calcs.perform(env, skipEHP)
+ 					match = true
+ 					break
+@@ -1286,37 +1286,41 @@
+ function calcs.perform(env, skipEHP)
+ 	local modDB = env.modDB
  	local enemyDB = env.enemyDB
  
  	-- Merge keystone modifiers
@@ -704,7 +759,11 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  		-- Initialise minion modifier database
  		output.Minion = { }
  		initMinionModDB(env, env.player.mainSkill, output.Minion)
-@@ -1719,60 +1723,60 @@ function calcs.perform(env, skipEHP)
+ 	end
+ 	if env.aegisModList then
+@@ -1717,64 +1721,64 @@
+ 			end
+ 			local effectMod = 1 + (flaskEffectInc) / 100
  			local effectModNonPlayer = 1 + (flaskEffectIncNonPlayer) / 100
  
  			-- Life and Mana flasks are not Utility flasks, so their effects are kept when Utility flasks are disabled
@@ -773,13 +832,17 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  			end
  		end
  
+ 		local slotIndex = env.itemSlotIndex or { }
+ 		local orderedFlasks = { }
  		for item in pairs(flasks) do
- 			flaskBuffsPerBase[item.baseName] = flaskBuffsPerBase[item.baseName] or {}
- 			flaskBuffsPerBaseNonPlayer[item.baseName] = flaskBuffsPerBaseNonPlayer[item.baseName] or {}
- 			local instantPerc = getFlaskInstantRecovery(item)
- 			if instantPerc < 100 then
- 				flaskConditions["UsingFlask"] = true
-@@ -1873,40 +1877,40 @@ function calcs.perform(env, skipEHP)
+ 			t_insert(orderedFlasks, item)
+ 		end
+ 		table.sort(orderedFlasks, function(a, b)
+ 			local posA = slotIndex[a] or 0
+ 			local posB = slotIndex[b] or 0
+@@ -1884,44 +1888,44 @@
+ 
+ 		local function calcTinctureMods(item, baseName, buffModList, modList)
  			local tinctureEffectInc = effectInc + item.tinctureData.effectInc
  			if item.rarity == "MAGIC" then
  				tinctureEffectInc = tinctureEffectInc + effectIncMagic
@@ -818,15 +881,19 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
 +				mergeBuff(env, srcList, tinctureBuffsPerBase[item.baseName], key)
  			end
  		end
+ 		local slotIndex = env.itemSlotIndex or { }
+ 		local orderedTinctures = { }
  		for item in pairs(tinctures) do
- 			if tinctureLimit <= 0 then
- 				break
- 			end
- 			tinctureLimit = tinctureLimit - 1
- 			tinctureBuffsPerBase[item.baseName] = tinctureBuffsPerBase[item.baseName] or {}
- 			tinctureConditions["UsingTincture"] = true
- 			tinctureConditions["Using"..item.baseName:gsub("%s+", "")] = true
-@@ -2237,37 +2241,37 @@ function calcs.perform(env, skipEHP)
+ 			t_insert(orderedTinctures, item)
+ 		end
+ 		table.sort(orderedTinctures, function(a, b)
+ 			local posA = slotIndex[a] or 0
+ 			local posB = slotIndex[b] or 0
+ 			if posA ~= posB then
+ 				return posA < posB
+@@ -2261,41 +2265,41 @@
+ 						if tagName == "beast" then
+ 							modDB.conditions["HaveBeastSpectre"] = true
  							break
  						end
  					end
@@ -868,7 +935,11 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  			end
  		end
  	end
-@@ -2315,56 +2319,56 @@ function calcs.perform(env, skipEHP)
+ 
+ 	-- To support maximum sustainable stages for the following skills we need to get the data from already
+@@ -2339,60 +2343,60 @@
+ 				-- Nothing!
+ 			elseif buff.enemyCond and not enemyDB:GetCondition(buff.enemyCond) then
  				-- Also nothing :/
  			elseif buff.type == "GlobalDB" then
  				modDB:AddList(buff.modList) -- Allows a skill mod to affect other skills through modDB
@@ -931,7 +1002,11 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  					local baseExerts = modStore:Sum("BASE", env.player.mainSkill.skillCfg, warcryName.."ExertedAttacks")
  					if baseExerts > 0 then
  						local extraExertions = modStore:Sum("BASE", nil, "ExtraExertedAttacks") or 0
-@@ -2379,39 +2383,39 @@ function calcs.perform(env, skipEHP)
+ 						local exertMultiplier = modStore:More(nil, "ExtraExertedAttacks")
+ 						env.player.modDB:NewMod("Num"..warcryName.."Exerts", "BASE", m_floor((baseExerts + extraExertions) * exertMultiplier))
+@@ -2403,71 +2407,71 @@
+ 					end
+ 					if not activeSkill.skillModList:Flag(nil, "CannotShareWarcryBuffs") then
  						local warcryPower = modDB:Override(nil, "WarcryPower") or m_max((modDB:Sum("BASE", nil, "WarcryPower") or 0) * (1 + (modDB:Sum("INC", nil, "WarcryPower") or 0)/100), (modDB:Sum("BASE", nil, "MinimumWarcryPower") or 0))
  						for _, warcryBuff in ipairs(buff.modList) do
  							if warcryBuff[1] and warcryBuff[1].effectType == "Warcry" and warcryBuff[1].div then
@@ -975,7 +1050,10 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  							if activeSkill.activeEffect.grantedEffect.name == "Rallying Cry" then
  								local warcryPowerBonus = m_floor((m_min(warcryPower, 30)) / 5)
  								local rallyingWeaponEffect = m_floor(activeSkill.skillModList:Sum("BASE", env.player.mainSkill.skillCfg, "RallyingCryAllyDamageBonusPer5Power") * warcryPowerBonus)
-@@ -2422,24 +2426,24 @@ function calcs.perform(env, skipEHP)
+ 								local inc = modStore:Sum("INC", skillCfg, "BuffEffect") + env.minion.modDB:Sum("INC", skillCfg, "BuffEffectOnSelf")
+ 								local rallyingBonusMoreMultiplier = 1 + (activeSkill.skillModList:Sum("BASE", env.player.mainSkill.skillCfg, "RallyingCryMinionDamageBonusMultiplier") or 0)
+ 								-- Add all damage types
+ 								local dmgTypeList = {"Physical", "Lightning", "Cold", "Fire", "Chaos"}
  								for _, damageType in ipairs(dmgTypeList) do
  									if env.player.weaponData1[damageType.."Min"] then
  										extraWarcryModList:NewMod(damageType.."Min", "BASE", (env.player.weaponData1[damageType.."Min"] * rallyingWeaponEffect / 100), "Rallying Cry", 0, KeywordFlag.Attack, { type = "GlobalEffect", effectType = "Warcry", div = 5, limit = 30 })
@@ -1002,7 +1080,11 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  				end
  			elseif buff.type == "Aura" then
  				if env.mode_buffs then
-@@ -2462,72 +2466,72 @@ function calcs.perform(env, skipEHP)
+ 					-- Check for extra modifiers to apply to aura skills
+ 					local extraAuraModList = { }
+@@ -2486,99 +2490,99 @@
+ 					end
+ 					if not activeSkill.skillData.auraCannotAffectSelf then
  						local inc = skillModList:Sum("INC", skillCfg, "AuraEffect", "BuffEffect", "BuffEffectOnSelf", "AuraEffectOnSelf", "AuraBuffEffect", "SkillAuraEffectOnSelf")
  						local more = skillModList:More(skillCfg, "AuraEffect", "BuffEffect", "BuffEffectOnSelf", "AuraEffectOnSelf", "AuraBuffEffect", "SkillAuraEffectOnSelf")
  						local mult = (1 + inc / 100) * more
@@ -1083,7 +1165,8 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  							for _, mod in ipairs(modList) do
  								if mod.name == "EnergyShield" or mod.name == "Armour" or mod.name == "Evasion" or mod.name:match("Resist?M?a?x?$") then
  									local totemMod = copyTable(mod)
-@@ -2536,21 +2540,21 @@ function calcs.perform(env, skipEHP)
+ 									totemMod.name = "Totem"..totemMod.name
+ 									if scale ~= 1 then
  										if type(totemMod.value) == "number" then
  											totemMod.value = (m_floor(totemMod.value) == totemMod.value) and m_modf(round(totemMod.value * scale, 2)) or totemMod.value * scale
  										elseif type(totemMod.value) == "table" and totemMod.value.mod then
@@ -1106,7 +1189,11 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  								break
  							end
  						end
-@@ -2566,47 +2570,47 @@ function calcs.perform(env, skipEHP)
+ 						if not auraDebuffFound then
+ 							activeSkill.debuffSkill = true
+@@ -2590,51 +2594,51 @@
+ 										mod.value = mod.value + value.mod.value
+ 										add = false
  										break
  									end
  								end
@@ -1157,7 +1244,11 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  									mod.value = mod.value + value.mod.value
  									add = false
  									break
-@@ -2622,40 +2626,40 @@ function calcs.perform(env, skipEHP)
+ 								end
+ 							end
+@@ -2646,44 +2650,44 @@
+ 						if not (modDB:Flag(nil, "SelfAurasOnlyAffectYou")) then
+ 							local inc = skillModList:Sum("INC", skillCfg, "AuraEffect", "BuffEffect", "DebuffEffect")
  							local more = skillModList:More(skillCfg, "AuraEffect", "BuffEffect", "DebuffEffect")
  							mult = (1 + inc / 100) * more
  							local newModList = {}
@@ -1200,7 +1291,11 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  					-- User flagged this curse as Balance of Terror self-only, so don't apply it to enemies.
  					skipCurse = true
  				end
-@@ -2676,35 +2680,35 @@ function calcs.perform(env, skipEHP)
+ 				if (not skipCurse) and (env.mode_effective and (not enemyDB:Flag(nil, "Hexproof") or modDB:Flag(nil, "CursesIgnoreHexproof") or activeSkill.skillData.ignoreHexLimit or activeSkill.skillData.ignoreHexproof) or mark) then
+ 					local curse = {
+@@ -2700,39 +2704,39 @@
+ 					end
+ 					local more = skillModList:More(skillCfg, "CurseEffect")
  					local moreMark = more
  					-- This is non-ideal, but the only More for enemy is the boss effect
  					if not curse.isMark then
@@ -1240,7 +1335,11 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  			elseif buff.type == "Link" then
  				local linksApplyToMinions = env.minion and modDB:Flag(nil, "Condition:CanLinkToMinions") and modDB:Flag(nil, "Condition:LinkedToMinion")
  						and not env.minion.modDB:Flag(nil, "Condition:CannotBeDamaged") and not env.minion.mainSkill.summonSkill.skillTypes[SkillType.MinionsAreUndamagable]
-@@ -2725,36 +2729,36 @@ function calcs.perform(env, skipEHP)
+ 				if env.mode_buffs and (#linkSkills < 1) and (partyTabEnableExportBuffs or linksApplyToMinions) then
+ 					-- Check for extra modifiers to apply to link skills
+@@ -2749,40 +2753,40 @@
+ 						if add then
+ 							t_insert(extraLinkModList, copyTable(value.mod, true))
  							-- special handling to add this early
  							if value.mod.name == "ParentNonUniqueFlasksAppliedToYou" then
  								nonUniqueFlasksApplyToMinion = true
@@ -1280,7 +1379,11 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  			if not activeSkill.minion and modDB:Flag(nil, "UnholyMight") then
  				witherEffect = witherEffect + modDB:Sum("INC", nil, "UnholyMightAlsoWitherEffect")
  			end
-@@ -2793,50 +2797,50 @@ function calcs.perform(env, skipEHP)
+ 			local effect = m_floor(6 * (1 + witherEffect / 100))
+ 			modDB:NewMod("WitherEffectStack", "MAX", effect)
+@@ -2817,54 +2821,54 @@
+ 				end
+ 			end
  				local skillModList = activeMinionSkill.skillModList
  				local skillCfg = activeMinionSkill.skillCfg
  				for _, buff in ipairs(activeMinionSkill.buffList) do
@@ -1337,7 +1440,11 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  							-- Check for extra modifiers to apply to aura skills
  							local extraAuraModList = { }
  							for _, value in ipairs(activeSkill.minion.modDB:List(skillCfg, "ExtraAuraEffect")) do
-@@ -2857,59 +2861,59 @@ function calcs.perform(env, skipEHP)
+ 								local add = true
+ 								for _, mod in ipairs(extraAuraModList) do
+@@ -2881,117 +2885,117 @@
+ 							if not (activeSkill.minion.modDB:Flag(nil, "SelfAurasCannotAffectAllies") or activeSkill.minion.modDB:Flag(nil, "SelfAurasOnlyAffectYou") or activeSkill.minion.modDB:Flag(nil, "SelfAuraSkillsCannotAffectAllies") or skillModList:Flag(skillCfg, "SelfAurasAffectYouAndLinkedTarget")) then
+ 								if not modDB:Flag(nil, "AlliesAurasCannotAffectSelf") and not modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] then
  									local inc = skillModList:Sum("INC", skillCfg, "AuraEffect", "BuffEffect", "BuffEffectOnPlayer", "AuraBuffEffect") + modDB:Sum("INC", skillCfg, "BuffEffectOnSelf", "AuraEffectOnSelf")
  									local more = skillModList:More(skillCfg, "AuraEffect", "BuffEffect", "AuraBuffEffect") * modDB:More(skillCfg, "BuffEffectOnSelf", "AuraEffectOnSelf")
  									local mult = (1 + inc / 100) * more
@@ -1403,7 +1510,9 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  										for _, mod in ipairs(modList) do
  											if mod.name == "EnergyShield" or mod.name == "Armour" or mod.name == "Evasion" or mod.name:match("Resist?M?a?x?$") then
  												local totemMod = copyTable(mod)
-@@ -2919,51 +2923,51 @@ function calcs.perform(env, skipEHP)
+ 												totemMod.name = "Totem"..totemMod.name
+ 												if scale ~= 1 then
+ 													if type(totemMod.value) == "number" then
  														totemMod.value = (m_floor(totemMod.value) == totemMod.value) and m_modf(round(totemMod.value * scale, 2)) or totemMod.value * scale
  													elseif type(totemMod.value) == "table" and totemMod.value.mod then
  														totemMod.value.mod.value = (m_floor(totemMod.value.mod.value) == totemMod.value.mod.value) and m_modf(round(totemMod.value.mod.value * scale, 2)) or totemMod.value.mod.value * scale
@@ -1458,7 +1567,11 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  									if not enemyDB.conditions["AffectedBy"..buff.name:gsub(" ","")] then
  										buffExports["Aura"][buff.name..(buffExports["Aura"][buff.name] and "_Debuff" or "")] = { effectMult = mult, modList = buff.modList }
  										if allyBuffs["AuraDebuff"] and allyBuffs["AuraDebuff"][buff.name] and allyBuffs["AuraDebuff"][buff.name].effectMult / 100 > mult then
-@@ -2980,144 +2984,144 @@ function calcs.perform(env, skipEHP)
+ 											mult = 0
+ 										end
+@@ -3004,148 +3008,148 @@
+ 							if env.minion and env.minion == activeSkill.minion then
+ 								env.minion.modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
  							end
  							if buff.type == "Debuff" then
  								local inc = skillModList:Sum("INC", skillCfg, "DebuffEffect")
@@ -1626,7 +1739,11 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  		mergeFlasks(env.flasks, true, nonUniqueFlasksApplyToMinion)
  	end
  
-@@ -3140,21 +3144,21 @@ function calcs.perform(env, skipEHP)
+ 	-- Process stats from alternate charges
+ 	if env.mode_combat then
+@@ -3164,25 +3168,25 @@
+ 			modDB:NewMod("EnemyBrittleEffect", "MORE", effectPerAffliction, "Affliction Charges", { type = "Multiplier", var = "AfflictionCharge" } )
+ 			modDB:NewMod("EnemySapEffect", "MORE", effectPerAffliction, "Affliction Charges", { type = "Multiplier", var = "AfflictionCharge" } )
  		end
  	end
  
@@ -1649,7 +1766,11 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  				local curseModList = { }
  				for _, mod in ipairs(gemModList) do
  					for _, tag in ipairs(mod) do
-@@ -3174,39 +3178,39 @@ function calcs.perform(env, skipEHP)
+ 						if tag.type == "GlobalEffect" and tag.effectType == "Curse" then
+ 							t_insert(curseModList, mod)
+@@ -3198,43 +3202,43 @@
+ 						modDB.conditions["AffectedBy"..grantedEffect.name:gsub(" ","")] = true
+ 						local cfg = { skillName = grantedEffect.name }
  						local inc = modDB:Sum("INC", cfg, "CurseEffectOnSelf") + gemModList:Sum("INC", nil, "CurseEffectAgainstPlayer")
  						local more = modDB:More(cfg, "CurseEffectOnSelf") * gemModList:More(nil, "CurseEffectAgainstPlayer")
  						modDB:ScaleAddList(curseModList, m_max((1 + inc / 100) * more, 0))
@@ -1691,7 +1812,11 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  		newCurse.modList:ScaleAddList(curse.modList, mult)
  		t_insert(allyCurses, newCurse)
  	end
-@@ -3329,21 +3333,21 @@ function calcs.perform(env, skipEHP)
+ 
+ 
+@@ -3353,25 +3357,25 @@
+ 			t_insert(guardSlots, { name = name, modList = modList })
+ 		elseif not nonVaal then
  			t_insert(guardSlots, { name = name, modList = modList })
  			nonVaal = true
  		end
@@ -1714,7 +1839,11 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  			modDB.multipliers["BuffOnSelf"] = (modDB.multipliers["BuffOnSelf"] or 0) + 1
  		end
  		if env.minion then
-@@ -3408,21 +3412,21 @@ function calcs.perform(env, skipEHP)
+ 			addMinionModifiers(modList, env.player.mainSkill.skillCfg, env.minion)
+ 		end
+@@ -3432,25 +3436,25 @@
+ 		-- Set the life/mana reservations again as we now have increased mana from overcapped lightning resistance
+ 		doActorLifeMana(env.player)
  		doActorLifeManaReservation(env.player, true)
  	end
  
@@ -1737,6 +1866,8 @@ index c7f75eda6c44c5be50608f06edc665b07f506115..078d0cfe6b983e780afd79c03894a5dc
  				modDB.multipliers["BuffOnSelf"] = (modDB.multipliers["BuffOnSelf"] or 0) + 1
  			end
  		end
+ 		if value.fromAllies or not modDB:Flag(nil, "SelfAurasCannotAffectAllies") then
+ 			if env.minion then
 diff --git a/src/Modules/CalcRelevance.lua b/src/Modules/CalcRelevance.lua
 new file mode 100644
 index 0000000000000000000000000000000000000000..bbff6c0891bdef6529fb131b6082639fbe8ef804
@@ -1855,10 +1986,12 @@ index 0000000000000000000000000000000000000000..bbff6c0891bdef6529fb131b6082639f
 +
 +return calcs
 diff --git a/src/Modules/CalcSetup.lua b/src/Modules/CalcSetup.lua
-index 13242a8c3e9264a26073db7e3479858f0dbc8800..56627ceea25ae786fba3a83f024b1baee33e2dd3 100644
+index 318f8cd147af1edf0e1640895a0c9a5d5f13a16b..18d189024d76c02f2acc4c7590c509be5326a910 100644
 --- a/src/Modules/CalcSetup.lua
 +++ b/src/Modules/CalcSetup.lua
-@@ -112,35 +112,137 @@ function calcs.initModDB(env, modDB)
+@@ -125,39 +125,141 @@
+ 	modDB:NewMod("BloodShrineOfCrows", "FLAG", true, "Base", { type = "Condition", var = "BloodShrineOfCrows" })
+ 	modDB:NewMod("BloodShrineOfBats", "FLAG", true, "Base", { type = "Condition", var = "BloodShrineOfBats" })
  	modDB:NewMod("AlchemistsGenius", "FLAG", true, "Base", { type = "Condition", var = "AlchemistsGenius" })
  	modDB:NewMod("LuckyHits", "FLAG", true, "Base", { type = "Condition", var = "LuckyHits" })
  	modDB:NewMod("Convergence", "FLAG", true, "Base", { type = "Condition", var = "Convergence" })
@@ -1997,7 +2130,11 @@ index 13242a8c3e9264a26073db7e3479858f0dbc8800..56627ceea25ae786fba3a83f024b1bae
  	-- Run first pass radius jewels
  	for i = 1, #env.radiusJewelList do
  		local rad = env.radiusJewelList[i]
-@@ -166,31 +268,32 @@ function calcs.buildModListForNode(env, node, reuse)
+ 		if rad.type == "Other" then
+ 			local radNode = rad.nodes[node.id]
+@@ -179,35 +281,36 @@
+ 			hasScale = true
+ 		elseif name == "PassiveSkillHasOtherEffect" then
  			hasOtherEffect = true
  		elseif name == "ExtraSkill" then
  			hasExtraSkill = true
@@ -2031,7 +2168,11 @@ index 13242a8c3e9264a26073db7e3479858f0dbc8800..56627ceea25ae786fba3a83f024b1bae
  	for i = 1, #env.radiusJewelList do
  		local rad = env.radiusJewelList[i]
  		if rad.nodes[node.id] and rad.nodes[node.id].type ~= "Mastery" and (rad.type == "Threshold" or (rad.type == "Self" and env.allocNodes[node.id]) or (rad.type == "SelfUnalloc" and not env.allocNodes[node.id])) then
-@@ -214,20 +317,21 @@ function calcs.buildModListForNode(env, node, reuse)
+ 			rad.func(node, modList, rad.data)
+ 			rescan = true
+@@ -227,24 +330,25 @@
+ 			elseif name == "CanExplode" then
+ 				hasExplode = true
  			end
  		end
  	end
@@ -2053,7 +2194,11 @@ index 13242a8c3e9264a26073db7e3479858f0dbc8800..56627ceea25ae786fba3a83f024b1bae
  			end
  			modList:AddMod(mod)
  		end
-@@ -257,26 +361,26 @@ end
+ 	end
+ 
+@@ -270,30 +374,30 @@
+ 	end
+ end
  
  -- Build list of modifiers from the listed tree nodes
  function calcs.buildModListForNodeList(env, nodeList, finishJewels)
@@ -2082,7 +2227,11 @@ index 13242a8c3e9264a26073db7e3479858f0dbc8800..56627ceea25ae786fba3a83f024b1bae
  	end
  
  	if finishJewels then
-@@ -465,55 +569,55 @@ end
+ 		-- Process extra radius nodes; these are unallocated nodes near conversion or threshold jewels that need to be processed
+ 		for _, node in pairs(env.extraRadiusNodeList) do
+@@ -475,59 +579,59 @@
+ -- 3. Builds a list of jewels with radius functions
+ -- 4. Merges modifiers for all allocated passive nodes
  -- 5. Builds a list of active skills and their supports (calcs.createActiveSkill)
  -- 6. Builds modifier lists for all active skills (calcs.buildActiveSkillModList)
  ---@param build Build
@@ -2143,7 +2292,11 @@ index 13242a8c3e9264a26073db7e3479858f0dbc8800..56627ceea25ae786fba3a83f024b1bae
  		}
  		env.modDB.actor = env.player
  		env.enemy = {
-@@ -692,116 +796,52 @@ function calcs.initEnv(build, mode, override, specEnv)
+ 			modDB = env.enemyDB,
+ 			level = env.enemyLevel,
+@@ -702,120 +806,56 @@
+ 		env.enemyDB.parent = cachedEnemyDB
+ 		if cachedMinionDB and env.minion then
  			env.minion.modDB.parent = cachedMinionDB
  		end
  	end
@@ -2227,10 +2380,10 @@ index 13242a8c3e9264a26073db7e3479858f0dbc8800..56627ceea25ae786fba3a83f024b1bae
  			end
  		else
  			nodes = copyTable(env.spec.allocNodes, true)
- 		end
++		end
 +		if env.queryObserver then
 +			env.queryObserver:ObserveNodes(nodes)
-+		end
+ 		end
  		env.allocNodes = nodes
  		env.initialNodeModDB = calcs.buildModListForNodeList(env, env.allocNodes, true)
  		modLib.mergeKeystones(env, env.initialNodeModDB)
@@ -2267,7 +2420,11 @@ index 13242a8c3e9264a26073db7e3479858f0dbc8800..56627ceea25ae786fba3a83f024b1bae
  			if slotName == "Graft 1" or slotName == "Graft 2" then
  				if not build.spec.treeVersion:find("3_27") then
  					goto continue
-@@ -827,21 +867,21 @@ function calcs.initEnv(build, mode, override, specEnv)
+ 				end
+ 			end
+@@ -837,25 +877,25 @@
+ 			end
+ 			if item and item.grantedSkills then
  				-- Find skills granted by this item
  				for _, skill in ipairs(item.grantedSkills) do
  					local skillData = env.data.skills[skill.skillId]
@@ -2290,7 +2447,11 @@ index 13242a8c3e9264a26073db7e3479858f0dbc8800..56627ceea25ae786fba3a83f024b1bae
  			end
  			if slot.nodeId then
  				-- Slot is a jewel socket, check if socket is allocated
-@@ -1092,21 +1132,21 @@ function calcs.initEnv(build, mode, override, specEnv)
+ 				if not env.allocNodes[slot.nodeId] then
+ 					goto continue
+@@ -1106,25 +1146,25 @@
+ 						env.itemModDB.conditions[cond.."In"..slot.parentSlot.slotName] = true
+ 						env.itemModDB.multipliers[mult.."In"..slot.parentSlot.slotName] = (env.itemModDB.multipliers[mult.."In"..slot.parentSlot.slotName] or 0) + 1
  					end
  					env.itemModDB.multipliers["AbyssJewel"] = (env.itemModDB.multipliers["AbyssJewel"] or 0) + 1
  					if item.rarity == "NORMAL" then env.itemModDB.multipliers["NormalAbyssJewels"] = (env.itemModDB.multipliers["NormalAbyssJewels"] or 0) + 1 end
@@ -2313,7 +2474,11 @@ index 13242a8c3e9264a26073db7e3479858f0dbc8800..56627ceea25ae786fba3a83f024b1bae
  							end
  						end
  						if add then
-@@ -1145,39 +1185,39 @@ function calcs.initEnv(build, mode, override, specEnv)
+ 							env.aegisModList:ScaleAddMod(mod, scale)
+ 						else
+@@ -1159,43 +1199,43 @@
+ 							end
+ 						end
  						item:NormaliseQuality()
  						item:BuildAndParseRaw()
  						item.sockets = previousItem.sockets
@@ -2355,7 +2520,11 @@ index 13242a8c3e9264a26073db7e3479858f0dbc8800..56627ceea25ae786fba3a83f024b1bae
  							end
  						end
  						if add then
-@@ -1219,54 +1259,54 @@ function calcs.initEnv(build, mode, override, specEnv)
+ 							env.weaponModList1:ScaleAddMod(mod, scale)
+ 						else
+@@ -1233,58 +1273,58 @@
+ 						local otherRingKey = otherRing.baseName:gsub(" ", "").."Equipped"
+ 						if otherRingKey then
  							env.itemModDB.multipliers[otherRingKey] = (env.itemModDB.multipliers[otherRingKey] or 0) + 1
  						end
  					end
@@ -2417,7 +2586,11 @@ index 13242a8c3e9264a26073db7e3479858f0dbc8800..56627ceea25ae786fba3a83f024b1bae
  				end
  				-- set conditions on restricted items
  				if item.classRestriction then
-@@ -1417,27 +1457,27 @@ function calcs.initEnv(build, mode, override, specEnv)
+ 					env.itemModDB.conditions[item.title:gsub(" ", "")] = item.classRestriction
+ 				end
+@@ -1431,31 +1471,31 @@
+ 			matchedName[name] = { side = ascTbl.side, matched = false }
+ 		end
  	end
  
  	-- Merge modifiers for allocated passives
@@ -2447,7 +2620,11 @@ index 13242a8c3e9264a26073db7e3479858f0dbc8800..56627ceea25ae786fba3a83f024b1bae
  				local grantedSkill = copyTable(skill)
  				grantedSkill.sourceNode = node
  				t_insert(env.grantedSkillsNodes, grantedSkill)
-@@ -1901,21 +1941,21 @@ function calcs.initEnv(build, mode, override, specEnv)
+ 			end
+ 		end
+@@ -1928,25 +1968,25 @@
+ 				group.displaySkillList = socketGroupSkillList
+ 			elseif env.mode == "CALCS" then
  				group.displaySkillListCalcs = socketGroupSkillList
  			end
  
@@ -2470,11 +2647,42 @@ index 13242a8c3e9264a26073db7e3479858f0dbc8800..56627ceea25ae786fba3a83f024b1bae
  			local defaultEffect = {
  				grantedEffect = env.data.skills.Melee,
  				level = 1,
+ 				quality = 0,
+ 				enabled = true,
 diff --git a/src/Modules/CalcTriggers.lua b/src/Modules/CalcTriggers.lua
-index 777890cacb2e61e4f51938053cc53adc25f3845c..58d1c53c117a6972c3cada3f3b6d15fdf44d4cb6 100644
+index b974cf8711d3734d3043e91d353a27a5c16f38f4..9eb758d1fa49848de1e3a0f235c0fad0a81aa47b 100644
 --- a/src/Modules/CalcTriggers.lua
 +++ b/src/Modules/CalcTriggers.lua
-@@ -519,20 +519,23 @@ local function defaultTriggerHandler(env, config)
+@@ -68,24 +68,26 @@
+ 
+ local function defaultComparer(env, uuid, source, triggerRate)
+ 	local cachedSpeed = GlobalCache.cachedData[env.mode][uuid].HitSpeed or GlobalCache.cachedData[env.mode][uuid].Speed
+ 	return (not source and cachedSpeed) or (cachedSpeed and cachedSpeed > (triggerRate or 0))
+ end
+ 
+ -- Identify the trigger action skill for trigger conditions, take highest Attack Per Second
+ -- sourceCache holds this override's complete candidate calculations and rejected cost probes
+ local function findTriggerSkill(env, skill, source, triggerRate, comparer, minimumCost, sourceCache)
+ 	local comparer = comparer or defaultComparer
+ 
+ 	local uuid = cacheSkillUUID(skill, env)
++	-- Observation must execute source reads, including otherwise rejected cost probes.
++	if env.queryObserver then sourceCache = nil end
+ 	local reused = sourceCache and sourceCache[uuid]
+ 	if minimumCost and reused and reused.rejectedOutput and (reused.rejectedOutput[minimumCost.stat] or 0) < minimumCost.minimum then
+ 		return source, triggerRate, source and cacheSkillUUID(source, env)
+ 	end
+ 	if not GlobalCache.cachedData[env.mode][uuid] or env.mode == "CALCULATOR" and not rawequal(reused, GlobalCache.cachedData[env.mode][uuid]) then
+ 		local rejectedOutput = calcs.buildActiveSkill(env, env.mode, skill, uuid, nil, sourceCache and minimumCost, sourceCache)
+ 		if rejectedOutput then
+ 			-- The probe is never published, so drop an older override's entry before a nested consumer reads it
+ 			GlobalCache.cachedData[env.mode][uuid] = nil
+ 			sourceCache[uuid] = { rejectedOutput = rejectedOutput }
+ 			return source, triggerRate, source and cacheSkillUUID(source, env)
+ 		elseif sourceCache then
+@@ -532,24 +534,27 @@
+ 				if breakdown then
+ 					t_insert(breakdown.EffectiveSourceRate, s_format("^8(min(%.2f * %.2f, %d) = %.2f average number of exerted attacks capped by exerted count)", trigRate, infernalCryDuration, infernalCryExertsCount, infernalCryHits))
  					t_insert(breakdown.EffectiveSourceRate, s_format("= %.2f / (%.2f + %.2f) ^8(the calculated number of exerted attacks happens every cooldown + duration)", infernalCryHits, infernalCryCastTime, infernalCryCooldown))
  				end
  
@@ -2498,11 +2706,15 @@ index 777890cacb2e61e4f51938053cc53adc25f3845c..58d1c53c117a6972c3cada3f3b6d15fd
  					if sourceManaCost > 0 then
  						if breakdown then
  							breakdown.EffectiveSourceRate = {
+ 								s_format("%.4f ^8(Mana cost of trigger source)", sourceManaCost),
+ 								s_format(""),
 diff --git a/src/Modules/Calcs.lua b/src/Modules/Calcs.lua
-index 403d11aab4467bff0a9517c2becb85ffaa7de67e..ced6fbb8e7c66b0fe1027cc9f93cc38ac9c7abcf 100644
+index d9ea4a3f8a4ded2895b5bad39ebd5730489f8281..61427b71ed363a5cc6189bf37422974503c25d9c 100644
 --- a/src/Modules/Calcs.lua
 +++ b/src/Modules/Calcs.lua
-@@ -13,20 +13,21 @@ local m_ceil = math.ceil
+@@ -11,24 +11,25 @@
+ local m_ceil = math.ceil
+ 
  ---@class Calcs
  local calcs = require("Modules.CalcBase")
  calcs.breakdownModule = "Modules.CalcBreakdown"
@@ -2524,7 +2736,11 @@ index 403d11aab4467bff0a9517c2becb85ffaa7de67e..ced6fbb8e7c66b0fe1027cc9f93cc38a
  			sum = sum + v
  			count = count + 1
  		end
-@@ -76,51 +77,55 @@ end
+ 	end
+ 	return (sum / count)
+@@ -74,61 +75,65 @@
+ ---@class CalcOverride
+ ---@field spec PassiveSpec?
  ---@field addNodes table<Node|number, boolean>? A set of passive nodes. Only keyed by node id for anointed nodes.
  ---@field removeNodes table<Node|number, boolean>? A set of passive nodes. Only keyed by node id for anointed nodes.
  ---@field repSlotName string? The name of the replaced item slot
@@ -2557,21 +2773,28 @@ index 403d11aab4467bff0a9517c2becb85ffaa7de67e..ced6fbb8e7c66b0fe1027cc9f93cc38a
  	return function(override, useFullDPS, options)
 -		local env, cachedPlayerDB, cachedEnemyDB, cachedMinionDB = calcs.initEnv(build, "CALCULATOR", override)
 +		local env, cachedPlayerDB, cachedEnemyDB, cachedMinionDB = calcs.initEnv(build, "CALCULATOR", override, nil, options and options.queryObserver)
+ 		-- Trigger-source calculations shared by this override's main and Full DPS passes
+ 		env.triggerSourceCache = { }
  		calcs.perform(env, options and options.skipEHP)
+ 		local mainUUID = cacheSkillUUID(env.player.mainSkill, env)
+ 		local mainEntry = GlobalCache.cachedData["CALCULATOR"][mainUUID]
+ 		if mainEntry and mainEntry.Env == env then
+ 			env.triggerSourceCache[mainUUID] = mainEntry
+ 		end
  		local calculateFullDPS = not (options and options.skipFullDPS) and (useFullDPS ~= false or build.viewMode == "TREE")
  		if calculateFullDPS and usedFullDPS then
  			-- prevent upcoming calculation from using Cached Data and thus forcing it to re-calculate new FullDPS roll-up 
  			-- without this, FullDPS increase/decrease when for node/item/gem comparison would be all 0 as it would be comparing
  			-- A with A (due to cache reuse) instead of A with B
--			local fullDPS = calcs.calcFullDPS(build, "CALCULATOR", override, { cachedPlayerDB = cachedPlayerDB, cachedEnemyDB = cachedEnemyDB, cachedMinionDB = cachedMinionDB, env = nil})
-+			local fullDPS = calcs.calcFullDPS(build, "CALCULATOR", override, { cachedPlayerDB = cachedPlayerDB, cachedEnemyDB = cachedEnemyDB, cachedMinionDB = cachedMinionDB, env = nil}, options and options.queryObserver)
+-			local fullDPS = calcs.calcFullDPS(build, "CALCULATOR", override, { cachedPlayerDB = cachedPlayerDB, cachedEnemyDB = cachedEnemyDB, cachedMinionDB = cachedMinionDB, env = nil, triggerSourceCache = env.triggerSourceCache })
++			local fullDPS = calcs.calcFullDPS(build, "CALCULATOR", override, { cachedPlayerDB = cachedPlayerDB, cachedEnemyDB = cachedEnemyDB, cachedMinionDB = cachedMinionDB, env = nil, triggerSourceCache = env.triggerSourceCache }, options and options.queryObserver)
  			env.player.output.SkillDPS = fullDPS.skills
  			env.player.output.FullDPS = fullDPS.combinedDPS
  			env.player.output.FullDotDPS = fullDPS.TotalDotDPS
- 		end
++		end
 +		if options and options.queryObserver then
 +			options.queryObserver.recorded = true
-+		end
+ 		end
  		return env.player.output
  	end, env.player.output
  end
@@ -2582,7 +2805,10 @@ index 403d11aab4467bff0a9517c2becb85ffaa7de67e..ced6fbb8e7c66b0fe1027cc9f93cc38a
  	elseif activeSkill.socketGroup.groupCount then
  		return activeSkill.socketGroup.groupCount, true
  	else
-@@ -137,22 +142,22 @@ local function getActiveSkillCount(activeSkill)
+ 		local gemList = activeSkill.socketGroup.gemList
+@@ -142,26 +147,26 @@
+ 					end
+ 				else
  					if (activeSkill.activeEffect.grantedEffect == gemData.gemData.grantedEffect and not gemData.gemData.grantedEffect.support) or (activeSkill.activeEffect.grantedEffect == gemData.gemData.secondaryGrantedEffect) then
  						return gemData.count or 1, true
  					end
@@ -2597,6 +2823,7 @@ index 403d11aab4467bff0a9517c2becb85ffaa7de67e..ced6fbb8e7c66b0fe1027cc9f93cc38a
 -	local fullEnv, cachedPlayerDB, cachedEnemyDB, cachedMinionDB = calcs.initEnv(build, mode, override, specEnv)
 +function calcs.calcFullDPS(build, mode, override, specEnv, queryObserver)
 +	local fullEnv, cachedPlayerDB, cachedEnemyDB, cachedMinionDB = calcs.initEnv(build, mode, override, specEnv, queryObserver)
+ 	fullEnv.triggerSourceCache = mode == "CALCULATOR" and (specEnv and specEnv.triggerSourceCache or { }) or nil
  	local usedEnv = nil
  
  	local fullDPS = {
@@ -2607,7 +2834,10 @@ index 403d11aab4467bff0a9517c2becb85ffaa7de67e..ced6fbb8e7c66b0fe1027cc9f93cc38a
  		causticGroundDPS = 0,
  		impaleDPS = 0,
  		igniteDPS = 0,
-@@ -296,21 +301,21 @@ function calcs.calcFullDPS(build, mode, override, specEnv)
+ 		burningGroundDPS = 0,
+@@ -302,25 +307,25 @@
+ 				if usedEnv.player.output.CullMultiplier and usedEnv.player.output.CullMultiplier > 1 and usedEnv.player.output.CullMultiplier > fullDPS.cullingMulti then
+ 					fullDPS.cullingMulti = usedEnv.player.output.CullMultiplier
  				end
  
  				-- Re-Build env calculator for new run
@@ -2630,20 +2860,25 @@ index 403d11aab4467bff0a9517c2becb85ffaa7de67e..ced6fbb8e7c66b0fe1027cc9f93cc38a
  		t_insert(fullDPS.skills, { name = "Best Bleed DPS", dps = fullDPS.bleedDPS, count = 1, source = bleedSource })
  		fullDPS.TotalDotDPS = fullDPS.TotalDotDPS + fullDPS.bleedDPS
  	end
-@@ -353,21 +358,21 @@ function calcs.calcFullDPS(build, mode, override, specEnv)
- 		fullDPS.cullingDPS = fullDPS.combinedDPS * (fullDPS.cullingMulti - 1)
- 		t_insert(fullDPS.skills, { name = "Full Culling DPS", dps = fullDPS.cullingDPS, count = 1 })
- 		fullDPS.combinedDPS = fullDPS.combinedDPS + fullDPS.cullingDPS
+ 	if fullDPS.corruptingBloodDPS > 0 then
+ 		t_insert(fullDPS.skills, { name = "Corrupting Blood DPS", dps = fullDPS.corruptingBloodDPS, count = 1, source = corruptingBloodSource })
+@@ -364,25 +369,25 @@
  	end
  
  	return fullDPS
  end
  
- -- Process active skill
- function calcs.buildActiveSkill(env, mode, skill, targetUUID, limitedProcessingFlags)
--	local fullEnv, _, _, _ = calcs.initEnv(env.build, mode, env.override)
-+	local fullEnv, _, _, _ = calcs.initEnv(env.build, mode, env.override, nil, env.queryObserver)
+ -- Process active skill; a trigger-source cost probe returns the partial output of a rejected candidate
+ function calcs.buildActiveSkill(env, mode, skill, targetUUID, limitedProcessingFlags, minimumCost, sourceCache)
+ 	-- Only a rejected probe's environment can be reused: published results keep referencing theirs
+ 	local reusable = sourceCache and sourceCache.rejectedEnv
+ 	if reusable then
+ 		sourceCache.rejectedEnv = nil
+ 	end
+-	local fullEnv, cachedPlayerDB, cachedEnemyDB, cachedMinionDB = calcs.initEnv(env.build, mode, env.override, reusable)
++	local fullEnv, cachedPlayerDB, cachedEnemyDB, cachedMinionDB = calcs.initEnv(env.build, mode, env.override, reusable, env.queryObserver)
  	fullEnv.buildBreakdown = false
+ 	fullEnv.triggerSourceCost = minimumCost
  
  	-- env.limitedSkills contains a map of uuids that should be limited in calculation
  	-- this is in order to prevent infinite recursion loops
@@ -2653,11 +2888,14 @@ index 403d11aab4467bff0a9517c2becb85ffaa7de67e..ced6fbb8e7c66b0fe1027cc9f93cc38a
  	end
  	for _, uuid in ipairs(limitedProcessingFlags or {}) do
  		fullEnv.limitedSkills[uuid] = true
+ 	end
 diff --git a/src/Modules/Common.lua b/src/Modules/Common.lua
-index b71053f5f24b64244e650a92158f4d6bb10bdfd9..d68f3428bb2b2d3f06edddd7fe1b7283c35a7a61 100644
+index 6cc8691de34dd19a63803cf8ee06a9a4173ad65f..a4b2cdfc5b55a3016a17d41e93fb015ef0e98aae 100644
 --- a/src/Modules/Common.lua
 +++ b/src/Modules/Common.lua
-@@ -515,33 +515,33 @@ function mergeDB(srcDB, modDB)
+@@ -513,37 +513,37 @@
+ 	if modDB then
+ 		srcDB:AddDB(modDB)
  		for k,v in pairs(modDB.conditions) do
  			srcDB.conditions[k] = v
  		end
@@ -2694,3 +2932,5 @@ index b71053f5f24b64244e650a92158f4d6bb10bdfd9..d68f3428bb2b2d3f06edddd7fe1b7283
  -- Wipe all keys from the table and return it, or return a new table if no table
  -- provided. This is useful to avoid alllocations in hot paths if a table can be reused. Using LuaJIT's `table.clear()` is another alternative to this, but this performs similarly on small tables, or tables which are often already empty.
  ---@param tbl table?
+ ---@return table tbl
+ function wipeTable(tbl)

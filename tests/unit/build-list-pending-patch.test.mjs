@@ -12,7 +12,7 @@ test("checked build-list adapter hides sentinel-bearing import folders", async (
   assert.match(patch.toString(), /\.pob-codes-import\.pending/);
   let source;
   try {
-    source = await readFile(".runtime/source-fef5c4f1ddf9/src/Modules/BuildListHelpers.lua", "utf8");
+    source = await readFile(`.runtime/source-${pin.compositePatch.patchSha256.slice(0, 12)}/src/Modules/BuildListHelpers.lua`, "utf8");
   } catch (error) {
     if (error?.code === "ENOENT") { t.skip("pinned PoB source is not present"); return; }
     throw error;

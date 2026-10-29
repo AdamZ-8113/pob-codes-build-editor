@@ -41,16 +41,16 @@ try {
       if (mode === "original") await routeCorePackage(context, baseline);
       if (mode === "live") await routeCorePackage(context, live);
       // Freeze only PoB's animation clock; worker/render CPU clocks stay real.
-      await context.route(/\/dist\/release\/driver\.mjs(?:\?|$)/, async route => {
+      await context.route(/\/driver(?:-[\w-]+)?\.(?:mjs|js)(?:\?|$)/, async route => {
         const response = await route.fetch(), source = await response.text();
-        const clock = "var _emscripten_get_now = () => performance.now();";
-        assert.ok(source.includes(clock));
-        await route.fulfill({ response, body: source.replace(clock, "var _emscripten_get_now = () => 1000;") });
+        const clock = "performance.now()";
+        assert.equal(source.split(clock).length, 2, 'One native animation clock in development or bundled runtime');
+        await route.fulfill({ response, body: source.replace(clock, "1000") });
       });
       const page = await context.newPage();
       const faults = [];
       page.on("pageerror", error => faults.push(error.message));
-      await page.goto("http://127.0.0.1:3010");
+      await page.goto(process.env.DESKTOP_POB_ORIGIN || "http://127.0.0.1:3010");
       await page.waitForFunction(() => window.__DESKTOP_POB__?.ready, null, { timeout: 120_000 });
       await page.evaluate(code => window.__DESKTOP_POB__.loadBuildFromCode(code), code);
       await page.keyboard.press("Control+1");

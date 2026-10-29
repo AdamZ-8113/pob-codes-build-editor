@@ -28,6 +28,7 @@ jobs:
       - run: npm run prepare
       - run: npm run check
       - run: npm run test:unit
+      - run: python3 -B tests/source-chain-generator.test.py
 
   native-and-browser:
     if: github.event_name != 'pull_request' || contains(github.event.pull_request.labels.*.name, 'runtime')

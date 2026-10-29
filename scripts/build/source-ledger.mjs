@@ -1,10 +1,32 @@
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { readFile, mkdtemp, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { parseDriftPatch, transformDriftPatch } from "./drift-patch.mjs";
 
 export const sha256 = (bytes) => createHash("sha256").update(bytes).digest("hex");
 const blobSha1 = (text) => createHash("sha1").update(`blob ${Buffer.byteLength(text)}\0`).update(text).digest("hex");
+
+// Independently verify the recorded full-tree identity without touching either
+// the maintainer's index or the prepared checkout's index/worktree.
+export async function validateCompositeTree(sourceDir, pin, patch) {
+  const directory = await mkdtemp(join(tmpdir(), 'pob-composite-check-'));
+  try {
+    const patchFile = join(directory, 'composite.patch');
+    await writeFile(patchFile, patch);
+    const run = promisify(execFile);
+    const git = async args => (await run('git', ['-c', `safe.directory=${sourceDir}`, '-c', 'core.autocrlf=false', ...args], {
+      cwd:sourceDir, env:{...process.env, GIT_INDEX_FILE:join(directory,'index')},
+      encoding:'utf8', windowsHide:true, timeout:30000, maxBuffer:8*1024*1024,
+    })).stdout.trim();
+    await git(['read-tree', pin.revision]);
+    await git(['apply', '--cached', '--check', patchFile]);
+    await git(['apply', '--cached', patchFile]);
+    if (await git(['write-tree']) !== pin.compositePatch.resultTree) throw new Error('Composite result tree identity changed');
+  } finally { await rm(directory, {recursive:true, force:true}); }
+}
 
 export function patchFiles(bytes, deduplicate = false) {
   const paths = [...bytes.toString().matchAll(/^diff --git a\/(.+) b\/[^\r\n]+$/gm)].map((match) => match[1]);
@@ -18,7 +40,7 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
     throw new Error("Unsupported desktop PoB source-pin schema or composite base");
   }
   const prNumbers = pin.overlays.filter((entry) => entry.kind === "upstream-pr").map((entry) => entry.number);
-  if (JSON.stringify(prNumbers) !== JSON.stringify([10360, 10371, 10372, 10373, 10313, 10381])) {
+  if (JSON.stringify(prNumbers) !== JSON.stringify([10360, 10372, 10373, 10313, 10381])) {
     throw new Error("Desktop PoB upstream overlay order changed");
   }
   const sourceLocal = pin.overlays.filter((entry) => entry.kind === "local-patch" && entry.applicationStage === "source-composite");
@@ -33,7 +55,7 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
     scope: "Power Report relevance pruning; excludes follow-on environment reuse",
   };
   if (sourceLocal.length !== 2 || relevance?.id !== "power-report-relevance-pruning" ||
-      pin.overlays[6] !== relevance || relevance.patchFile !== "patches/power-report-relevance-pruning.patch" ||
+      pin.overlays[5] !== relevance || relevance.patchFile !== "patches/power-report-relevance-pruning.patch" ||
       JSON.stringify(relevance.upstreamPr) !== JSON.stringify(relevancePr) ||
       JSON.stringify(relevance.files) !== JSON.stringify(relevancePaths) ||
       JSON.stringify(Object.keys(relevance.sourceBlobHashes ?? {})) !== JSON.stringify(relevancePaths) ||
@@ -45,7 +67,7 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
         ? relevance.sourceBlobHashes[path] !== null : !/^[a-f0-9]{40}$/.test(relevance.sourceBlobHashes[path]))) {
     throw new Error("Power-report relevance source overlay identity or composition changed");
   }
-  if (environmentReuse?.id !== "power-report-environment-reuse" || pin.overlays[7] !== environmentReuse ||
+  if (environmentReuse?.id !== "power-report-environment-reuse" || pin.overlays[6] !== environmentReuse ||
       environmentReuse.patchFile !== "patches/power-report-env-reuse.patch" ||
       JSON.stringify(environmentReuse.files) !== JSON.stringify(environmentPaths) ||
       JSON.stringify(Object.keys(environmentReuse.sourceBlobHashes ?? {})) !== JSON.stringify(environmentPaths) ||
@@ -179,7 +201,7 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
   const buildListHelpersPath = "src/Modules/BuildListHelpers.lua";
   if (pendingFolders?.version !== 1 || pendingFolders.patchFile !== pendingOverlay.patchFile ||
       pendingFolders.patchSha256 !== pendingOverlay.patchSha256 ||
-      pendingFolders.sourceBlobHashes?.[buildListHelpersPath] !== "b6fb906d28cf9406577f1a53edcb3304f6c5cfe7" ||
+      pendingFolders.sourceBlobHashes?.[buildListHelpersPath] !== "dc1ff177a0d5c00afbe0d803fea7a62757a3c305" ||
       !/^[a-f0-9]{40}$/.test(pendingFolders.resultBlobHashes?.[buildListHelpersPath] ?? "") ||
       Object.keys(pendingFolders.sourceBlobHashes).length !== 1 ||
       Object.keys(pendingFolders.resultBlobHashes).length !== 1) {

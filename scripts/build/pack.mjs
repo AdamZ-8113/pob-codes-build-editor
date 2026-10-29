@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdir, readFile, writeFile, access, rm } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { sha256, validateSourceLedger, validatePreparedRelevance } from './source-ledger.mjs';
+import { sha256, validateSourceLedger, validatePreparedRelevance, validateCompositeTree } from './source-ledger.mjs';
 import { buildLuaRunner, generateSupplement, generatorInputs, verifyPackedSupplement } from './mod-cache/supplement.mjs';
 
 const appDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
@@ -60,6 +60,7 @@ for (const [path, hash] of Object.entries(pin.compositePatch.resultBlobHashes)) 
   if (run('git', ['hash-object', '--no-filters', path], sourceDir) !== hash) throw new Error(`Patched source differs from the pinned PR composite: ${path}`);
 }
 await validatePreparedRelevance(appDir, sourceDir, pin);
+await validateCompositeTree(sourceDir, pin, patch);
 for (const [adapter, compatibility] of Object.entries(pin.adapters)) {
   // Chained pack-time overlays verify their untouched checkout separately from
   // the previous overlay's in-memory result, which their own adapter checks.
@@ -142,7 +143,7 @@ const generated = await generateSupplement({ runnerDir, stageRoot: join(modCache
 const supplementFile = join(modCacheDir, 'supplement.lua');
 await writeFile(supplementFile, generated.supplement);
 await rm(join(modCacheDir, 'stage'), { recursive: true, force: true });
-console.log(`Packing full desktop PoB beta ${pin.revision} with PRs ${pin.overlays.filter(overlay => overlay.kind === 'upstream-pr').map(overlay => `#${overlay.number}`).join(', ')}…`);
+console.log(`Packing full desktop PoB ${pin.branch} ${pin.revision} with PRs ${pin.overlays.filter(overlay => overlay.kind === 'upstream-pr').map(overlay => `#${overlay.number}`).join(', ')}…`);
 packer(payloadDir, `--mod-cache-supplement=${supplementFile}`);
 const verified = await verifyPackedSupplement({ runnerDir, payloadDir, shippedModCache: join(sourceDir, 'src/Data/ModCache.lua'),
   workDir: join(modCacheDir, 'verify'), ledger: modCacheSupplement });

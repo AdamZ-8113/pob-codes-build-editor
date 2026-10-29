@@ -40,11 +40,36 @@ const output = resolve(argument('out', `tmp/power-report-speed/${new Date().toIS
 const buildUrl = argument('build-url');
 const buildFile = argument('build-file', buildUrl ? undefined : fileURLToPath(new URL('../../fixtures/guided import parity desktop 329.txt', import.meta.url)));
 const input = await loadBuildInput({ buildFile, buildUrl });
-const source = await readCorePackage(origin);
+const source = await readCorePackage(origin, argument('payload-dir'));
 const diagnostics = await readFile(new URL('./heatmap-profile.lua', import.meta.url), 'utf8');
 const arms = {};
 for (const name of ['baseline', 'candidate']) {
   const transforms = await loadSourceTransforms(repeated(name === 'baseline' ? 'baseline-transform' : 'source-transform'), 'Classes/CalcsTab.lua');
+  if (name === 'baseline' && argument('reference-pr-layer')) {
+    assert.equal(transforms.transforms.length, 0, 'An independent PR reference cannot also apply baseline optimization transforms');
+    assert.equal(new URLSearchParams(argument('baseline-query', '')).get('helpers'), '0', 'The independent PR reference runs serially');
+    assert.equal(delegationExpectation, 'serial', 'Independent reference has no helper optimization');
+    const bytes = await readFile(argument('reference-pr-layer'));
+    const files = JSON.parse(bytes);
+    const pin = JSON.parse(await readFile(new URL('../../source-pin.json', import.meta.url)));
+    const {transforms: referenceSeam} = await import('../experiments/node-power-delegation-experiment.mjs');
+    const {transformPowerNodeDepthPatch} = await import('../../scripts/patches/power-node-depth-patch.mjs');
+    const depthPatch = await readFile(new URL('../../patches/power-node-depth-default.patch', import.meta.url));
+    const paths = [...new Set(pin.overlays.filter(overlay => overlay.applicationStage === 'source-composite').flatMap(overlay => overlay.files))];
+    for (const path of paths) {
+      assert.ok(Object.hasOwn(files, path), `Complete independent layer: ${path}`);
+      if (path.startsWith('src/') && files[path] !== null) {
+        assert.equal(typeof files[path], 'string');
+        // The retained pre-pruning seam only exposes the original evaluator
+        // for report collection. Helpers remain disabled in this reference.
+        const text = path === 'src/Classes/CalcsTab.lua'
+          ? transformPowerNodeDepthPatch(referenceSeam[0].transform(files[path]), depthPatch, path)
+          : files[path];
+        transforms.transforms.push({path:path.slice(4), transform:() => text});
+      }
+    }
+    transforms.modules.push({kind:'independently-authored-pr-layer', sha256:sha256(bytes), target:pin.revision});
+  }
   arms[name] = {
     overlay: rewriteCorePackage(source, [...transforms.transforms, { path: 'Classes/TreeTab.lua', transform: text => `${text}\n${diagnostics}` }]),
     modules: transforms.modules,
@@ -80,7 +105,7 @@ const report = {
   harnessSha256: sha256(await readFile(new URL(import.meta.url))), diagnosticsSha256: sha256(diagnostics),
   scope: 'Same binary, new context per arm per round; cold means first target metric after discarded heatmap warm-up. Warm samples follow an alternate metric. Readiness is CPU completion, not GPU presentation. Fixed Lua hash seed in both arms; clocks used for timing remain real.',
   arms: Object.fromEntries(Object.entries(arms).map(([name, arm]) => [name, { sourceCoreHash: arm.overlay.sourceCoreHash, routedCoreHash: arm.overlay.core.sha256, fileHashes: arm.overlay.evidence, modules: arm.modules, query: arm.query }])),
-  runs: [], restarts: [], errors: [],
+  runs: [], restarts: [], errors: [], helperPreservation: [], helperInstrumentation: [],
 };
 let memory, stage = 'startup';
 const snapshotReferences = new Map();
@@ -103,8 +128,23 @@ async function runArm(name, round) {
       await route.fulfill({ contentType: 'text/javascript', body: 'Date.now = () => 1790812800000;\n' + body });
     });
     if (!proxy) await routeCorePackage(context, arm.overlay);
+    if (args.includes('--helper-preservation')) {
+      await context.route(/\/calc-helper(?:-[\w-]+)?\.(?:js|ts)(?:\?|$)/, async route => {
+        const response = await route.fetch(), original = await response.text();
+        const seam = /print:\s*\(\)\s*=>\s*\{\}/g;
+        assert.equal([...original.matchAll(seam)].length, 1, 'One helper stdout suppression seam');
+        const workerId = report.helperInstrumentation.length;
+        const body = original.replace(seam, `print:(message)=>{if(String(message).startsWith("PRESERVATION_HELPER "))console.log("PRESERVATION_WORKER ${workerId} "+message)}`);
+        report.helperInstrumentation.push({arm:name, round, workerId, before:sha256(original), after:sha256(body)});
+        await route.fulfill({response, body});
+      });
+    }
     const page = await context.newPage();
     page.on('pageerror', () => faults.push('pageerror'));
+    page.on('console', message => {
+      const match = message.text().match(/PRESERVATION_WORKER (\d+) PRESERVATION_HELPER (\{.*\})/);
+      if (match) report.helperPreservation.push({arm:name, round, workerId:Number(match[1]), counters:JSON.parse(match[2])});
+    });
     page.on('response', response => {
       if (/\/driver(?:-[\w-]+)?\.wasm(?:\?|$)/.test(response.url())) nativeResponses.push(response.body().then(sha256));
     });
@@ -234,6 +274,7 @@ async function runArm(name, round) {
       // Snapshot only after readiness; retain hashes, never node text or build data.
       const captured = await profile(true);
       const snapshots = captured.samples.nodePower.snapshots;
+      current.optimizations = captured.samples.nodePower.optimizations;
       if (earlyHeatmap) snapshots.heatmap = earlyHeatmap;
       assert.ok(snapshots?.heatmap, 'Heatmap snapshot available');
       if (requireReport || deferOpen) assert.ok(snapshots.full, 'Completed report has full snapshot');

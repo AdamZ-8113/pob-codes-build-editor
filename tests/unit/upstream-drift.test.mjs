@@ -95,8 +95,8 @@ test('exit policies retain incomplete failure and Markdown never echoes raw diag
 
 test('the cross-repository drift entry catalog is explicit and fail-closed', () => {
   assert.equal(DRIFT_SCHEMA_VERSION, 2);
-  assert.equal(DRIFT_ENTRY_CATALOG_VERSION, 3);
-  assert.equal(DRIFT_ENTRY_IDS.length, 23);
+  assert.equal(DRIFT_ENTRY_CATALOG_VERSION, 4);
+  assert.equal(DRIFT_ENTRY_IDS.length, 22);
   const entries = DRIFT_ENTRY_IDS.map(id => ({ id }));
   assert.doesNotThrow(() => validateDriftEntryCatalog(entries));
   assert.throws(() => validateDriftEntryCatalog(entries.slice(1)), /entry-catalog-mismatch/);

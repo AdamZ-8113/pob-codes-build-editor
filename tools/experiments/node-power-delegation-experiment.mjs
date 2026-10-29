@@ -9,15 +9,22 @@ export const experiment = Object.freeze({"name": "node-power-delegation", "base"
 export const identities = Object.freeze({
   "Classes/CalcsTab.lua": Object.freeze({"source": "b25fdf2f60a5cb1e50d96fbe0e7fb6c8b854e01d67763c5c89304b428d11d835", "result": "2b6c98ac3e1b649bf468399bcc94a00d78ba02dd42bc705fa3e2db801cd5fdf8"})
 });
+// The unchanged experimental seam also applies to dev 3dbca446. Keep the
+// original baseline identity so historical measurements remain reproducible.
+export const devIdentities = Object.freeze({
+  "Classes/CalcsTab.lua": Object.freeze({source: "b71dde79dcfa0e2962ac2867d0bd49631d01bd1150dfa03d3aa5b7f188d8b25b", result: "8032de5aad4ff314c08848161e13a67526ace4173ff1afe9f65fa99748b15d9d"})
+});
 const patch = readFileSync(new URL('./node-power-delegation.patch', import.meta.url), 'utf8').replaceAll('\r\n', '\n');
 assert.equal(sha256(patch), experiment.patchSha256, 'Retained experiment patch identity');
 const sections = parseDriftPatch(patch);
 assert.deepEqual(sections.map(section => section.path), Object.keys(identities).map(path => `src/${path}`), 'Exact source-only patch inventory');
 export const transformationEvidence = [];
 export const transforms = Object.freeze(sections.map(section => {
-  const path = section.path.slice(4), identity = identities[path];
+  const path = section.path.slice(4);
   return Object.freeze({ path, transform(original) {
     const normalized = original.replaceAll('\r\n', '\n');
+    const identity = [identities[path], devIdentities[path]].find(pair => pair.source === sha256(normalized));
+    assert.ok(identity, `Source identity: ${path}`);
     assert.equal(sha256(normalized), identity.source, `Source identity: ${path}`);
     const transformed = transformDriftPatch({ [section.path]: normalized }, [section])[section.path];
     assert.equal(sha256(transformed), identity.result, `Result identity: ${path}`);

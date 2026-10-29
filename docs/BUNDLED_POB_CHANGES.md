@@ -9,8 +9,8 @@ Update this document whenever that ledger changes.
 ## Base
 
 - Repository: [PathOfBuildingCommunity/PathOfBuilding](https://github.com/PathOfBuildingCommunity/PathOfBuilding)
-- Branch: `beta`
-- Revision: `a431f3a28823270acbdd6864c644f93678581f1e`
+- Branch: `dev`
+- Revision: `3dbca4463c0a59079d9f7f032d8240cf868e09da`
 
 An upstream PR remains bundled at its recorded head until the pinned base is
 updated to include it or the overlay is deliberately removed. GitHub merge
@@ -24,7 +24,6 @@ pack-time adaptations run.
 | Ledger identity | Change carried by the build |
 | --- | --- |
 | `10360` — [PoB #10360](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10360) | Broad UI and editing improvements across the passive tree, skills, items, calculations, configuration, and import/export screens, including always-visible node-power controls with the Power Report action gated by the heat map without metric selection enabling it. |
-| `10371` — [PoB #10371](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10371) | Excludes hidden equipment slots from item-stat sorting and avoids calculating those slots. |
 | `10372` — [PoB #10372](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10372) | Caches unique-item sort results until the build changes. |
 | `10373` — [PoB #10373](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10373) | Skips cluster-passive work that Offence/Defence power mode does not consume. |
 | `10313` — [PoB #10313](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10313) | Skips Full DPS and eHP stages when the selected power-report metric cannot read them. |
@@ -33,12 +32,17 @@ pack-time adaptations run.
 The composite resolves overlapping files semantically. In particular, the
 power-report result keeps #10373's cluster gating, #10313's calculation-stage
 options, and #10381's context-aware cache keys and regression coverage.
+PR #10371's hidden-slot exclusion is now supplied by the pinned upstream base;
+its original diff remains in the repository as historical evidence. The unique
+score cache still checks slot visibility. The composite keeps the unified item
+quality editor, upstream catalyst clearing, and requires a physical socket before
+granting Dialla's matching-colour bonus in the new calculation path.
 
 ## Required local source patches
 
 `power-report-relevance-pruning` is retained in
 [`power-report-relevance-pruning.patch`](../patches/power-report-relevance-pruning.patch).
-It is composed **after all six PRs and before the browser adapters**, using the
+It is composed **after all five PRs and before the browser adapters**, using the
 `source-composite` stage. It is also tracked in
 [PoB #10383](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10383);
 the recorded local layer remains authoritative until a pinned base contains
@@ -65,10 +69,15 @@ copy-on-write, state-restoration, lifecycle, and exact-output regressions.
 
 **Carry both patches in every future bundle and deployment.** Source-ledger
 validation rejects their absence, reordering, or broken composition. On an
-upstream pin refresh, review both layers alongside the six PRs. Remove either
+upstream pin refresh, review both layers alongside the five PRs. Remove either
 only after verifying equivalent upstream behavior and updating the ledger,
 regressions and this inventory together. An upstream merge by itself does not
 update a bundle.
+
+The dev trigger-source cache is scoped to each override, including overrides
+using reused setup. Dependency-observation passes execute the source reads
+instead of reusing accepted or rejected probes, and nested calculations retain
+the observer. Normal calculations retain upstream's trigger caching.
 
 ## Pack-time PoB patches
 

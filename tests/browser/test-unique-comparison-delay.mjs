@@ -13,7 +13,7 @@ let page;
 try {
   page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
   page.on("pageerror", error => faults.push(error.message));
-  await page.goto("http://127.0.0.1:3010");
+  await page.goto(process.env.DESKTOP_POB_ORIGIN || "http://127.0.0.1:3010");
   await page.waitForFunction(() => window.__DESKTOP_POB__?.ready, null, { timeout: 120_000 });
   await page.evaluate(code => window.__DESKTOP_POB__.loadBuildFromCode(code), code);
   const flush = () => page.evaluate(() => window.__DESKTOP_POB__.flushInput());

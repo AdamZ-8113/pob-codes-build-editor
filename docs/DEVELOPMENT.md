@@ -78,7 +78,7 @@ policy, and 2 for incomplete collection or invalid invocation. The default
 fails on changed/absorbed entries. `--fail-on=never` still fails incomplete
 collection. Report output is written before applying the classification exit.
 
-JSON schema version 2 includes entry-catalog version 3, the fixed public
+JSON schema version 2 includes entry-catalog version 4, the fixed public
 `repository`, `editorSha`, `workflowRunId`/`workflowRunAttempt` (null locally),
 UTC `capturedAt`, `targetRef`/`targetSha`, `pinSha`, `completion`, sanitized
 `errorCode`, bounded `entries` and `counts`, informational PR states, and fetch
@@ -99,6 +99,24 @@ activity. Open Actions → Upstream overlay drift → Enable workflow to restore
 the schedule, then dispatch a check and inspect its report.
 
 For an upstream pin bump:
+
+Candidate source identities can be reproduced with
+`python scripts/build/generate-source-chain.py --pin <candidate-pin> --checkout <exact-target-checkout> --pr-layer <pr.json> --relevance-layer <relevance.json> --final-layer <reuse.json> --out <new-directory>`.
+The reviewed layer inputs are complete UTF-8 JSON path-to-text maps (null means
+absent), composed in that order from original diffs and resolved overlaps. Keep
+these authoring inputs separately from prepared runtime trees. The generator
+uses a private Git index to independently check the full patch and result tree.
+Its twelve-line diff context may change historical patch formatting while
+preserving every blob and tree identity. Run its negative tests with
+`python tests/source-chain-generator.test.py`.
+
+Generate adapter identities with
+`node scripts/build/generate-adapter-identities.mjs --source-root=<authored-final-checkout> --pin=<generated-pin> --out=<new-pin-file>`.
+It verifies the composite blobs and retained patch identities before applying
+the authoritative transforms in order. Regenerate the ModCache supplement
+through its existing generator; its result hash must come from that output.
+Install reviewed candidate files only after comparing them, then run normal
+source-ledger checks and `npm run pack`; generation does not waive those guards.
 
 1. Run the report against the intended exact SHA and review every touched,
    conflicting, or partially absorbed overlay. Rebase retained patches where
@@ -127,6 +145,11 @@ For an upstream pin bump:
 - Documentation or narrow host changes: `npm run check` and affected unit tests.
 - Ordinary code changes: `npm run check` and `npm run test:unit`.
 - Native driver changes: add `npm run test:native`.
+  This includes independent gzip/zlib bridge interoperability. For a source
+  update carrying gzip trade helpers, additionally run
+  `node scripts/test-compression-compatibility.mjs --source-root=<PoB checkout>`
+  against the exact selected source. The runner reports helper/module hashes,
+  permits compiler dependency retrieval, and disables network during execution.
 - Payload, adapter, or pinned-source changes: add `npm run pack` and relevant
   `tests/browser/` harnesses.
 - Passive-tree culling or retained-drawing changes: add `node scripts/test-tree-connectors.mjs`
@@ -267,7 +290,7 @@ See [the bundled inventory](BUNDLED_POB_CHANGES.md#pack-time-pob-patches),
 ### Retained Power Report relevance pruning and environment reuse
 
 Every source refresh must retain `power-report-relevance-pruning` followed by
-`power-report-environment-reuse` from `source-pin.json`, after the six PR
+`power-report-environment-reuse` from `source-pin.json`, after the five PR
 overlays and before pack-time adapters. The independent patches are
 `patches/power-report-relevance-pruning.patch` and
 `patches/power-report-env-reuse.patch`; their 14-file union is also included
@@ -287,6 +310,21 @@ calculation-owned state between candidates and fall back when independence
 cannot be proved. The private `PowerBuilder(true)` validation path disables
 pruning, setup reuse, and delegation for an unpruned serial reference. Native
 LuaJIT benchmark improvements are not browser timing guarantees.
+
+For a source refresh, run `node scripts/test-upstream-compatibility.mjs` after
+packing. It extracts hash-verified packaged Lua, stages retained adapter specs,
+and runs a nonempty explicit selection in a digest-pinned, network-disabled
+upstream LuaJIT/Busted container. `--source-root=<checkout>` must match the pinned
+revision; `--payload=<directory>` selects the candidate payload. Headless-only
+scaffolding is supplied from that checkout; runtime modules come from packages.
+
+Run `npm run test:browser -- --only test-power-report-preservation` to require
+positive packaged pruning, setup reuse and stage-skipping engagement. Each
+independent opt-out must remove its own work savings while preserving complete
+report and heatmap snapshots and the other optimization paths. For the static
+candidate server, set `DESKTOP_POB_ORIGIN=http://127.0.0.1:3011/browserpob/` and run
+`node tests/browser/test-power-report-preservation.mjs --cases=scalar,defensive,minion --out-dir=tmp/preservation`.
+These are functional engagement checks; calibrated timing trials remain separate.
 
 See [the bundled inventory](BUNDLED_POB_CHANGES.md#required-local-source-patches)
 for removal criteria and [release requirements](RELEASING.md).

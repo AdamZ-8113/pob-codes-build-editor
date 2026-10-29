@@ -65,13 +65,24 @@ int main(void) {
         "local b = 1; b += (false or 2); assert(b == 3)\n"
         "local text = '+= not syntax'; assert(text == '+= not syntax') -- += comment\n"
         "assert(not load('local a,b=1,2; a,b += 3'))\n"
-        "assert(not load('local function f() end; f() += 1'))\n";
+        "assert(not load('local function f() end; f() += 1'))\n"
+        "local s='a'; s ..= 'b' .. 'c'; assert(s=='abc')\n"
+        "local function concatUp() s ..= 7 end; concatUp(); assert(s=='abc7')\n"
+        "global='a'; global ..= 'b'; assert(global=='ab')\n"
+        "local t,k={x='a'},'x'; local saved=t; local function change() t={}; k='y'; return 'b' end\n"
+        "t[k] ..= change(); assert(saved.x=='ab' and t.y==nil)\n"
+        "local calls=0; local function once() calls=calls+1; return saved end\n"
+        "once().x ..= 'c'; assert(calls==1 and saved.x=='abc')\n"
+        "local n=0; local v=setmetatable({}, {__concat=function() n=n+1; return 'ok' end}); v ..= 'x'; assert(n==1 and v=='ok')\n"
+        "assert(not load('local a,b=1,2; a,b ..= 3'))\n"
+        "assert(not load('local function f() end; f() ..= 1'))\n"
+        "assert('..= text'=='..= text') -- ..= comment\n";
     if (luaL_dostring(L, source) != LUA_OK) {
         fprintf(stderr, "Lua syntax regression: %s\n", lua_tostring(L, -1));
         lua_close(L);
         return 1;
     }
     lua_close(L);
-    puts("Lua += native parser regression tests passed");
+    puts("Lua += and ..= native parser regression tests passed");
     return 0;
 }

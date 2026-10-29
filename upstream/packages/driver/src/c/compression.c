@@ -70,7 +70,9 @@ int driver_deflate(lua_State *L) {
     const char *input = luaL_checklstring(L, 1, &input_size);
     if (input_size > INPUT_LIMIT) return fail(L, "Input larger than 128 MiB");
     z_stream stream = {0};
-    int status = deflateInit(&stream, Z_BEST_COMPRESSION);
+    const int gzip = lua_isboolean(L, 2) && lua_toboolean(L, 2);
+    int status = deflateInit2(&stream, Z_BEST_COMPRESSION, Z_DEFLATED,
+        gzip ? 15 + 16 : 15, 8, Z_DEFAULT_STRATEGY);
     if (status != Z_OK) return fail(L, "deflateInit failed");
     size_t capacity = deflateBound(&stream, input_size);
     // The previous bridge allocated at most 128 MiB but told zlib it owned
@@ -109,7 +111,8 @@ int driver_inflate(lua_State *L) {
     // Ordinary imported build codes stay below this first-use data threshold.
     if (input_size >= compression_gc_threshold) lua_gc(L, LUA_GCCOLLECT, 0);
     z_stream stream = {0};
-    int status = inflateInit(&stream);
+    // Accept zlib and gzip wrappers, retaining first-stream/trailing-data behavior.
+    int status = inflateInit2(&stream, 15 + 32);
     if (status != Z_OK) return fail(L, "inflateInit failed");
     size_t capacity = input_size > 16384 ? input_size * 4 : 65536;
     void *output = resize_buffer(L, NULL, capacity);

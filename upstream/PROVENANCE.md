@@ -23,17 +23,27 @@ Generated compiler output and dependency installations are ignored local inputs.
 The selected Path of Building revision and overlay ledger are separately pinned
 by `../source-pin.json`; the browser bridge is independent of that packaged source.
 
+The native compression bridge accepts zlib and gzip streams. `Deflate(data, true)`
+emits gzip; an omitted, nil, false or non-boolean option keeps the original zlib
+format. `Inflate` rejects raw DEFLATE and retains first-stream behavior (trailing
+bytes and additional members are ignored). Build exports still use zlib. The
+existing allocation limits, Timeless collection threshold, retry and protected
+Lua-string cleanup remain intact. Native tests cover both formats, including
+allocation failures. `scripts/test-compression-compatibility.mjs --bridge-only`
+is run by the native build gate and checks interoperability with independent
+Node zlib vectors. Its `--source-root=<PoB checkout>` mode also exercises the
+checkout's unchanged TradeHelpers and base64 module; this does not change the pin.
+
 The ledger carries upstream PRs
 [#10360](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10360),
-[#10371](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10371),
 [#10372](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10372),
 [#10373](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10373),
 [#10313](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10313),
 and [#10381](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10381)
 at their exact recorded heads. Their individual diffs and SHA-256 values are
 preserved under `../patches/upstream/`; `../patches/pob-pr-composite.patch`
-records the composition onto beta revision
-`a431f3a28823270acbdd6864c644f93678581f1e`, including the semantic resolution
+records the composition onto dev revision
+`3dbca4463c0a59079d9f7f032d8240cf868e09da`, including the semantic resolution
 where #10371 and #10372 both change `ItemDBControl.lua`, and where #10313 is
 applied after #10373, followed by #10381. Those three PRs overlap in
 `CalcsTab.lua` and `TestPowerReport_spec.lua`; the resolution keeps #10373's
@@ -43,8 +53,16 @@ Report patches described below. PR #10360 is recorded through head
 `dddd929e190e46af36dd185f842ef53726c1d28a`, including its always-visible node
 power controls and heat-map-gated Power Report action without metric selection
 enabling the heat map. The composite SHA-256 is
-`31af75e58f96c27cceddfda9bbf4608ac1191f64473667cc50743b773ca7c4db`
-and its result tree is `c1903d3f3a53c87b94a54e3ce2c973600793f5b5`.
+`5555ec791f81a5d9b953a5ac4d8d6b353989c1f9741ca292a57ec8db3ed23c65`
+and its result tree is `c2873408bc2f764641a34160d58fac93f8269392`.
+PR #10371 is absorbed by this base; its original diff remains historical.
+The rebase retains new upstream specs alongside local regressions. The catalyst
+regression uses the unified quality control retained by #10360; its underlying
+quality/reset assertions are unchanged. The new upstream socket-quality helper
+also checks for an actual socket before applying Dialla's always-matching bonus.
+The per-override trigger-source cache remains enabled, but observer calculations
+bypass it to record every dependency, including rejected cost probes. Nested
+calculations propagate the observer and reused setup resets that cache per override.
 
 The maintainer-supplied 2026-09-30 gem-dropdown hover patch is preserved in
 `../patches/gem-dropdown-hover-tooltip.patch` (SHA-256
@@ -186,8 +204,8 @@ remains reachable; fullscreen is therefore omitted from the embedded tools menu.
 calculations are unchanged. The editable canvas host explicitly retains the
 default arrow cursor so its keyboard-input surface does not expose a text I-beam.
 
-The pinned PoB beta uses `+=` in `Modules/Main.lua`. The vendored Lua lexer and
-parser implement that statement directly in Lua bytecode; packaged PoB source is
+The pinned PoB dev uses `+=` and `..=`. The vendored Lua lexer and
+parser implement these statements directly in Lua bytecode; packaged PoB source is
 not rewritten. Native regression tests cover locals, globals, upvalues, captured
 table/index targets, RHS mutations, metamethods, precedence, and invalid targets.
 The C bridge reports boot failures, and the worker checks both native startup
@@ -370,9 +388,8 @@ manifest 404, never by a corrupt manifest/package. Image transport and Lua
 virtual paths remain unchanged. Production packaging uses release-relative
 asset URLs so `/import2` never falls through to the main web Worker.
 
-The unique-sort worker integration uses PoB beta
-`a431f3a28823270acbdd6864c644f93678581f1e` after the six-PR composite and
-gem-hover patch. PR #10371 supplies the evaluator visibility boundary and PR
+The unique-sort worker integration uses the pinned dev source after the five-PR
+composite and gem-hover patch. Upstream supplies #10371's evaluator visibility boundary and PR
 #10372 supplies PoB's cache; the local delegation adapter only supplies the
 browser batch hook used by helper workers.
 
@@ -641,9 +658,9 @@ harness identities remain in the report.
 ### Power Report relevance pruning (October 8)
 
 The source composite now includes the separate local
-`../patches/power-report-relevance-pruning.patch` after the six upstream PRs.
+`../patches/power-report-relevance-pruning.patch` after the five upstream PRs.
 Its SHA-256 is
-`20edd2afbd53b20cd0f16ad385ece28d70686328d455a3c7866efcee81e6e719`.
+`a71414ce8b2e317d111087b4c28b99d219091084e155d0db8c9e71a9ec9ed7c4`.
 The 13-file source/spec patch records calculation reads and conservatively
 reuses the unchanged output for irrelevant pure node additions. Uncertain
 cases and unsafe cached calculations retain the normal calculation path.
@@ -663,7 +680,7 @@ unchanged; this was patch-evidence maintenance, not a source-pin update.
 
 The source composite next applies
 `../patches/power-report-env-reuse.patch` (SHA-256
-`78a43c3646e710057ecbcb7dfba5603d5756ff1fa339a1d942bc2ebc79a1dfb0`).
+`e450d5c65ae369e39909a0ec2c76c35f45d5dec605ec8c0fe767be57bc5bddae`).
 The seven-file source/spec patch captures one setup snapshot per Power Report
 operation and reuses it only for passive overrides proven independent of setup.
 Calculation-owned state is restored between candidates, setup database writes

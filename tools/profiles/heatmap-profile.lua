@@ -181,7 +181,7 @@ do
             local profile = getRuntimeProfile
             getRuntimeProfile = function(reset)
                 local result = profile(reset)
-                local state = {runs = runs, controls = {}}
+                local state = {runs = runs, controls = {}, optimizations = __preservation}
                 if active then
                     for key, name in pairs({heatmap = 'treeHeatMap', depth = 'nodePowerMaxDepthSelect', depthCustom = 'nodePowerMaxDepthCustom', metric = 'treeHeatMapStatSelect', report = 'powerReport'}) do
                         state.controls[key] = controlState(active.controls[name])

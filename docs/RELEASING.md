@@ -138,6 +138,21 @@ from a warm Windows run. Sharing large intermediate runtime archives is deferred
 
 ## Deployment boundary
 
+For an authorized release, the private operator's normal entry point is:
+
+```powershell
+npm.cmd run deploy:editor -- --sha <full-public-commit> --expected-live <generation> --predecessor-tag <recovery-tag> --predecessor-sha256 <archive-hash>
+```
+
+Run this from a clean private operator checkout matching its remote `main`.
+Obtain the live generation and exact recovery hash from verified live/recovery
+evidence, not an old example or a rebuilt predecessor. The command selects the
+successful exact-commit CI attempt, verifies its immutable package and deploys
+once. Keep the printed run ID: resume it with `--resume-run <id>`; if upload
+succeeded but verification failed, add `--verify-only` instead of uploading again.
+The private operator's deployment runbook owns the full procedure and credentials.
+Completion requires its live identity/isolation checks and production browser smoke.
+
 Production deployment belongs to a separate private operator workflow. It must:
 
 - Fetch the candidate by exact public repository, successful workflow run and

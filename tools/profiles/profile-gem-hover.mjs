@@ -5,20 +5,26 @@ import { createRequire } from 'node:module';
 import { resolve, join } from 'node:path';
 import { inflateSync } from 'node:zlib';
 import { applyGemHoverPatch, blobHash, sha256 } from '../../scripts/patches/gem-hover-patch.mjs';
+import { applyStatusTextPatch, transformStatusTextPatch } from '../../scripts/patches/status-text-patch.mjs';
 
 // Local A/B tool. Only the hash-checked GemSelectControl and identical diagnostics
 // differ in the in-memory packages. The shipped payload is never rewritten.
 const output = resolve(process.argv[2] ?? 'tmp/gem-dropdown-hover');
 const verifyOnly = process.argv.includes('--verify-only');
-const origin = 'http://127.0.0.1:3010';
+const origin = process.env.DESKTOP_POB_ORIGIN || 'http://127.0.0.1:3010';
 const app = new URL('../../', import.meta.url);
 const require = createRequire(new URL('./upstream/deno.json', app));
 const AdmZip = require('adm-zip');
 const pin = JSON.parse(await readFile(new URL('source-pin.json', app)));
 const patchPin = pin.adapters.gemDropdownHover;
 const patch = await readFile(new URL(patchPin.patchFile, app));
-const original = await readFile(new URL('.runtime/source/src/Classes/GemSelectControl.lua', app), 'utf8');
-const patched = applyGemHoverPatch(original, patch, patchPin);
+const prepared = await readFile(new URL(`.runtime/source-${pin.compositePatch.patchSha256.slice(0,12)}/src/Classes/GemSelectControl.lua`, app), 'utf8');
+const statusPatch = await readFile(new URL(pin.adapters.compactStatusText.patchFile, app));
+const path = 'src/Classes/GemSelectControl.lua';
+// Hold the later status-text adaptation fixed in both arms; only hover caching
+// differs. The candidate still verifies the exact ordered production identities.
+const original = transformStatusTextPatch(prepared, statusPatch, path);
+const patched = applyStatusTextPatch(applyGemHoverPatch(prepared, patch, patchPin), statusPatch, pin.adapters.compactStatusText, path);
 const diagnostics = await readFile(new URL('tools/profiles/gem-hover-profile.lua', app), 'utf8');
 const manifest = JSON.parse(await readFile(new URL('.runtime/payload/manifest.json', app)));
 const core = manifest.packages.find(p => p.id === 'core');

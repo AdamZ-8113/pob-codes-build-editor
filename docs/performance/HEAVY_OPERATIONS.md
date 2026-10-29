@@ -97,7 +97,7 @@ The bundled PoB and browser adaptations also reduce repeated work:
 
 | Change | Surface | Expected behavior |
 | --- | --- | --- |
-| PoB #10371 | Item-stat sorting | Hidden equipment slots neither distort nor consume calculations |
+| PoB #10371 (now in the pinned dev base) | Item-stat sorting | Hidden equipment slots neither distort nor consume calculations |
 | PoB #10372 | Unique-item sorting | Reuses results until the build changes; filter changes need not recalculate every item |
 | Limited unique comparisons | Item editing/list operations | Bounds comparison work while preserving supported results and fallback |
 | Calculation-only jewel specs | Radius-jewel comparison | Avoids authoring-only clone work in temporary calculation specs |

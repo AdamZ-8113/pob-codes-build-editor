@@ -1,17 +1,17 @@
 {
   "schemaVersion": 2,
   "repository": "https://github.com/PathOfBuildingCommunity/PathOfBuilding.git",
-  "branch": "beta",
-  "revision": "a431f3a28823270acbdd6864c644f93678581f1e",
+  "branch": "dev",
+  "revision": "3dbca4463c0a59079d9f7f032d8240cf868e09da",
   "adapters": {
     "calculationScheduling": {
       "version": 1,
       "resultBlobHashes": {
-        "src/Modules/Build.lua": "b90a6525a96a355caafbc9e78c186e635ce59ebd",
-        "src/Classes/ConfigTab.lua": "090985ab6ffb11215d12e81f24244ffc1c8a20f0",
+        "src/Modules/Build.lua": "e8131daa3447b71bf140dd5f2fafcc507a4a0668",
+        "src/Classes/ConfigTab.lua": "06138d297dfb2ddab668f31398329931b21b8760",
         "src/Classes/EditControl.lua": "140a4ebc1ba88dcab684d63da38261b6cff513f2",
-        "src/Classes/CalcsTab.lua": "9375d43f3daab9d0de11b762d23bfec4d8bcbae7",
-        "src/Classes/ItemsTab.lua": "7649e17228ab87a2a13bde8b8dc738ba9a9019b2",
+        "src/Classes/CalcsTab.lua": "43f1adc2fa36fd456192741423748d56ce97778b",
+        "src/Classes/ItemsTab.lua": "14e42e8ce0afc624b5f7c2447bc67ca6b954c2dc",
         "src/Modules/Main.lua": "ba137678649df496950c11751ad609b8d8232f8f"
       }
     },
@@ -28,10 +28,10 @@
       "version": 1,
       "resultBlobHashes": {
         "src/Classes/ItemDBControl.lua": "550943265ac25fbe3d4c8ea02e3ef40481840deb",
-        "src/Classes/ItemsTab.lua": "7649e17228ab87a2a13bde8b8dc738ba9a9019b2",
+        "src/Classes/ItemsTab.lua": "14e42e8ce0afc624b5f7c2447bc67ca6b954c2dc",
         "src/Classes/ListControl.lua": "9b49a46f6bd23ed14cd2cae60d6e18ad5224304e",
         "src/Classes/ControlHost.lua": "83563f758b45121e91b3d3e4bac3efc99bb4f53b",
-        "src/Modules/Common.lua": "d68f3428bb2b2d3f06edddd7fe1b7283c35a7a61"
+        "src/Modules/Common.lua": "a4b2cdfc5b55a3016a17d41e93fb015ef0e98aae"
       }
     },
     "sparseTimelessSeeds": {
@@ -68,10 +68,10 @@
       "patchFile": "patches/limited-unique-item-comparisons.patch",
       "patchSha256": "27361f45e1b27c127b60ac980dfe9617d35051bdc2225ec987d66dab23f34519",
       "sourceBlobHashes": {
-        "src/Classes/ItemsTab.lua": "7649e17228ab87a2a13bde8b8dc738ba9a9019b2"
+        "src/Classes/ItemsTab.lua": "14e42e8ce0afc624b5f7c2447bc67ca6b954c2dc"
       },
       "resultBlobHashes": {
-        "src/Classes/ItemsTab.lua": "0fcf0d30100e3b137f7baaeed05bfdbb8d89c5a4"
+        "src/Classes/ItemsTab.lua": "15e494d2cb746b74c3a27f72cdb46071258c79f9"
       }
     },
     "calculationOnlyJewelSpecs": {
@@ -88,16 +88,16 @@
         "Omit unused nodeCopy.power allocation only in temporary jewel-comparison clones; this addition is not part of upstream PR #9863"
       ],
       "preparedSourceBlobHashes": {
-        "src/Classes/ItemsTab.lua": "7649e17228ab87a2a13bde8b8dc738ba9a9019b2",
-        "src/Classes/PassiveSpec.lua": "3e64512407177351c7a790ff2dcf6ab2419bd398"
+        "src/Classes/ItemsTab.lua": "14e42e8ce0afc624b5f7c2447bc67ca6b954c2dc",
+        "src/Classes/PassiveSpec.lua": "39249b0d301c0d1215803e840564770b2a17ca52"
       },
       "sourceBlobHashes": {
-        "src/Classes/ItemsTab.lua": "0fcf0d30100e3b137f7baaeed05bfdbb8d89c5a4",
-        "src/Classes/PassiveSpec.lua": "3e64512407177351c7a790ff2dcf6ab2419bd398"
+        "src/Classes/ItemsTab.lua": "15e494d2cb746b74c3a27f72cdb46071258c79f9",
+        "src/Classes/PassiveSpec.lua": "39249b0d301c0d1215803e840564770b2a17ca52"
       },
       "resultBlobHashes": {
-        "src/Classes/ItemsTab.lua": "0ed4d0e84c575bc8f955460901da14271dad9ef7",
-        "src/Classes/PassiveSpec.lua": "4bc4f97aa456b4abd5569731b47480bf6b73904c"
+        "src/Classes/ItemsTab.lua": "ed6b642a2104c063c2274d3dd99cd04d1008ee2f",
+        "src/Classes/PassiveSpec.lua": "21dc1555a4575d0eeb4702afe25aad3529b4704c"
       }
     },
     "importTabHostCapabilities": {
@@ -130,10 +130,10 @@
       "patchFile": "patches/node-power-delegation.patch",
       "patchSha256": "8cebdd147ca3c60706a730d54b67cba5669d181e3b381065cea19acb05b40e75",
       "sourceBlobHashes": {
-        "src/Classes/CalcsTab.lua": "9375d43f3daab9d0de11b762d23bfec4d8bcbae7"
+        "src/Classes/CalcsTab.lua": "43f1adc2fa36fd456192741423748d56ce97778b"
       },
       "resultBlobHashes": {
-        "src/Classes/CalcsTab.lua": "74128c3ef8daf1be6632ec4d8caf7b6dc54b5792"
+        "src/Classes/CalcsTab.lua": "31ff47c1e1abca4b26f63354d889cb5eb6ca1bda"
       }
     },
     "compactStatusText": {
@@ -142,17 +142,17 @@
       "patchSha256": "2f92e663de676fe184bc3211c7f8f22d03ca2d35ac07a4b28b7c86650af3d78f",
       "preparedSourceBlobHashes": {
         "src/Classes/GemSelectControl.lua": "e1a243fcca307e80188764d8fa91a5e675eaccfa",
-        "src/Classes/TreeTab.lua": "36c9557ac046535b44fc01157b04b15035295959",
+        "src/Classes/TreeTab.lua": "76646b436e1be36d82a9f6f77beb098c0f5476a7",
         "src/Modules/ToastNotification.lua": "2c95af2cdaf4f75f1c4d9be79bd1c178f2a4c6ee"
       },
       "sourceBlobHashes": {
         "src/Classes/GemSelectControl.lua": "850bd569f3d1ddbfe1e4c3b5a0a9bf1795c3a016",
-        "src/Classes/TreeTab.lua": "36c9557ac046535b44fc01157b04b15035295959",
+        "src/Classes/TreeTab.lua": "76646b436e1be36d82a9f6f77beb098c0f5476a7",
         "src/Modules/ToastNotification.lua": "2c95af2cdaf4f75f1c4d9be79bd1c178f2a4c6ee"
       },
       "resultBlobHashes": {
         "src/Classes/GemSelectControl.lua": "f615370179f418b79d2ab2dfbe48e2a28bd82c7d",
-        "src/Classes/TreeTab.lua": "c4eaac23aaf75f01d1f413c58913ae01aa3256b6",
+        "src/Classes/TreeTab.lua": "39a78a6ce4f928125baf6f969e145d365818f605",
         "src/Modules/ToastNotification.lua": "4a466741e7dc3e0457b11f05814796c860b2cb01"
       }
     },
@@ -161,16 +161,16 @@
       "patchFile": "patches/power-node-depth-default.patch",
       "patchSha256": "05e999a1b6b939341f10910ebed33075a3a12ba9dde4fcb5c659df28b21f791c",
       "preparedSourceBlobHashes": {
-        "src/Classes/TreeTab.lua": "36c9557ac046535b44fc01157b04b15035295959",
-        "src/Classes/CalcsTab.lua": "9375d43f3daab9d0de11b762d23bfec4d8bcbae7"
+        "src/Classes/TreeTab.lua": "76646b436e1be36d82a9f6f77beb098c0f5476a7",
+        "src/Classes/CalcsTab.lua": "43f1adc2fa36fd456192741423748d56ce97778b"
       },
       "sourceBlobHashes": {
-        "src/Classes/TreeTab.lua": "c4eaac23aaf75f01d1f413c58913ae01aa3256b6",
-        "src/Classes/CalcsTab.lua": "74128c3ef8daf1be6632ec4d8caf7b6dc54b5792"
+        "src/Classes/TreeTab.lua": "39a78a6ce4f928125baf6f969e145d365818f605",
+        "src/Classes/CalcsTab.lua": "31ff47c1e1abca4b26f63354d889cb5eb6ca1bda"
       },
       "resultBlobHashes": {
-        "src/Classes/TreeTab.lua": "4eb96ae4afb0a3a9dd47e60779894ef14dd75b26",
-        "src/Classes/CalcsTab.lua": "94980c237f7e879c1b62951c5363afc48ca09aee"
+        "src/Classes/TreeTab.lua": "22a062d0f3435bf02f87318adecc619056e7a88a",
+        "src/Classes/CalcsTab.lua": "bbb3eecd65a52e0ef68349b8ec6aac8b53a5893d"
       }
     },
     "buildListPendingFolders": {
@@ -178,10 +178,10 @@
       "patchFile": "patches/build-list-pending-folders.patch",
       "patchSha256": "65bf9126353e9fa60a1961f250997b68f09acd8303f13cd5c7545f70757145dc",
       "sourceBlobHashes": {
-        "src/Modules/BuildListHelpers.lua": "b6fb906d28cf9406577f1a53edcb3304f6c5cfe7"
+        "src/Modules/BuildListHelpers.lua": "dc1ff177a0d5c00afbe0d803fea7a62757a3c305"
       },
       "resultBlobHashes": {
-        "src/Modules/BuildListHelpers.lua": "6c43043282a4ad064a49528e485def0f8353a8f4"
+        "src/Modules/BuildListHelpers.lua": "3359769eee3b7ede47ad2746c76ff09517965b44"
       }
     },
     "treeConnectorCulling": {
@@ -244,19 +244,6 @@
     },
     {
       "kind": "upstream-pr",
-      "number": 10371,
-      "url": "https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10371",
-      "base": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
-      "head": "3068a1325f2c483fe43c24bb9f7e2d05a6fd04e4",
-      "patchFile": "patches/upstream/pr-10371.diff",
-      "patchSha256": "0b3dd02a1637ffac915af79dcec532dbd09925decbf97157b60de7f8a6a49dc5",
-      "files": [
-        "spec/System/TestItemDBControl_spec.lua",
-        "src/Classes/ItemDBControl.lua"
-      ]
-    },
-    {
-      "kind": "upstream-pr",
       "number": 10372,
       "url": "https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10372",
       "base": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
@@ -314,7 +301,7 @@
       "id": "power-report-relevance-pruning",
       "applicationStage": "source-composite",
       "patchFile": "patches/power-report-relevance-pruning.patch",
-      "patchSha256": "20edd2afbd53b20cd0f16ad385ece28d70686328d455a3c7866efcee81e6e719",
+      "patchSha256": "a71414ce8b2e317d111087b4c28b99d219091084e155d0db8c9e71a9ec9ed7c4",
       "files": [
         "spec/System/TestPowerReport_spec.lua",
         "src/Classes/CalcsTab.lua",
@@ -338,33 +325,33 @@
       },
       "sourceBlobHashes": {
         "spec/System/TestPowerReport_spec.lua": "d8eea8b4b72b73355978b336eeb877ad7552ed7a",
-        "src/Classes/CalcsTab.lua": "fe46acdfe5f57129f2c41dab60881d7d7e9a68f8",
+        "src/Classes/CalcsTab.lua": "4fcb9d326f81af0db861788301887b196cb6a9e7",
         "src/Classes/ModDB.lua": "ffaf1e5ea591bd8aabbacb7f29f96c684deb79cf",
         "src/Classes/ModList.lua": "ec686674d772a7ac27d1fef77b28d8c7d18678e1",
         "src/Classes/ModStore.lua": "0dd30e41d664333f5532f376f2c443d90bbc97f8",
-        "src/Modules/CalcActiveSkill.lua": "de16231644eeda5aeda94de612485a6712b3bf5b",
+        "src/Modules/CalcActiveSkill.lua": "938e89ff78d72b1d8f171ef9149354dcb9da0cc7",
         "src/Modules/CalcMirages.lua": "b6826b567ea927936791d783ae9bd388723bdef5",
-        "src/Modules/CalcPerform.lua": "c7f75eda6c44c5be50608f06edc665b07f506115",
+        "src/Modules/CalcPerform.lua": "d683aab3ce3a3b96fdc13bac149cbf6d1ff76249",
         "src/Modules/CalcRelevance.lua": null,
-        "src/Modules/CalcSetup.lua": "13242a8c3e9264a26073db7e3479858f0dbc8800",
-        "src/Modules/CalcTriggers.lua": "777890cacb2e61e4f51938053cc53adc25f3845c",
-        "src/Modules/Calcs.lua": "403d11aab4467bff0a9517c2becb85ffaa7de67e",
-        "src/Modules/Common.lua": "b71053f5f24b64244e650a92158f4d6bb10bdfd9"
+        "src/Modules/CalcSetup.lua": "318f8cd147af1edf0e1640895a0c9a5d5f13a16b",
+        "src/Modules/CalcTriggers.lua": "b974cf8711d3734d3043e91d353a27a5c16f38f4",
+        "src/Modules/Calcs.lua": "d9ea4a3f8a4ded2895b5bad39ebd5730489f8281",
+        "src/Modules/Common.lua": "6cc8691de34dd19a63803cf8ee06a9a4173ad65f"
       },
       "resultBlobHashes": {
         "spec/System/TestPowerReport_spec.lua": "dca0ceec430ca0245183c4775b6d6c86177ebd2e",
-        "src/Classes/CalcsTab.lua": "8a0e2bf19b38ae560ce6274e49bc4b64a3449abb",
+        "src/Classes/CalcsTab.lua": "5221d30b8e530a549d97f0fcb861755a8aacfc4b",
         "src/Classes/ModDB.lua": "81b88184602c187a5f9ef95fd096173f7b2b814a",
         "src/Classes/ModList.lua": "46f06f06b7d5fa3d7cc0ff28b094e4dff6715884",
         "src/Classes/ModStore.lua": "40159353f12c75de02f664303eacdddeac610220",
-        "src/Modules/CalcActiveSkill.lua": "0beb9bf1a560f236accfbde13386e609d309f4cf",
+        "src/Modules/CalcActiveSkill.lua": "03c67a77ade7b0722a8c82e423af627ac3b14c44",
         "src/Modules/CalcMirages.lua": "b7ff9a32be7aa71ae35f5bd7a0970a6129f399a6",
-        "src/Modules/CalcPerform.lua": "078d0cfe6b983e780afd79c03894a5dc1ebded8f",
+        "src/Modules/CalcPerform.lua": "5e3b8a5966d77e1af711cef79e241ce98f43c5be",
         "src/Modules/CalcRelevance.lua": "bbff6c0891bdef6529fb131b6082639fbe8ef804",
-        "src/Modules/CalcSetup.lua": "56627ceea25ae786fba3a83f024b1baee33e2dd3",
-        "src/Modules/CalcTriggers.lua": "58d1c53c117a6972c3cada3f3b6d15fdf44d4cb6",
-        "src/Modules/Calcs.lua": "ced6fbb8e7c66b0fe1027cc9f93cc38ac9c7abcf",
-        "src/Modules/Common.lua": "d68f3428bb2b2d3f06edddd7fe1b7283c35a7a61"
+        "src/Modules/CalcSetup.lua": "18d189024d76c02f2acc4c7590c509be5326a910",
+        "src/Modules/CalcTriggers.lua": "9eb758d1fa49848de1e3a0f235c0fad0a81aa47b",
+        "src/Modules/Calcs.lua": "61427b71ed363a5cc6189bf37422974503c25d9c",
+        "src/Modules/Common.lua": "a4b2cdfc5b55a3016a17d41e93fb015ef0e98aae"
       }
     },
     {
@@ -372,7 +359,7 @@
       "id": "power-report-environment-reuse",
       "applicationStage": "source-composite",
       "patchFile": "patches/power-report-env-reuse.patch",
-      "patchSha256": "78a43c3646e710057ecbcb7dfba5603d5756ff1fa339a1d942bc2ebc79a1dfb0",
+      "patchSha256": "e450d5c65ae369e39909a0ec2c76c35f45d5dec605ec8c0fe767be57bc5bddae",
       "files": [
         "spec/System/TestPowerReport_spec.lua",
         "src/Classes/CalcsTab.lua",
@@ -385,21 +372,21 @@
       "upstreamPr": null,
       "sourceBlobHashes": {
         "spec/System/TestPowerReport_spec.lua": "dca0ceec430ca0245183c4775b6d6c86177ebd2e",
-        "src/Classes/CalcsTab.lua": "8a0e2bf19b38ae560ce6274e49bc4b64a3449abb",
-        "src/Modules/CalcPerform.lua": "078d0cfe6b983e780afd79c03894a5dc1ebded8f",
+        "src/Classes/CalcsTab.lua": "5221d30b8e530a549d97f0fcb861755a8aacfc4b",
+        "src/Modules/CalcPerform.lua": "5e3b8a5966d77e1af711cef79e241ce98f43c5be",
         "src/Modules/CalcRelevance.lua": "bbff6c0891bdef6529fb131b6082639fbe8ef804",
-        "src/Modules/CalcSetup.lua": "56627ceea25ae786fba3a83f024b1baee33e2dd3",
+        "src/Modules/CalcSetup.lua": "18d189024d76c02f2acc4c7590c509be5326a910",
         "src/Modules/CalcSetupReuse.lua": null,
-        "src/Modules/Calcs.lua": "ced6fbb8e7c66b0fe1027cc9f93cc38ac9c7abcf"
+        "src/Modules/Calcs.lua": "61427b71ed363a5cc6189bf37422974503c25d9c"
       },
       "resultBlobHashes": {
         "spec/System/TestPowerReport_spec.lua": "96eba7096806bd348cdc15cf92bbb6e2fc2fde77",
-        "src/Classes/CalcsTab.lua": "9375d43f3daab9d0de11b762d23bfec4d8bcbae7",
-        "src/Modules/CalcPerform.lua": "849c77a275111c5893317e8d585958312fd660c0",
+        "src/Classes/CalcsTab.lua": "43f1adc2fa36fd456192741423748d56ce97778b",
+        "src/Modules/CalcPerform.lua": "b183b01bdfa0777eeb7ccacea3e7783a2df806e7",
         "src/Modules/CalcRelevance.lua": "33afd6822026480ed5044aa337d3f8c88fe609ab",
-        "src/Modules/CalcSetup.lua": "b43032091a442b74c67d3a3ab8a85a33e1b9abe7",
+        "src/Modules/CalcSetup.lua": "17b268b5c008f8b8e1cda2127e6b9fde73fabeda",
         "src/Modules/CalcSetupReuse.lua": "d0c828859c89e7e9d12ca9e3a5daa4ec874293b5",
-        "src/Modules/Calcs.lua": "47216945e08e374d9637418ea74e70c23369c146"
+        "src/Modules/Calcs.lua": "bf87cc058fd6b13122cfbead99d0f2c6cfe42b93"
       }
     },
     {
@@ -546,10 +533,10 @@
   ],
   "compositePatch": {
     "patchFile": "patches/pob-pr-composite.patch",
-    "patchSha256": "31af75e58f96c27cceddfda9bbf4608ac1191f64473667cc50743b773ca7c4db",
-    "baseRevision": "a431f3a28823270acbdd6864c644f93678581f1e",
+    "patchSha256": "5555ec791f81a5d9b953a5ac4d8d6b353989c1f9741ca292a57ec8db3ed23c65",
+    "baseRevision": "3dbca4463c0a59079d9f7f032d8240cf868e09da",
     "upstreamBase": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
-    "resultTree": "c1903d3f3a53c87b94a54e3ce2c973600793f5b5",
+    "resultTree": "c2873408bc2f764641a34160d58fac93f8269392",
     "files": [
       "spec/System/TestGemSocketQuality_spec.lua",
       "spec/System/TestImport_spec.lua",
@@ -598,17 +585,17 @@
       "src/Modules/Main.lua"
     ],
     "resultBlobHashes": {
-      "spec/System/TestGemSocketQuality_spec.lua": "3f54c87649455c045ed2bd15dcca05e64653b769",
-      "spec/System/TestImport_spec.lua": "fdb3083fd39912ba6eab23bea75b848d4d35bdbb",
+      "spec/System/TestGemSocketQuality_spec.lua": "4ce020c4ae4d9b36c877a325c389e54c655c8670",
+      "spec/System/TestImport_spec.lua": "77bd82ae686305533e96b5f01372734d5d32e4b6",
       "spec/System/TestItemDBControl_spec.lua": "9dbf1be931ea74fcc790f5f30a41eeca2244ffce",
       "spec/System/TestItemListControl_spec.lua": "0362a5f8645f928a0d08467e3663d07aef34ec7e",
-      "spec/System/TestItemMods_spec.lua": "362ce3a1c80bad43b773bbec9ca78b0cb73bca04",
+      "spec/System/TestItemMods_spec.lua": "c04a8e278a0b2c3203dc048c6bd1e95622d40271",
       "spec/System/TestPowerReport_spec.lua": "96eba7096806bd348cdc15cf92bbb6e2fc2fde77",
-      "spec/System/TestSkills_spec.lua": "8e90b9f5b5359948f71a9e88e8dca44a7b803aa7",
+      "spec/System/TestSkills_spec.lua": "b1243179f11a974a9b3450fb4e92f3f0d7b5508c",
       "src/Classes/CalcSectionControl.lua": "cbe1bd74b832ead2c16d1aa4cc6664d34c903e0d",
-      "src/Classes/CalcsTab.lua": "9375d43f3daab9d0de11b762d23bfec4d8bcbae7",
+      "src/Classes/CalcsTab.lua": "43f1adc2fa36fd456192741423748d56ce97778b",
       "src/Classes/CheckBoxControl.lua": "e8b08226de2aaf098a13ca028eeedfbad53d982e",
-      "src/Classes/ConfigTab.lua": "090985ab6ffb11215d12e81f24244ffc1c8a20f0",
+      "src/Classes/ConfigTab.lua": "06138d297dfb2ddab668f31398329931b21b8760",
       "src/Classes/DropDownControl.lua": "098783802834c16ea57886630a387b1d180adc93",
       "src/Classes/EditControl.lua": "140a4ebc1ba88dcab684d63da38261b6cff513f2",
       "src/Classes/GemSelectControl.lua": "e1a243fcca307e80188764d8fa91a5e675eaccfa",
@@ -616,7 +603,7 @@
       "src/Classes/ItemDBControl.lua": "550943265ac25fbe3d4c8ea02e3ef40481840deb",
       "src/Classes/ItemListControl.lua": "0ebf59105330a3b2f3f5c1ab3514b0732cfd6044",
       "src/Classes/ItemSlotControl.lua": "12ba8f2e30fa2f02ce2150b059d282c377090243",
-      "src/Classes/ItemsTab.lua": "7649e17228ab87a2a13bde8b8dc738ba9a9019b2",
+      "src/Classes/ItemsTab.lua": "14e42e8ce0afc624b5f7c2447bc67ca6b954c2dc",
       "src/Classes/ListControl.lua": "9b49a46f6bd23ed14cd2cae60d6e18ad5224304e",
       "src/Classes/ModDB.lua": "81b88184602c187a5f9ef95fd096173f7b2b814a",
       "src/Classes/ModList.lua": "46f06f06b7d5fa3d7cc0ff28b094e4dff6715884",
@@ -625,22 +612,22 @@
       "src/Classes/SharedItemListControl.lua": "2590aeebe0e1b3462d73cbc9db8d3e26d71aff5b",
       "src/Classes/SkillListControl.lua": "1d6683433c8f0942d1f8cb31868b4b030c7985f4",
       "src/Classes/SkillsTab.lua": "79574c523fa6a5990f83eaa3c85e4ced869b5563",
-      "src/Classes/Tooltip.lua": "bfee2e5190c316da7fae8b7f0a1c0f44812da94f",
-      "src/Classes/TreeTab.lua": "36c9557ac046535b44fc01157b04b15035295959",
+      "src/Classes/Tooltip.lua": "f0e10ed947ad6515bd3de577a1c89959278bb64e",
+      "src/Classes/TreeTab.lua": "76646b436e1be36d82a9f6f77beb098c0f5476a7",
       "src/Modules/AddImplicitPopup.lua": "41ee8c0e083be3c6453fad6389027a6f4b26fa9d",
-      "src/Modules/Build.lua": "b90a6525a96a355caafbc9e78c186e635ce59ebd",
-      "src/Modules/CalcActiveSkill.lua": "0beb9bf1a560f236accfbde13386e609d309f4cf",
+      "src/Modules/Build.lua": "e8131daa3447b71bf140dd5f2fafcc507a4a0668",
+      "src/Modules/CalcActiveSkill.lua": "03c67a77ade7b0722a8c82e423af627ac3b14c44",
       "src/Modules/CalcMirages.lua": "b7ff9a32be7aa71ae35f5bd7a0970a6129f399a6",
-      "src/Modules/CalcPerform.lua": "849c77a275111c5893317e8d585958312fd660c0",
+      "src/Modules/CalcPerform.lua": "b183b01bdfa0777eeb7ccacea3e7783a2df806e7",
       "src/Modules/CalcRelevance.lua": "33afd6822026480ed5044aa337d3f8c88fe609ab",
-      "src/Modules/CalcSections.lua": "8dcf0865571872d6fc85530411019cac3036d169",
-      "src/Modules/CalcSetup.lua": "b43032091a442b74c67d3a3ab8a85a33e1b9abe7",
+      "src/Modules/CalcSections.lua": "f05db0e41cecb7e04624f8f21946df346cd843a8",
+      "src/Modules/CalcSetup.lua": "17b268b5c008f8b8e1cda2127e6b9fde73fabeda",
       "src/Modules/CalcSetupReuse.lua": "d0c828859c89e7e9d12ca9e3a5daa4ec874293b5",
-      "src/Modules/CalcTriggers.lua": "58d1c53c117a6972c3cada3f3b6d15fdf44d4cb6",
-      "src/Modules/Calcs.lua": "47216945e08e374d9637418ea74e70c23369c146",
-      "src/Modules/Common.lua": "d68f3428bb2b2d3f06edddd7fe1b7283c35a7a61",
-      "src/Modules/ConfigModBrowser.lua": "0b0cde3bdf8a89c31348c547a2dd89b50097510e",
-      "src/Modules/Data.lua": "6ea348bdc6a984884f2df6d89d671279012c7705",
+      "src/Modules/CalcTriggers.lua": "9eb758d1fa49848de1e3a0f235c0fad0a81aa47b",
+      "src/Modules/Calcs.lua": "bf87cc058fd6b13122cfbead99d0f2c6cfe42b93",
+      "src/Modules/Common.lua": "a4b2cdfc5b55a3016a17d41e93fb015ef0e98aae",
+      "src/Modules/ConfigModBrowser.lua": "db31ce2844329b3dc3652ea58ea5fbc0b98f1b31",
+      "src/Modules/Data.lua": "ecb7b59a429818bce412401f012cbd0923abc672",
       "src/Modules/ItemSocketControls.lua": "5c5d7c47be149a1d1c124eeb508bff16ec3934fc",
       "src/Modules/Main.lua": "ba137678649df496950c11751ad609b8d8232f8f"
     }
@@ -652,10 +639,10 @@
       "entries": 248,
       "excluded": [],
       "sourceBlobHashes": {
-        "src/Data/ModCache.lua": "c975e8c33aba0bbfbbacc2a97bc3ae830b250d95"
+        "src/Data/ModCache.lua": "c0ba5d236326892937254192e9803adf65bd8fef"
       },
       "resultBlobHashes": {
-        "src/Data/ModCache.lua": "35ba945b83f0cc359b1c660bd6ccf82f1e43dd9c"
+        "src/Data/ModCache.lua": "51f666b77eb44a8444c29e8b6c23360eea7d69b1"
       }
     }
   }

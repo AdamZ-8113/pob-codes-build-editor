@@ -4,6 +4,8 @@ import { browserChannel } from "../../scripts/lib/browser-channel.mjs";
 import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { createRequire } from "node:module";
+import { pathToFileURL } from "node:url";
 
 const origin = process.env.DESKTOP_POB_ORIGIN ?? "http://127.0.0.1:3010";
 const browser = await chromium.launch({ headless: true, channel: browserChannel() });
@@ -95,6 +97,18 @@ async function runCapacityProbe(fileCount) {
 
 try {
   const context = await browser.newContext({ viewport: { width: 1600, height: 1000 } });
+  // The static candidate does not serve Vite's test-only TypeScript modules.
+  // Bundle this OPFS probe locally without changing the candidate artifacts.
+  const require = createRequire(new URL("../../upstream/deno.json", import.meta.url));
+  const { build } = await import(pathToFileURL(require.resolve("vite")).href);
+  const probe = await build({
+    configFile: false, logLevel: "error",
+    resolve: { alias: [{ find: /^@zenfs\/core$/, replacement: require.resolve("@zenfs/core") }] },
+    build: { write: false, lib: { entry: "tests/browser-support/build-folder-import-harness.ts", formats: ["es"] } },
+  });
+  const chunks = [probe].flat().flatMap(result => result.output).filter(entry => entry.type === "chunk");
+  assert.equal(chunks.length, 1, "Self-contained OPFS test module");
+  await context.route("**/tests/browser-support/build-folder-import-harness.ts", route => route.fulfill({ contentType: "text/javascript", body: chunks[0].code }));
   const page = await context.newPage();
   const faults = [];
   page.on("pageerror", error => faults.push(error.message));

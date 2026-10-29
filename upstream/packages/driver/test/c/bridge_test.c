@@ -601,14 +601,15 @@ static void *deny_lua_allocation(void *opaque, void *ptr, size_t old_size, size_
     return allocator->original(allocator->user, ptr, old_size, size);
 }
 
-static void test_compression_errors_and_growth(void) {
+static void test_compression_errors_and_growth(int gzip) {
     lua_State *L = luaL_newstate();
     luaL_openlibs(L);
     lua_pushcfunction(L, driver_deflate); lua_setglobal(L, "Deflate");
     lua_pushcfunction(L, driver_inflate); lua_setglobal(L, "Inflate");
+    lua_pushboolean(L, gzip); lua_setglobal(L, "gzip");
     CHECK(luaL_dostring(L,
         "payload = string.rep('binary\\0\\255\\128data', 20000)\n"
-        "compressed = assert(Deflate(payload))\n"
+        "compressed = assert(Deflate(payload, gzip))\n"
         "assert(Inflate(compressed) == payload)\n"
         "assert(Inflate(assert(Deflate(''))) == '')\n"
         "for _, input in ipairs({'', 'invalid', compressed:sub(1, #compressed - 2)}) do\n"
@@ -618,7 +619,7 @@ static void test_compression_errors_and_growth(void) {
     compression_fail_after = 0;
     CHECK(luaL_dostring(L,
         "local value, why = Inflate(compressed); assert(value == nil and why:find('memory'))\n"
-        "value, why = Deflate(payload); assert(value == nil and why:find('memory'))\n") == LUA_OK);
+        "value, why = Deflate(payload, gzip); assert(value == nil and why:find('memory'))\n") == LUA_OK);
     CHECK(compression_live_buffers == 0);
     // Initial output allocation succeeds, then its first growth fails.
     compression_fail_after = 1;
@@ -672,6 +673,7 @@ int main(void) {
     test_translated_draw_cache();
     test_text_width_cache_bounds();
     test_draw_string_width_cache();
-    test_compression_errors_and_growth();
+    test_compression_errors_and_growth(0);
+    test_compression_errors_and_growth(1);
     return 0;
 }

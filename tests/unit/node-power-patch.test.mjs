@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { applyNodePowerPatch } from '../../scripts/patches/node-power-patch.mjs';
 import { transforms } from '../../tools/experiments/node-power-delegation-experiment.mjs';
 import { parseDriftPatch, transformDriftPatch } from '../../scripts/build/drift-patch.mjs';
-import { validateSourceLedger, validatePreparedRelevance } from '../../scripts/build/source-ledger.mjs';
+import { validateSourceLedger, validatePreparedRelevance, validateCompositeTree } from '../../scripts/build/source-ledger.mjs';
 
 const { pin } = await validateSourceLedger(fileURLToPath(new URL('../..', import.meta.url)));
 const adapter = pin.adapters.nodePowerDelegation;
@@ -44,16 +44,25 @@ test('node-power ledger rejects unowned patches and changed source chains', asyn
   }
 });
 
+test('the composite tree is recomputed and rejects a wrong recorded tree', {skip:source === null}, async () => {
+  const root = fileURLToPath(new URL(`../../.runtime/source-${pin.compositePatch.patchSha256.slice(0,12)}`, import.meta.url));
+  const composite = await readFile(pin.compositePatch.patchFile);
+  await validateCompositeTree(root, pin, composite);
+  const changed = structuredClone(pin);
+  changed.compositePatch.resultTree = '0'.repeat(40);
+  await assert.rejects(validateCompositeTree(root, changed, composite), /result tree identity/);
+});
+
 test('Power Report patches remain required source layers across future bundles', async () => {
   for (const mutate of [
     p => { p.overlays = p.overlays.filter(o => o.id !== 'power-report-relevance-pruning'); },
-    p => { p.overlays[6].applicationStage = 'pack-time'; },
+    p => { p.overlays[5].applicationStage = 'pack-time'; },
     p => { delete p.compositePatch.resultBlobHashes['src/Modules/CalcRelevance.lua']; },
-    p => { p.overlays[6].resultBlobHashes['src/Classes/CalcsTab.lua'] = '0'.repeat(40); },
+    p => { p.overlays[5].resultBlobHashes['src/Classes/CalcsTab.lua'] = '0'.repeat(40); },
     p => { p.overlays = p.overlays.filter(o => o.id !== 'power-report-environment-reuse'); },
-    p => { p.overlays[7].applicationStage = 'pack-time'; },
+    p => { p.overlays[6].applicationStage = 'pack-time'; },
     p => { delete p.compositePatch.resultBlobHashes['src/Modules/CalcSetupReuse.lua']; },
-    p => { p.overlays[7].resultBlobHashes['src/Modules/CalcSetup.lua'] = '0'.repeat(40); },
+    p => { p.overlays[6].resultBlobHashes['src/Modules/CalcSetup.lua'] = '0'.repeat(40); },
   ]) {
     const changed = structuredClone(pin);
     mutate(changed);

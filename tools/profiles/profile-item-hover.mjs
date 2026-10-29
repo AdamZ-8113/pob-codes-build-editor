@@ -69,9 +69,7 @@ try {
    await context.route(`**/dist/release/${name}*`,r=>r.fulfill({contentType:name.endsWith('.wasm')?'application/wasm':'text/javascript',body}));
   }
   let seededRuntimeRequests=0;
-  if(deterministicSeed)await context.route(production
-    ? /^https:\/\/pob\.codes\/browserpob\/releases\/[a-f0-9]{24}\/shell\/assets\/driver-[\w-]+\.js(?:\?.*)?$/
-    : '**/dist/release/driver.mjs*',async route=>{
+  if(deterministicSeed)await context.route(/\/driver(?:-[\w-]+)?\.(?:mjs|js)(?:\?|$)/,async route=>{
    const body=runtimeDirectory?await readFile(join(resolve(runtimeDirectory),'driver.mjs'),'utf8'):await (await route.fetch()).text();
    // Lua seeds table hashes from time(NULL). Fix wall-clock time so equally
    // ranked socket blocks have reproducible order; CPU clocks stay real.
@@ -106,6 +104,23 @@ try {
    await page.evaluate(code=>window.__DESKTOP_POB__.loadBuildFromCode(code),buildCode);
    await page.keyboard.press('Control+3');await flush();
    await page.mouse.move(1450,850);await flush();await page.waitForTimeout(1200);
+   const normalizeContext=async()=>{if(verifyContext){
+    // PoB normalizes inactive sets/specs on first selection. Visit them before
+    // the reference export so that later invalidation checks compare settled
+    // native state, including inactive sets, in both cache arms.
+    const canvas=await page.locator('canvas').boundingBox(),size=await page.locator('canvas').evaluate(c=>[c.width,c.height]);
+    for(const kind of ['itemSet','spec']){
+     const state=(await profile()).samples.itemHover, count=state[`${kind}Count`], initial=state[`${kind}Index`];
+     assert.ok(count>1,`${kind}: fixture has alternate choices`);
+     for(const index of [...Array.from({length:count},(_,i)=>i+1),initial]){
+      const current=(await profile()).samples.itemHover,b=current[`${kind}Bounds`];
+      await page.mouse.click(canvas.x+(b[0]+b[2]/2)*canvas.width/size[0],canvas.y+(b[1]+b[3]/2)*canvas.height/size[1]);
+      for(let step=current[`${kind}Index`];step!==index;step+=step<index?1:-1)await page.keyboard.press(step<index?'ArrowDown':'ArrowUp');
+      await page.keyboard.press('Escape');await flush();
+     }
+    }
+   }};
+   await normalizeContext();
    const initialExport=await canonicalExport();
    const initial=await profile();
    const bounds=await page.locator('canvas').boundingBox(),size=await page.locator('canvas').evaluate(c=>[c.width,c.height]);
@@ -117,11 +132,13 @@ try {
    const targets=[...['Weapon 1','Helmet','Ring 1','Flask 1','Socket #1','Socket #4'].filter(n=>state.equipped[n]).map(n=>({name:`equipped-${n}`,tooltip:n,p:point(state.equipped[n][0]+80,state.equipped[n][1]+8)})),
     ...[...new Set([0,1,2,3,4,5,6,7,8,9,16,17,18,...(includeJewels?state.jewelIndices.map(i=>i-1):[])])].filter(i=>i<state.listCount).map(i=>({name:`list-row-${i+1}`,row:i,tooltip:'list',p:point(lx+lw*.45,ly+8+i*16)}))];
    const positionTarget=async target=>{
-    if(!includeJewels || target.row===undefined)return target.p;
+    if(target.row===undefined)return target.p;
     let current=(await profile()).samples.itemHover;
     for(let step=0;step<80;step++){
      const [x,y,w,h]=current.listBounds;
-     const offset=target.row*current.rowHeight-current.scrollOffset+current.rowLabelOffset;
+     const row=current.listItemIds.indexOf(state.listItemIds[target.row]);
+     assert.ok(row>=0,`${target.name}: original item remains in the native list`);
+     const offset=row*current.rowHeight-current.scrollOffset+current.rowLabelOffset;
      if(offset>=0 && offset+current.rowHeight<h-4)return point(x+w*.45,y+2+offset+current.rowHeight*.5);
      // Scroll over the scrollbar so preparing a target does not warm another row.
      const center=point(x+w-8,y+h*.5);
@@ -146,12 +163,16 @@ try {
     const start=performance.now();
     await page.mouse.move(targetPoint.x,targetPoint.y);await flush();
     await page.mouse.move(targetPoint.x+1,targetPoint.y);await flush();
+    await page.waitForFunction(async ({id,tooltip})=>{
+     const state=(await window.__DESKTOP_POB__.getRuntimeProfile()).samples.itemHover;
+     return (id===null || state.hoverItemId===id) && state.tooltips[tooltip]?.length>0;
+    },{id:target.row===undefined?null:state.listItemIds[target.row],tooltip:target.tooltip},{timeout:5000});
     const wallMs=performance.now()-start;
     const current=await profile(),frames=await page.evaluate(()=>window.__DESKTOP_POB__.frameSamples);
     const hover=current.samples.itemHover;
-    if(includeJewels && target.row!==undefined)assert.equal(hover.hoverItemId,state.listItemIds[target.row],`${target.name}: sampled exact requested item`);
+    if(target.row!==undefined)assert.equal(hover.hoverItemId,state.listItemIds[target.row],`${target.name}: sampled exact requested item`);
     const lines=hover.tooltips[target.tooltip];
-    assert.ok(lines.length>0, `${target.name}: tooltip content`);
+    assert.ok(lines.length>0, `${target.name}: tooltip content at ${JSON.stringify(targetPoint)}; slot ${JSON.stringify(state.equipped[target.tooltip])}`);
     const hash=sha256(JSON.stringify(lines));
     const reference=results.find(r=>r.name===target.name);
     if(reference && hash!==reference.tooltipHash){
@@ -171,6 +192,10 @@ try {
     results.push({name:target.name,pass,wallMs,frameCpu:summarize(frames.map(f=>f.duration)),render:summarize(frames.map(f=>f.render)),tooltipMs:hover.tooltipMs,tooltipCalls:hover.calls,tooltipHash:hash,lines:lines.length,cache:hover.cache,bridge:current.bridge,draw:current.draw,phases:current.samples.itemPhases,warmPhases:current.samples.warmPhases,...(diagnosticLines?{diagnosticLines:lines}:{})});
    }
    const verification=[];
+   if(results.at(-1)?.cache?.mode==='operations'){
+    assert.ok(results.at(-1).cache.hits>0,'Repeated supported hover engages operation caching');
+    assert.equal(results.at(-1).cache.bypasses,0,'Supported hover contracts must not silently bypass caching');
+   }
    if(verifyEdits){
     const target=targets.find(t=>t.name==='list-row-17')??targets.at(-1);
     const hoverCheck=async name=>{
@@ -178,7 +203,9 @@ try {
      await page.mouse.move(outside.x,outside.y);await flush();
      const before=await profile();
      await page.mouse.move(targetPoint.x,targetPoint.y);await flush();await page.mouse.move(targetPoint.x+1,targetPoint.y);await flush();
+     await page.waitForTimeout(50);await flush();
      const p=await profile(),lines=p.samples.itemHover.tooltips[target.tooltip];
+     if(target.row!==undefined)assert.equal(p.samples.itemHover.hoverItemId,state.listItemIds[target.row],`${name}: edited hover samples the same item`);
      const result={name,tooltipHash:sha256(JSON.stringify(lines)),lines:lines.length,exportHash:sha256(JSON.stringify(await canonicalExport())),cache:p.samples.itemTooltipCache};
      if(p.samples.itemTooltipCache?.mode==='operations' && p.samples.itemHover.showStatDifferences)
       assert.ok(result.cache.entries>0&&result.cache.entries<=64,`${name}: bounded comparison cache`);
@@ -219,6 +246,7 @@ try {
     }
     await page.evaluate(code=>window.__DESKTOP_POB__.loadBuildFromCode(code),buildCode);
     await page.keyboard.press('Control+3');await flush();
+    await normalizeContext();
     const reimported=await hoverCheck('reimported');
     assert.equal(reimported.tooltipHash,verification[0].tooltipHash,'Import restores exact comparison');
     if(referenceReport?.rounds[round]?.verification)assert.deepEqual(verification.map(v=>({name:v.name,tooltipHash:v.tooltipHash,exportHash:v.exportHash})),referenceReport.rounds[round].verification.map(v=>({name:v.name,tooltipHash:v.tooltipHash,exportHash:v.exportHash})),'Edited baseline tooltip and full export parity');

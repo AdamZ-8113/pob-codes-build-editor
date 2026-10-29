@@ -9,6 +9,7 @@ import { pasteNativeText, timedNativePhase } from "../helpers/native-input.mjs";
 // public database names, timings and aggregate diagnostics, never build XML.
 const [buildFile, outputFile] = process.argv.slice(2);
 const fixture = buildFile ?? new URL("../../fixtures/guided import parity desktop 329.txt", import.meta.url);
+const origin = process.env.DESKTOP_POB_ORIGIN || 'http://127.0.0.1:3010/';
 const code = (await readFile(fixture, "utf8")).trim();
 const browser = await chromium.launch({ headless: true, channel: browserChannel() });
 const faults = [];
@@ -26,10 +27,10 @@ const families = [
 ];
 try {
   const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
-  await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: "http://127.0.0.1:3010" });
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: new URL(origin).origin });
   diagnosticPage = page;
   page.on("pageerror", error => faults.push(error.message));
-  await page.goto("http://127.0.0.1:3010");
+  await page.goto(origin);
   await page.waitForFunction(() => window.__DESKTOP_POB__?.ready, null, { timeout: 120_000 });
   await page.evaluate(code => window.__DESKTOP_POB__.loadBuildFromCode(code), code);
   const flush = () => page.evaluate(() => window.__DESKTOP_POB__.flushInput());

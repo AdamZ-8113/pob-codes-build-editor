@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
-import { transforms, identities, transformationEvidence } from '../../tools/experiments/node-power-delegation-experiment.mjs';
+import { transforms, identities, devIdentities, transformationEvidence } from '../../tools/experiments/node-power-delegation-experiment.mjs';
 import { parseDriftPatch, transformDriftPatch } from '../../scripts/build/drift-patch.mjs';
 import { validateSourceLedger } from '../../scripts/build/source-ledger.mjs';
 
@@ -27,7 +27,10 @@ if (source !== null) {
 test('node-power seam is exact, independently guarded, and rejects drift and double application', {skip: source === null}, () => {
   assert.equal(transforms.length, 1);
   const result = transforms[0].transform(source);
-  assert.equal(createHash('sha256').update(result.replaceAll('\r\n', '\n')).digest('hex'), identities['Classes/CalcsTab.lua'].result);
+  const inputHash = createHash('sha256').update(source.replaceAll('\r\n', '\n')).digest('hex');
+  const identity = [identities, devIdentities].map(set => set['Classes/CalcsTab.lua']).find(pair => pair.source === inputHash);
+  assert.ok(identity, 'An explicitly retained source identity');
+  assert.equal(createHash('sha256').update(result.replaceAll('\r\n', '\n')).digest('hex'), identity.result);
   assert.throws(() => transforms[0].transform(source + '\n'), /Source identity/);
   assert.throws(() => transforms[0].transform(result), /Source identity/);
   assert.equal(transformationEvidence.length, 1);
