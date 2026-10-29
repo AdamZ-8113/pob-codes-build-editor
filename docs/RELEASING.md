@@ -129,6 +129,11 @@ coverage. All item/tooltip parity, stale/failure/retry cases, eleven jewel
 families, stats and UI-worker loading invariants remain. The 120-scroll traversal
 is retained: its local baseline was only 2.5 seconds. Phase timings isolate
 startup, input, comparisons and scrolling rather than adding timing thresholds.
+Draining native input does not finish the unique database's incremental list
+builder. Search acceptance waits for populated results before hovering, within
+the existing family deadline. `test-unique-database.mjs --delay-database` injects
+a test-only coroutine delay and requires observing the transient empty list;
+all eleven-family, tooltip, stat and scrolling assertions still run.
 
 Choose parallelism against post-input-fix timings and the native lane's critical
 path, not historical typing cost alone. Two groups also isolate the four other

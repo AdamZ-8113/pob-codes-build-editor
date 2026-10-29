@@ -4,10 +4,12 @@ import assert from "node:assert/strict";
 import { readFile, writeFile } from "node:fs/promises";
 import { inflateSync } from "node:zlib";
 import { pasteNativeText, timedNativePhase } from "../helpers/native-input.mjs";
+import { readCorePackage, rewriteCorePackage, routeCorePackage } from "../../tools/profiles/core-package-overlay.mjs";
 
 // The optional private build stays in the caller's file. Reports contain only
 // public database names, timings and aggregate diagnostics, never build XML.
-const [buildFile, outputFile] = process.argv.slice(2);
+const delayDatabase = process.argv.includes("--delay-database");
+const [buildFile, outputFile] = process.argv.slice(2).filter(arg => arg !== "--delay-database");
 const fixture = buildFile ?? new URL("../../fixtures/guided import parity desktop 329.txt", import.meta.url);
 const origin = process.env.DESKTOP_POB_ORIGIN || 'http://127.0.0.1:3010/';
 const code = (await readFile(fixture, "utf8")).trim();
@@ -27,6 +29,16 @@ const families = [
 ];
 try {
   const page = await browser.newPage({ viewport: { width: 1600, height: 1000 }, deviceScaleFactor: 1 });
+  if (delayDatabase) {
+    const delayed = rewriteCorePackage(await readCorePackage(origin), [{
+      path: "Classes/ItemDBControl.lua", transform(source) {
+        const anchor = "function ItemDBClass:ListBuilder()";
+        assert.equal(source.split(anchor).length, 2, "One native database builder");
+        return source.replace(anchor, `${anchor}\n\tlocal readyAt = GetTime() + 1000\n\trepeat coroutine.yield() until GetTime() >= readyAt`);
+      },
+    }]);
+    await routeCorePackage(page.context(), delayed);
+  }
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"], { origin: new URL(origin).origin });
   diagnosticPage = page;
   page.on("pageerror", error => faults.push(error.message));
@@ -61,9 +73,20 @@ try {
     await flush();
   };
   const hovered = [];
+  let pendingSearches = 0;
   for (let index = 0; index < families.length; index++) {
+    const deadline = Date.now() + 30_000;
     await search(families[index]);
     let state = await profile();
+    // Native input draining can finish while the database coroutine is still
+    // building its list. Keep the original family budget and require real rows.
+    if (!state.samples.uniqueDbCount) pendingSearches++;
+    while (!state.samples.uniqueDbCount) {
+      assert.deepEqual(await page.evaluate(() => window.__DESKTOP_POB__.errors), []);
+      assert.ok(Date.now() < deadline, `Database results did not settle for family ${index + 1}`);
+      await page.waitForTimeout(20);
+      state = await profile();
+    }
     const completed = state.samples.uniqueComparisons.completed;
     assert.ok(state.samples.uniqueDbCount > 0, `Database contains ${families[index]}`);
     const [x,y,w] = state.samples.uniqueDbBounds;
@@ -71,7 +94,6 @@ try {
     await page.evaluate(() => window.__DESKTOP_POB__.clearFrameSamples());
     await page.mouse.move(p.x, p.y);
     await flush();
-    const deadline = Date.now() + 30_000;
     while ((await profile()).samples.uniqueComparisons.completed <= completed) {
       assert.deepEqual(await page.evaluate(() => window.__DESKTOP_POB__.errors), []);
       assert.ok(Date.now() < deadline, `Timed out waiting for family ${index + 1}`);
@@ -86,7 +108,9 @@ try {
       luaKiB: state.samples.luaKiB, wasmBytes: state.wasmBytes });
   }
   endPhase("all-eleven-family-comparisons");
+  if (delayDatabase) assert.ok(pendingSearches > 0, "Controlled delayed builder reproduces the previously premature empty-list assertion");
   await search("");
+  await page.waitForFunction(async () => (await window.__DESKTOP_POB__.getRuntimeProfile()).samples.uniqueDbCount > 0, null, { timeout: 30_000 });
   const [x,y,w,h] = (await profile()).samples.uniqueDbBounds;
   const p = await point(x + w / 2, y + h / 2);
   await page.mouse.move(p.x, p.y);
@@ -102,7 +126,7 @@ try {
   assert.deepEqual(faults, []);
   const after = await profile();
   assert.equal(after.samples.timelessLoadedMask, before.samples.timelessLoadedMask, "Hover datasets stay off the UI worker");
-  const report = { allElevenFamiliesCompared: true, scrollSteps: 120, statsUnchanged: true, faults, timings,
+  const report = { allElevenFamiliesCompared: true, delayDatabase, pendingSearches, scrollSteps: 120, statsUnchanged: true, faults, timings,
     before: { luaKiB: before.samples.luaKiB, wasmBytes: before.wasmBytes }, hovered,
     after: { luaKiB: after.samples.luaKiB, wasmBytes: after.wasmBytes } };
   if (outputFile) await writeFile(outputFile, JSON.stringify(report, null, 2) + "\n");

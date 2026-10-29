@@ -60,6 +60,7 @@ try {
         await page.mouse.click(p.x, p.y);
         await page.keyboard.press('Control+a');
         await timedNativePhase('search-input', () => pasteNativeText(page, name), {background, name});
+        await until(async () => (await profile()).samples.uniqueDbCount > 0, 'Native database results settle after search');
         const state = await profile();
         assert(state.samples.uniqueDbCount > 0, name);
         const [dx,dy,dw] = state.samples.uniqueDbBounds;
