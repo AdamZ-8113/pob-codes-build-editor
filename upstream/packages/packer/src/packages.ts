@@ -7,12 +7,10 @@ export function sourceKind(path: string): "image" | "data" | "excluded" {
   if (path.startsWith("Export/")) return "excluded"; // Offline source-generation tools.
   packageForPath(path);
   if (/\.(png|jpg|dds\.zst)$/.test(path)) return "image";
+  if (/^TreeData\/[^/]+\/(ascendancy|bloodline)-\d+\.webp$/.test(path)) return "image";
   if (/\.(lua|zip|part\d+|jsonc?)$/.test(path)) return "data";
   // These original-packer exclusions are migration limitations, not new filters.
-  if (
-    /^Assets\/ascendants\/[^/]+\.jpeg$/.test(path) ||
-    /^TreeData\/[^/]+\/(ascendancy|bloodline)-\d+\.webp$/.test(path)
-  ) return "excluded";
+  if (/^Assets\/ascendants\/[^/]+\.jpeg$/.test(path)) return "excluded";
   throw new Error(`Unclassified desktop source file: ${path}`);
 }
 

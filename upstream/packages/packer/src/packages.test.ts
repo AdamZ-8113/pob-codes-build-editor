@@ -91,7 +91,8 @@ Deno.test("source policy rejects unknown files rather than silently dropping the
   assertEquals(sourceKind("Data/ModFoulbornMap.jsonc"), "data");
   assertEquals(sourceKind("Export/Bases/wand.txt"), "excluded");
   assertEquals(sourceKind("Assets/ascendants/witch.jpeg"), "excluded");
-  assertEquals(sourceKind("TreeData/3_29/ascendancy-3.webp"), "excluded");
+  assertEquals(sourceKind("TreeData/3_29/ascendancy-3.webp"), "image");
+  assertEquals(sourceKind("TreeData/3_29/bloodline-3.webp"), "image");
   assertThrows(() => sourceKind("Data/new.format"));
   assertThrows(() => sourceKind("ExportFuture/new.lua"));
   assertThrows(() => sourceKind("TreeData/3_29_future/ascendancy-3.webp"));
