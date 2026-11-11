@@ -41,6 +41,11 @@ native compiler output, or generated Path of Building Data/TreeData files.
 Change the authoritative source, exporter, or checked adapter and regenerate.
 Keep third-party licenses and notices with every published generation.
 
+The local editor's Vite watcher excludes `.runtime/`, `.local/`, `tmp/`, and
+`test-results/`. Retained generated trees do not participate in source hot reload;
+watching every prior generation can delay local page requests and health checks.
+Payload files remain available through the existing static-file handler.
+
 `npm run pack` also generates the mastery-option ModCache supplement under
 `generated` in `source-pin.json`. It runs PoB headless in the driver's vendored
 Lua interpreter through Docker, without network access, and proves the packed

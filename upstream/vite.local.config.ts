@@ -41,6 +41,9 @@ export default defineConfig({
   optimizeDeps: { exclude: ["@bokuweb/zstd-wasm"], esbuildOptions: { target: "es2020" } },
   server: {
     host: "127.0.0.1", port: 3010, strictPort: true,
+    // Retained source/build generations are served as static payloads, not HMR
+    // inputs. Watching them can starve ordinary page requests during startup.
+    watch: { ignored: ["**/.runtime/**", "**/.local/**", "**/tmp/**", "**/test-results/**"] },
     headers: {
       "Cross-Origin-Opener-Policy": "same-origin",
       "Cross-Origin-Embedder-Policy": "require-corp",
