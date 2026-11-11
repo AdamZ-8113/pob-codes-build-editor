@@ -20,10 +20,17 @@ export default defineConfig({
   publicDir: join(upstream, "packages/driver/public"),
   cacheDir: join(root, "node_modules/.vite"),
   resolve: {
-    alias: {
-      dds: join(upstream, "packages/dds/src/index.ts"),
-      "pob-game": join(upstream, "packages/game/src/index.ts"),
-    },
+    alias: [
+      { find: /^@zenfs\/archives$/, replacement: join(upstream, "node_modules/@zenfs/archives") },
+      { find: /^@zenfs\/core$/, replacement: join(upstream, "node_modules/@zenfs/core") },
+      { find: /^@zenfs\/dom$/, replacement: join(upstream, "node_modules/@zenfs/dom") },
+      { find: "comlink", replacement: join(upstream, "node_modules/comlink") },
+      { find: "dds", replacement: join(upstream, "packages/dds/src/index.ts") },
+      { find: "pob-game", replacement: join(upstream, "packages/game/src/index.ts") },
+      { find: "react", replacement: join(upstream, "node_modules/react") },
+      { find: "react-dom", replacement: join(upstream, "node_modules/react-dom") },
+      { find: "react-icons", replacement: join(upstream, "node_modules/react-icons") },
+    ],
   },
   define: {
     __BPTC_SUPPORT_OVERRIDE__: "undefined",
@@ -38,7 +45,11 @@ export default defineConfig({
     __PUBLIC_TELEMETRY_ENDPOINT__: JSON.stringify(""),
   },
   worker: { format: "es" },
-  optimizeDeps: { exclude: ["@bokuweb/zstd-wasm"], esbuildOptions: { target: "es2020" } },
+  optimizeDeps: {
+    include: ["@zenfs/archives", "@zenfs/core", "@zenfs/dom", "comlink"],
+    exclude: ["@bokuweb/zstd-wasm"],
+    esbuildOptions: { target: "es2020" },
+  },
   server: {
     host: "127.0.0.1", port: 3010, strictPort: true,
     // Retained source/build generations are served as static payloads, not HMR

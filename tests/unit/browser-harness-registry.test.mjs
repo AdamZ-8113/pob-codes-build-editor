@@ -75,6 +75,7 @@ test("runner refuses an occupied loopback port without replacing its listener", 
 
 test("CI discovers the registered browser command in an independently prepared job", async () => {
   const workflow = await readFile(new URL("../../.github/workflows/ci.yml", import.meta.url), "utf8");
+  const viteConfig = await readFile(new URL("../../upstream/vite.local.config.ts", import.meta.url), "utf8");
   const jobStart = workflow.indexOf("\n  browser-harness-group:");
   assert.ok(jobStart > 0, "Dedicated browser harness job must exist");
   const harnessJob = workflow.slice(jobStart);
@@ -94,6 +95,19 @@ test("CI discovers the registered browser command in an independently prepared j
   assert.match(harnessJob, /npm run test:browser -- --group \$\{\{ matrix.group \}\}/);
   assert.match(harnessJob, /group: \[comparisons, interaction-and-loading\]/);
   assert.deepEqual(Object.keys(registry.groups), ["comparisons", "interaction-and-loading"]);
+  const dependencyAliases = [
+    ["@zenfs/archives", "{ find: /^@zenfs\\/archives$/, replacement: join(upstream, \"node_modules/@zenfs/archives\") }"],
+    ["@zenfs/core", "{ find: /^@zenfs\\/core$/, replacement: join(upstream, \"node_modules/@zenfs/core\") }"],
+    ["@zenfs/dom", "{ find: /^@zenfs\\/dom$/, replacement: join(upstream, \"node_modules/@zenfs/dom\") }"],
+    ...["comlink", "react", "react-dom", "react-icons"].map(dependency =>
+      [dependency, `{ find: "${dependency}", replacement: join(upstream, "node_modules/${dependency}") }`]),
+  ];
+  for (const [dependency, alias] of dependencyAliases) {
+    assert.ok(viteConfig.includes(alias),
+      `Cold browser harnesses must resolve ${dependency} through the pinned Deno dependency tree`);
+  }
+  assert.match(viteConfig, /include:\s*\["@zenfs\/archives",\s*"@zenfs\/core",\s*"@zenfs\/dom",\s*"comlink"\]/,
+    "The runtime filesystem and root-level comparison profiler must be optimized before their first request");
   const aggregate = workflow.slice(workflow.indexOf("\n  browser-harnesses:"));
   assert.match(aggregate, /if: always\(\)/);
   assert.match(aggregate, /needs: \[browser-harness-group\]/);
