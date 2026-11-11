@@ -39,9 +39,15 @@ export async function validateSourceLedger(appDir, suppliedPinBytes) {
   if (pin.schemaVersion !== 2 || pin.compositePatch?.baseRevision !== pin.revision) {
     throw new Error("Unsupported desktop PoB source-pin schema or composite base");
   }
-  const prNumbers = pin.overlays.filter((entry) => entry.kind === "upstream-pr").map((entry) => entry.number);
+  const upstreamPrs = pin.overlays.filter((entry) => entry.kind === "upstream-pr");
+  const prNumbers = upstreamPrs.map((entry) => entry.number);
   if (JSON.stringify(prNumbers) !== JSON.stringify([10360, 10372, 10373, 10313, 10381])) {
     throw new Error("Desktop PoB upstream overlay order changed");
+  }
+  const resolvedConflicts = upstreamPrs.filter((entry) => entry.conflictResolutionBase !== undefined);
+  if (JSON.stringify(resolvedConflicts.map((entry) => entry.number)) !== JSON.stringify([10360, 10372, 10313]) ||
+      resolvedConflicts.some((entry) => entry.conflictResolutionBase !== pin.revision)) {
+    throw new Error("Desktop PoB reviewed PR conflict resolutions changed");
   }
   const sourceLocal = pin.overlays.filter((entry) => entry.kind === "local-patch" && entry.applicationStage === "source-composite");
   const relevance = sourceLocal[0];

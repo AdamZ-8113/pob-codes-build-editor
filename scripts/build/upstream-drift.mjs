@@ -57,9 +57,18 @@ export function analyzeDrift({ pin, patches, baseFiles, targetFiles, prStates = 
   const composite = classifyPatch({ rawFiles: targetFiles, sections: compositeSections, touchedPaths: [...changed].filter(path => pin.compositePatch.files.includes(path)) });
   entries.push(entry('composite', pin.compositePatch.files, composite));
   // PRs were composed with a semantic resolution. Diagnose their retained trees
-  // independently; only the recorded composite can prepare the pack input.
+  // independently; only the recorded composite can prepare the pack input. An
+  // exact archived PR diff may no longer apply independently after a reviewed
+  // pin rebase. Suppress only that unchanged, pin-bound baseline conflict while
+  // the reviewed composite itself still applies; any touched path or new pin
+  // expires the resolution and reports the conflict again.
   for (const overlay of pin.overlays.filter(item => item.kind === 'upstream-pr')) {
-    const outcome = classifyPatch({ rawFiles: targetFiles, sections: parseDriftPatch(patches[overlay.patchFile]), touchedPaths: overlay.files.filter(path => changed.has(path)) });
+    const touchedPaths = overlay.files.filter(path => changed.has(path));
+    let outcome = classifyPatch({ rawFiles: targetFiles, sections: parseDriftPatch(patches[overlay.patchFile]), touchedPaths });
+    if (outcome.classification === 'conflict' && !touchedPaths.length && composite.output &&
+        overlay.conflictResolutionBase === pin.revision) {
+      outcome = { classification: 'untouched', output: targetFiles };
+    }
     entries.push(entry(`pr-${overlay.number}`, overlay.files, outcome, prStates[`pob:${overlay.number}`] ?? 'unknown'));
   }
   // Source-local patches are already in the composite. Classify their own

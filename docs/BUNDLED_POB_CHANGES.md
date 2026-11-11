@@ -37,6 +37,9 @@ its original diff remains in the repository as historical evidence. The unique
 score cache still checks slot visibility. The composite keeps the unified item
 quality editor, upstream catalyst clearing, and requires a physical socket before
 granting Dialla's matching-colour bonus in the new calculation path.
+The exact archived diffs for #10360, #10372 and #10313 no longer apply
+independently to this newer base; their `conflictResolutionBase` values bind the
+reviewed semantic resolutions to this pin and expire on the next source change.
 
 ## Required local source patches
 

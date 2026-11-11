@@ -63,6 +63,10 @@ also checks for an actual socket before applying Dialla's always-matching bonus.
 The per-override trigger-source cache remains enabled, but observer calculations
 bypass it to record every dependency, including rejected cost probes. Nested
 calculations propagate the observer and reused setup resets that cache per override.
+The exact #10360, #10372 and #10313 evidence diffs remain byte-preserved against
+their recorded PR bases. Their `conflictResolutionBase` ledger fields record that
+their non-applying contexts were manually resolved in this composite at the
+selected pin; those fields are invalid after any pin movement.
 
 The maintainer-supplied 2026-09-30 gem-dropdown hover patch is preserved in
 `../patches/gem-dropdown-hover-tooltip.patch` (SHA-256

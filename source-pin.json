@@ -205,6 +205,7 @@
       "url": "https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10360",
       "base": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
       "head": "dddd929e190e46af36dd185f842ef53726c1d28a",
+      "conflictResolutionBase": "3dbca4463c0a59079d9f7f032d8240cf868e09da",
       "patchFile": "patches/upstream/pr-10360.diff",
       "patchSha256": "00992c03ae333f3522eb454ed5e136bb23874427ada365744c02f27a2f00318b",
       "files": [
@@ -248,6 +249,7 @@
       "url": "https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10372",
       "base": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
       "head": "57ddd73ef6ecb13b3d8ec691757220fec72ad155",
+      "conflictResolutionBase": "3dbca4463c0a59079d9f7f032d8240cf868e09da",
       "patchFile": "patches/upstream/pr-10372.diff",
       "patchSha256": "64b152b3ecab1185446044e2556186ec54723b6ae668b215c026c226b0365537",
       "files": [
@@ -274,6 +276,7 @@
       "url": "https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/10313",
       "base": "16de4b82d57f1c0de6eb40f37143c32d4da36a02",
       "head": "8117baa510edb1ef125df779814e5ae69b938d52",
+      "conflictResolutionBase": "3dbca4463c0a59079d9f7f032d8240cf868e09da",
       "patchFile": "patches/upstream/pr-10313.diff",
       "patchSha256": "f41b3a2fae6370b700104a4a6d926c8c5515115d8f6466196f27383347b5a9b7",
       "files": [

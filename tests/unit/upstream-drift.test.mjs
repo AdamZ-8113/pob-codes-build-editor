@@ -191,6 +191,28 @@ test('a two-PR composite with one absorbed PR remains partial and blocks depende
   assert.deepEqual(result.identities.adapters, {});
 });
 
+test('a reviewed exact-PR conflict is quiet only on its unchanged composite base', () => {
+  const revision = 'a'.repeat(40);
+  const conflictingPatch = patch.replace('-old', '-missing');
+  const pin = {
+    revision,
+    compositePatch: { files: [path], patchFile: 'composite' },
+    overlays: [{ kind: 'upstream-pr', number: 1, files: [path], patchFile: 'one', conflictResolutionBase: revision }],
+    adapters: Object.fromEntries(PACK_STAGES.map(([name]) => [name, { patchFile: 'one', sourceBlobHashes: { [path]: 'unused' } }])),
+  };
+  const patches = { composite: patch, one: conflictingPatch };
+  const baseFiles = { [path]: before };
+  const reviewed = analyzeDrift({ pin, patches, baseFiles, targetFiles: baseFiles });
+  assert.equal(reviewed.entries.find(entry => entry.id === 'pr-1').classification, 'untouched');
+
+  const touched = analyzeDrift({ pin, patches, baseFiles, targetFiles: { [path]: 'upstream\n' + before } });
+  assert.equal(touched.entries.find(entry => entry.id === 'pr-1').classification, 'conflict');
+
+  pin.overlays[0].conflictResolutionBase = 'b'.repeat(40);
+  const stale = analyzeDrift({ pin, patches, baseFiles, targetFiles: baseFiles });
+  assert.equal(stale.entries.find(entry => entry.id === 'pr-1').classification, 'conflict');
+});
+
 test('source-local overlays remain visible in drift and report upstream absorption', () => {
   const pin = { compositePatch: { files: [path], patchFile: 'composite' },
     overlays: [{ kind: 'local-patch', id: 'local-relevance', applicationStage: 'source-composite', files: [path], patchFile: 'local' }],

@@ -72,6 +72,13 @@ separate absorption entries; prerequisite resolution follows the composite.
 Failure blocks dependent stages. Result-only adapters report locked-path drift.
 The report's `touchedPaths` remain separate from patch applicability.
 
+An exact archived PR diff can conflict with a later pin even after its retained
+behavior was manually rebased into the composite. In that case only,
+`conflictResolutionBase` records the exact pin where the resolution was reviewed.
+The drift report treats the unchanged baseline as `untouched` only while the
+composite still applies. A changed locked path or pin expires the resolution and
+reports the conflict again; never advance this field without redoing the review.
+
 Exit codes are 0 for a completed acceptable check, 1 for the selected drift
 policy, and 2 for incomplete collection or invalid invocation. The default
 `--fail-on=conflict` also fails on `partial`; `--fail-on=touched` additionally
@@ -121,6 +128,9 @@ source-ledger checks and `npm run pack`; generation does not waive those guards.
 1. Run the report against the intended exact SHA and review every touched,
    conflicting, or partially absorbed overlay. Rebase retained patches where
    necessary; retain the exact upstream diffs and recorded composite resolution.
+   When a retained exact diff cannot apply independently after that review, set
+   its `conflictResolutionBase` to the selected pin. Do not copy the field across
+   a pin change or use it for a touched overlay.
 2. Run `npm run drift:upstream -- --ref <SHA> --identities --fail-on=never`.
    Its print-only candidate identities distinguish prepared, source,
    intermediate, and result blobs. After reviewing the patches and candidates,
