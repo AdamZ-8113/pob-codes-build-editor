@@ -13,7 +13,7 @@ test("checked ImportTab overlay defaults the browser editor to PoB.Codes", async
   assert.match(preferredPatch.toString(), /self\.exportWebsiteSelected or "PoBCodes"/);
   assert.doesNotMatch(preferredPatch.toString(), /table\.sort|sort\(/);
   let prepared;
-  try { prepared = await readFile(".runtime/prepared/src/Classes/ImportTab.lua", "utf8"); }
+  try { prepared = await readFile(`.runtime/source-${pin.compositePatch.patchSha256.slice(0, 12)}/src/Classes/ImportTab.lua`, "utf8"); }
   catch (error) { if (error?.code === "ENOENT") { t.skip("prepared PoB checkout is not present"); return; } throw error; }
   const hosted = applyImportTabHostPatch(prepared.replaceAll("\r\n", "\n"), hostPatch, pin.adapters.importTabHostCapabilities);
   assert.doesNotThrow(() => applyPreferredExportSitePatch(hosted, preferredPatch, pin.adapters.preferredExportSite));

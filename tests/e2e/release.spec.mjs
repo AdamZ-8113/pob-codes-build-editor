@@ -437,3 +437,17 @@ test("canonical document redirects and static prefix boundaries", async ({ reque
     expect((await request.get(`${origin}${path}`)).status()).toBe(404);
   }
 });
+
+test("3.30 passive trees serve their jewel sprite atlases", async ({ request }) => {
+  const { current } = await (await request.get(`${origin}${basePath}/release.json`)).json();
+  const payload = `${origin}${basePath}/releases/${current}/payload`;
+  const { packages } = await (await request.get(`${payload}/manifest.json`)).json();
+  for (const tree of ["3_30", "3_30_ruthless"]) {
+    expect(packages.some(pkg => pkg.id === `tree-${tree}`)).toBe(true);
+    for (const name of ["jewel-3.png", "jewel-radius.png"]) {
+      const response = await request.get(`${payload}/root/TreeData/${tree}/${name}`);
+      expect(response.status(), `${tree}/${name}`).toBe(200);
+      expect(response.headers()["content-type"]).toBe("image/png");
+    }
+  }
+});
