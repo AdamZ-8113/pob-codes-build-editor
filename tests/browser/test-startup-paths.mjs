@@ -6,6 +6,10 @@ import { inflateSync } from 'node:zlib';
 
 const origin = process.env.DESKTOP_POB_ORIGIN ?? 'http://127.0.0.1:3010';
 const code = (await readFile(new URL('../../fixtures/guided import parity desktop 329.txt', import.meta.url), 'utf8')).trim();
+const manifest = JSON.parse(await readFile(new URL('../../.runtime/payload/manifest.json', import.meta.url), 'utf8'));
+const currentTrees = manifest.packages.filter(pkg => pkg.startup && /^tree-\d+_\d+$/.test(pkg.id) && pkg.id !== 'tree-3_19');
+assert.equal(currentTrees.length, 1, 'Exactly one current tree must be on the startup path');
+const startupPackages = ['core', 'timeless-shared', currentTrees[0].id, 'tree-3_19', 'tree-legion'];
 const modes = [
   ['lazy', ''],
   ['eager', '?eagerPayload=1'],
@@ -119,7 +123,7 @@ try {
         if (mode === 'lazy') {
           assert.equal(profile.filesystem.payload.packagesBeforeReady, 5);
           assert.ok(profile.filesystem.payload.bytesBeforeReady < 10_000_000);
-          assert.deepEqual(profile.filesystem.payload.packageOpens.filter((id, index, all) => all.indexOf(id) === index), ['core', 'timeless-shared', 'tree-3_29', 'tree-3_19', 'tree-legion']);
+          assert.deepEqual([...new Set(profile.filesystem.payload.packageOpens)], startupPackages);
         } else if (mode === 'eager') {
           assert.ok(profile.filesystem.payload.packagesBeforeReady > 80);
         } else {
@@ -130,7 +134,10 @@ try {
         assert.ok(/<PlayerStat\b/.test(xml), 'Every startup path executes real calculations');
         assert.deepEqual(await page.evaluate(() => window.__DESKTOP_POB__.errors), []);
         console.log(`Startup path passed: ${mode}/${fallback ? 'ArrayBuffer fallback' : 'streaming'}`);
-      } finally { await context.close(); }
+      } finally {
+        await context.unrouteAll({ behavior: 'ignoreErrors' });
+        await context.close();
+      }
     }
   }
 } finally { await browser.close(); }

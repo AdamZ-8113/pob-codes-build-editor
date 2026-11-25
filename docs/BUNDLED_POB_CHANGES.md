@@ -10,7 +10,7 @@ Update this document whenever that ledger changes.
 
 - Repository: [PathOfBuildingCommunity/PathOfBuilding](https://github.com/PathOfBuildingCommunity/PathOfBuilding)
 - Branch: `dev`
-- Revision: `3dbca4463c0a59079d9f7f032d8240cf868e09da`
+- Revision: `5606cc64fa9f15694e69001a52b90aa968d01a86` (PoB 2.69.0)
 
 An upstream PR remains bundled at its recorded head until the pinned base is
 updated to include it or the overlay is deliberately removed. GitHub merge
@@ -40,6 +40,12 @@ granting Dialla's matching-colour bonus in the new calculation path.
 The exact archived diffs for #10360, #10372 and #10313 no longer apply
 independently to this newer base; their `conflictResolutionBase` values bind the
 reviewed semantic resolutions to this pin and expire on the next source change.
+
+The 2.69.0 rebase keeps the editor's compact loadout and item controls alongside
+upstream's checkbox images, dropdown strike-through and item-list icons. The
+Viscera database uses the same responsive dimensions as the other databases.
+The unified modifier editor uses the upstream slot-aware comparison when it
+previews Crucible changes.
 
 ## Required local source patches
 
@@ -155,8 +161,7 @@ checks that every shipped entry is unchanged and that each added entry gives the
 same `parseMod` output as a fresh on-demand parse. It also checks that the
 latest tree's mastery options miss only the ledgered exclusions. The pinned
 result hash, entry count and exclusions change only through review. For tree
-`3_29` this adds 248 entries: 109,246 bytes uncompressed and 7,090 bytes in the
-compressed core package.
+`3_30` the generator adds 248 entries, with no exclusions.
 
 On a pin bump, pack reports a changed source or result identity, or a changed
 inventory, and leaves the generated module under `.runtime/mod-cache-supplement/`.

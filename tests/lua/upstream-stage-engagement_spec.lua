@@ -1,4 +1,19 @@
 describe("Packed calculator stage engagement", function()
+  it("initializes a secondary defensive spectre with energy shield", function()
+    newBuild()
+    build.spectreList = { "Metadata/Monsters/ParasiticSquid/ParasiticSquidAbyssSpectre" }
+    build.skillsTab:PasteSocketGroup("Fireball 20/0  1")
+    build.skillsTab:PasteSocketGroup("Raise Spectre 20/0  1")
+    build.mainSocketGroup = 1
+    build.configTab:BuildModList()
+    build.configTab.modList:NewMod("takenFromSpectresBeforeYou", "BASE", 15, "Test")
+    build.calcsTab:BuildOutput()
+
+    local env = build.calcsTab.mainEnv
+    assert.is_nil(env.minion)
+    assert.is_true(env.player.output.TotalSpectreLife > 0)
+  end)
+
   for _, gem in ipairs({ "Fireball", "Summon Raging Spirit" }) do
     it("executes required stages and omits unused stages for " .. gem, function()
       newBuild()

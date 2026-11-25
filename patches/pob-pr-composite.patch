@@ -42,7 +42,7 @@ index 09fb1903218f9e1cf6ffc80e2436a916a78f4c07..4ce020c4ae4d9b36c877a325c389e54c
  		assert.are.equals(10, build.calcsTab.mainEnv.player.mainSkill.activeEffect.quality)
  	end)
 diff --git a/spec/System/TestImport_spec.lua b/spec/System/TestImport_spec.lua
-index 4dc73ef7b1032cd9c12cd3fa5ef09d92f944b773..77bd82ae686305533e96b5f01372734d5d32e4b6 100644
+index 58e6075cad9427e2fd47d7ce28c9fc4fede17a7a..647687b55e2cbef35d460dc9700ee12d9b13c98c 100644
 --- a/spec/System/TestImport_spec.lua
 +++ b/spec/System/TestImport_spec.lua
 @@ -1,24 +1,108 @@
@@ -155,7 +155,7 @@ index 4dc73ef7b1032cd9c12cd3fa5ef09d92f944b773..77bd82ae686305533e96b5f01372734d
  		-- iron will and CI
  		assert.equals(build.spec.allocatedKeystoneCount, 2)
 diff --git a/spec/System/TestItemDBControl_spec.lua b/spec/System/TestItemDBControl_spec.lua
-index 023510bc33730ed4573e3a52866222a7e14184b8..9dbf1be931ea74fcc790f5f30a41eeca2244ffce 100644
+index c0df467b265988b4180562f4a394c17176447adc..0f918fa420f54efde47812b494af3e61a8ea823d 100644
 --- a/spec/System/TestItemDBControl_spec.lua
 +++ b/spec/System/TestItemDBControl_spec.lua
 @@ -53,24 +53,74 @@
@@ -233,6 +233,45 @@ index 023510bc33730ed4573e3a52866222a7e14184b8..9dbf1be931ea74fcc790f5f30a41eeca
  			Upfront Cost to Use or Trigger a Skill, with a 0.1 second Cooldown
  		]])
  		local control = new("ItemDBControl"):ItemDBControl(nil, { 0, 0, 100, 100 }, {
+@@ -107,34 +157,36 @@
+ 		control.GetRowRegion = function()
+ 			return { x = 0, y = 0, width = 100, height = 100 }
+ 		end
+ 
+ 		local selectedControl = control:OnKeyDown("LEFTBUTTON", true)
+ 
+ 		assert.is_nil(selectedControl)
+ 		assert.are.equal(item.raw, itemsTab.displayRaw)
+ 		assert.is_true(itemsTab.displayIsUnique)
+ 	end)
+ 
+ 	it("appends typed Wickerman filters after Grafts", function()
++		newBuild()
+ 		local item = new("Item"):Item("")
+ 		item.base = { }
+ 		for _, dbType in ipairs({ "RARE", "UNIQUE" }) do
+-			local control = new("ItemDBControl"):ItemDBControl(nil, { 0, 0, 100, 100 }, { }, { list = { } }, dbType)
++			local control = new("ItemDBControl"):ItemDBControl(nil, { 0, 0, 100, 100 }, build.itemsTab, { list = { } }, dbType)
+ 			item.type = "Graft"
+ 			control.controls.slot:SelByValue("Graft 1")
+ 			assert.are.equal("Graft 1", control.slotList[control.controls.slot.selIndex])
+ 			assert.is_true(control:DoesItemMatchFilters(item))
+ 			control.controls.slot:SelByValue("Graft 2")
+ 			assert.are.equal("Graft 2", control.slotList[control.controls.slot.selIndex])
+ 			local lastIndex = control.controls.slot.selIndex
+ 			for _, slotName in ipairs({ "Head", "Body", "Arm", "Leg" }) do
+ 				control.controls.slot:SelByValue(slotName)
+ 				assert.are.equal(lastIndex + 1, control.controls.slot.selIndex)
+ 				assert.is_false(control:DoesItemMatchFilters(item))
+-				item.type = slotName
++				item.type = "Viscera"
++				item.base.tags = { ["viscera_" .. slotName:lower()] = true }
+ 				assert.is_true(control:DoesItemMatchFilters(item))
+ 				lastIndex = control.controls.slot.selIndex
+ 			end
+ 		end
+ 	end)
+ end)
 diff --git a/spec/System/TestItemListControl_spec.lua b/spec/System/TestItemListControl_spec.lua
 index 2d690a6eb860ce960ffd6d41a096708189548c4c..0362a5f8645f928a0d08467e3663d07aef34ec7e 100644
 --- a/spec/System/TestItemListControl_spec.lua
@@ -321,19 +360,22 @@ index 2d690a6eb860ce960ffd6d41a096708189548c4c..0362a5f8645f928a0d08467e3663d07a
  	end)
  
 diff --git a/spec/System/TestItemMods_spec.lua b/spec/System/TestItemMods_spec.lua
-index f4ce0c5903a0e04fffc779c5232711314e22fb57..c04a8e278a0b2c3203dc048c6bd1e95622d40271 100644
+index a2a3cf5d1c4567e6163b14b9ba31265fa6675dc2..aee3016ccfc9ce97f4f29ebd092e8ac817bde7eb 100644
 --- a/spec/System/TestItemMods_spec.lua
 +++ b/spec/System/TestItemMods_spec.lua
-@@ -1,62 +1,189 @@
- describe("TetsItemMods", function()
- 	before_each(function()
- 		newBuild()
- 	end)
+@@ -341,65 +341,192 @@
+ 			setWickermanCustomMods("10% increased bonuses gained from Equipped "..case[1])
+ 			assert.are.equal(base.Str + 30, build.calcsTab.mainOutput.Str)
+ 			setWickermanCustomMods("30% reduced bonuses gained from Equipped "..case[1])
+ 			assert.are.equal(base.Str - 10, build.calcsTab.mainOutput.Str)
+ 			setWickermanCustomMods("20% reduced bonuses gained from Equipped "..case[1])
+ 			assert.are.equal(base.Str, build.calcsTab.mainOutput.Str)
+ 			build.itemsTab.slots.Amulet:SetSelItemId(0)
+ 			setWickermanCustomMods("")
+ 			assert.are.equal(base.Str, build.calcsTab.mainOutput.Str)
+ 		end)
+ 	end
  
- 	teardown(function()
- 		-- newBuild() takes care of resetting everything in setup()
-+	end)
-+
 +	it("keeps catalyst edits separate from ordinary quality through serialization", function()
 +		build.itemsTab:CreateDisplayItemFromRaw([[Rarity: Rare
 +			Test Ring
@@ -459,8 +501,8 @@ index f4ce0c5903a0e04fffc779c5232711314e22fb57..c04a8e278a0b2c3203dc048c6bd1e956
 +			assert.are.equals(0, #itemsTab.displayItem.crucibleModLines)
 +			assert.are.equals(2, #itemsTab.displayItem.explicitModLines)
 +		end)
- 	end)
- 
++	end)
++
  	local function createCraftedRing()
  		build.itemsTab:CreateDisplayItemFromRaw([[Rarity: Rare
  			Test Ring
@@ -1423,7 +1465,7 @@ index a98126e57515376b3bbec11aa0d00920c955573b..96eba7096806bd348cdc15cf92bbb6e2
 +	end)
 +end)
 diff --git a/spec/System/TestSkills_spec.lua b/spec/System/TestSkills_spec.lua
-index f80738a666fc75ec2d2e1ba9e9fd9e5f7de53dd4..b1243179f11a974a9b3450fb4e92f3f0d7b5508c 100644
+index 8801c593d7e5337fbfbff7823bfc63e1ad154474..c8426237570f3e6c173e266b13d8cfff575df500 100644
 --- a/spec/System/TestSkills_spec.lua
 +++ b/spec/System/TestSkills_spec.lua
 @@ -1,19 +1,136 @@
@@ -2189,7 +2231,7 @@ index 95386e5f20fa0dd7b1b41d32de8c1d2a62fec05f..43f1adc2fa36fd456192741423748d56
  	self.powerMax = newPowerMax
  	self.powerBuilderInitialized = true
 diff --git a/src/Classes/CheckBoxControl.lua b/src/Classes/CheckBoxControl.lua
-index 048d2582a2b82d6b65dc20895d690c5c5c578215..e8b08226de2aaf098a13ca028eeedfbad53d982e 100644
+index 322d0e69d584a3f303854f8ba85e1ec47ac28c43..b95659d4b44d8c6f90e26442a258b800964c7bb3 100644
 --- a/src/Classes/CheckBoxControl.lua
 +++ b/src/Classes/CheckBoxControl.lua
 @@ -1,18 +1,19 @@
@@ -2211,8 +2253,8 @@ index 048d2582a2b82d6b65dc20895d690c5c5c578215..e8b08226de2aaf098a13ca028eeedfba
  	self.labelRight = false
  	self.changeFunc = changeFunc
  	self.state = initialState
- 	return self
-@@ -33,69 +34,86 @@
+ 	self.checkImage = nil
+@@ -34,86 +35,105 @@
  			x = x - self.labelWidth
  		end
  		width = width + self.labelWidth
@@ -2232,12 +2274,25 @@ index 048d2582a2b82d6b65dc20895d690c5c5c578215..e8b08226de2aaf098a13ca028eeedfba
 -	elseif self.borderFunc then
 -		local r, g, b = self.borderFunc()
 -		SetDrawColor(r, g, b)
+-	elseif self.checkImage and self.state then
+-		SetDrawColor(0.75, 0.75, 0.75)
 +	if self.linkStyle then
 +		if mOver and enabled then
 +			local shade = self.clicked and 0.5 or 0.2
 +			SetDrawColor(shade, shade, shade)
 +			DrawImage(nil, x, y, size, self.height)
 +		end
++		if not self.state and not mOver then
++			SetDrawColor(0.2, 0.2, 0.2)
++		elseif not enabled or not self.state then
++			SetDrawColor(0.33, 0.33, 0.33)
++		elseif mOver then
++			SetDrawColor(1, 1, 1)
++		else
++			SetDrawColor(0.8, 0.8, 0.8)
++		end
++		DrawImage(nil, x, y + self.height/2 - 3, size, 2)
++		DrawImage(nil, x, y + self.height/2 + 1, size, 2)
  	else
 -		SetDrawColor(0.5, 0.5, 0.5)
 -	end
@@ -2252,17 +2307,34 @@ index 048d2582a2b82d6b65dc20895d690c5c5c578215..e8b08226de2aaf098a13ca028eeedfba
 -		SetDrawColor(0, 0, 0)
 -	end
 -	DrawImage(nil, x + 1, y + 1, size - 2, size - 2)
--	if self.state then
- 		if not enabled then
- 			SetDrawColor(0.33, 0.33, 0.33)
- 		elseif mOver then
- 			SetDrawColor(1, 1, 1)
+-	if self.checkImage then
+-		if self.state then
+-			if not enabled then
+-				SetDrawColor(0.33, 0.33, 0.33)
+-			elseif mOver then
+-				SetDrawColor(2, 2, 2)
+-			else
+-				SetDrawColor(1, 1, 1)
+-			end
++		if not enabled then
++			SetDrawColor(0.33, 0.33, 0.33)
++		elseif mOver then
++			SetDrawColor(1, 1, 1)
 +		elseif self.borderFunc then
 +			local r, g, b = self.borderFunc()
 +			SetDrawColor(r, g, b)
-+		else
-+			SetDrawColor(0.5, 0.5, 0.5)
-+		end
++		elseif self.checkImage and self.state then
++			SetDrawColor(0.75, 0.75, 0.75)
+ 		else
+ 			SetDrawColor(0.5, 0.5, 0.5)
+ 		end
+-		DrawImage(self.checkImage.handle, x + 1, y + 1, size - 2, size - 2, self.checkImage[1])
+-	else
+-		if self.state then
+-			if not enabled then
+-				SetDrawColor(0.33, 0.33, 0.33)
+-			elseif mOver then
+-				SetDrawColor(1, 1, 1)
 +		DrawImage(nil, x, y, size, size)
 +		if not enabled then
 +			SetDrawColor(0, 0, 0)
@@ -2274,26 +2346,33 @@ index 048d2582a2b82d6b65dc20895d690c5c5c578215..e8b08226de2aaf098a13ca028eeedfba
 +			SetDrawColor(0, 0, 0)
 +		end
 +		DrawImage(nil, x + 1, y + 1, size - 2, size - 2)
-+	end
-+	if self.state or self.linkStyle then
-+		if self.linkStyle and not self.state and not mOver then
-+			SetDrawColor(0.2, 0.2, 0.2)
-+		elseif not enabled or not self.state then
-+			SetDrawColor(0.33, 0.33, 0.33)
-+		elseif mOver then
-+			SetDrawColor(1, 1, 1)
-+		elseif self.linkStyle then
-+			SetDrawColor(0.8, 0.8, 0.8)
- 		else
- 			SetDrawColor(0.75, 0.75, 0.75)
- 		end
--		main:DrawCheckMark(x + size/2, y + size/2, size * 0.8)
-+		if self.linkStyle then
-+			DrawImage(nil, x, y + self.height/2 - 3, size, 2)
-+			DrawImage(nil, x, y + self.height/2 + 1, size, 2)
++		if self.checkImage then
++			if self.state then
++				if not enabled then
++					SetDrawColor(0.33, 0.33, 0.33)
++				elseif mOver then
++					SetDrawColor(2, 2, 2)
++				else
++					SetDrawColor(1, 1, 1)
++				end
+ 			else
+-				SetDrawColor(0.75, 0.75, 0.75)
++				SetDrawColor(0.5, 0.5, 0.5)
+ 			end
+-			main:DrawCheckMark(x + size/2, y + size/2, size * 0.8)
++			DrawImage(self.checkImage.handle, x + 1, y + 1, size - 2, size - 2, self.checkImage[1])
 +		else
-+			main:DrawCheckMark(x + size/2, y + size/2, size * 0.8)
-+		end
++			if self.state then
++				if not enabled then
++					SetDrawColor(0.33, 0.33, 0.33)
++				elseif mOver then
++					SetDrawColor(1, 1, 1)
++				else
++					SetDrawColor(0.75, 0.75, 0.75)
++				end
++				main:DrawCheckMark(x + size/2, y + size/2, size * 0.8)
++			end
+ 		end
  	end
  	if enabled then
  		SetDrawColor(1, 1, 1)
@@ -2322,11 +2401,42 @@ index 048d2582a2b82d6b65dc20895d690c5c5c578215..e8b08226de2aaf098a13ca028eeedfba
  		self.clicked = true
  	end
  	return self
+diff --git a/src/Classes/CompareBuySimilar.lua b/src/Classes/CompareBuySimilar.lua
+index 0361b10a0ae4feb3187e2728481f610abe46c1b6..ae9718f6c16cef3d6007463ea084d4a7306abc52 100644
+--- a/src/Classes/CompareBuySimilar.lua
++++ b/src/Classes/CompareBuySimilar.lua
+@@ -68,25 +68,25 @@
+ 			}
+ 		},
+ 	}
+ 	local queryFilters = {}
+ 
+ 	if isUnique then
+ 		-- Search by unique name
+ 		-- Strip "Foulborn" prefix from unique name for trade search
+ 		local tradeName = (item.title or item.name):gsub("^Foulborn%s+", "")
+ 		-- only strip a trailing numeric identifier to avoid e.g. including
+ 		-- timeless jewel ids or other numbers appended to the item name.
+ 		tradeName = tradeName:gsub("%s+$", "")
+-		tradeName = (tradeName:match("^(.-)%s+%d+$") or tradeName)?.:lower()
++		tradeName = (tradeName:match("^(.-)%s+%d+$") or tradeName):lower()
+ 		-- verify the name since the trade site will error on an invalid name
+ 		for _, dbUnique in pairs(main.uniqueDB.list) do
+ 			if tradeName:find(dbUnique.title:lower(), 1, true) then
+ 				queryTable.name = dbUnique.title
+ 				break
+ 			end
+ 		end
+ 		queryTable.type = item.baseName
+ 		-- If item is Foulborn, add the foulborn_item filter
+ 		if item.foulborn then
+ 			queryFilters.misc_filters = queryFilters.misc_filters or { filters = {} }
+ 			queryFilters.misc_filters.filters.foulborn_item = { option = "true" }
 diff --git a/src/Classes/ConfigTab.lua b/src/Classes/ConfigTab.lua
-index 7a6bf0b95c3d3dd29ea276746511765b1b0febcb..06138d297dfb2ddab668f31398329931b21b8760 100644
+index b2da5627e57833e7b51ebfb3bf0c7d72722d1e9e..5c223a9bed640d58368e1c970ccd8be0cf1456a7 100644
 --- a/src/Classes/ConfigTab.lua
 +++ b/src/Classes/ConfigTab.lua
-@@ -32,25 +32,25 @@
+@@ -34,25 +34,25 @@
  	self.controls.deleteBtn = new("ButtonControl"):ButtonControl({"TOPLEFT", self, "TOPLEFT"}, {0, 0, 20, 18}, "^1X", function()
  		local customModsList = configTab.configSets[configTab.activeConfigSetId].customModsList
  		table.remove(customModsList, blockIndex)
@@ -2353,7 +2463,7 @@ index 7a6bf0b95c3d3dd29ea276746511765b1b0febcb..06138d297dfb2ddab668f31398329931
  
  	self.controls.enableCheck = new("CheckBoxControl"):CheckBoxControl({"TOPRIGHT", self, "TOPRIGHT"}, {0, 0, 18}, "", function(state)
  		blockData.enabled = state
-@@ -67,47 +67,55 @@
+@@ -69,47 +69,55 @@
  					local curState = blockData.enabled ~= false
  					blockData.enabled = not curState
  					configTab:BuildModList()
@@ -2412,7 +2522,7 @@ index 7a6bf0b95c3d3dd29ea276746511765b1b0febcb..06138d297dfb2ddab668f31398329931
  function CustomModBlockClass:OnKeyDown(key, doubleClick)
  	if not self:IsShown() or not self:IsEnabled() then
  		return
-@@ -154,41 +162,43 @@
+@@ -156,41 +164,43 @@
  
  	self.toggleConfigs = false
  
@@ -2461,7 +2571,7 @@ index 7a6bf0b95c3d3dd29ea276746511765b1b0febcb..06138d297dfb2ddab668f31398329931
  
  	local function searchMatch(varData)
  		local searchStr = self.controls.search.buf:lower():gsub("[%-%.%+%[%]%$%^%%%?%*]", "%%%0")
-@@ -251,25 +261,25 @@
+@@ -253,25 +263,25 @@
  						out = (out and out .. "\n" or "").. curTooltipText
  					end
  				end
@@ -2488,7 +2598,7 @@ index 7a6bf0b95c3d3dd29ea276746511765b1b0febcb..06138d297dfb2ddab668f31398329931
  					if varControl:IsShown() then
  						local _, ctrlHeight = varControl:GetSize()
  						height = height + m_max(ctrlHeight or varControl.height, 16) + 4
-@@ -282,76 +292,77 @@
+@@ -284,76 +294,77 @@
  			local section = lastSection
  			local toggle = new("ButtonControl"):ButtonControl({"TOPRIGHT",lastSection,"TOPRIGHT"}, {-6, -7, 16, 16}, function()
  				return section.collapsed and "+" or "-"
@@ -2572,7 +2682,7 @@ index 7a6bf0b95c3d3dd29ea276746511765b1b0febcb..06138d297dfb2ddab668f31398329931
  					return false
  				end
  
-@@ -1043,85 +1054,118 @@
+@@ -1045,85 +1056,118 @@
  
  	self:ProcessControlsInput(inputEvents, viewPort)
  	for _, event in ipairs(inputEvents) do
@@ -2698,7 +2808,7 @@ index 7a6bf0b95c3d3dd29ea276746511765b1b0febcb..06138d297dfb2ddab668f31398329931
  	else
  		self.enemyLevel = m_min(data.misc.MaxEnemyLevel, self.build.characterLevel)
  	end
-@@ -1314,25 +1358,25 @@
+@@ -1350,25 +1394,25 @@
  		t_insert(configSet.customModsList, { title = "Default", enabled = true, text = configSet.input and configSet.input.customMods or "" })
  	end
  
@@ -2723,22 +2833,23 @@ index 7a6bf0b95c3d3dd29ea276746511765b1b0febcb..06138d297dfb2ddab668f31398329931
  end
  
  -- Changes the active config set
- function ConfigTabClass:SetActiveConfigSet(configSetId, init)
+ function ConfigTabClass:SetActiveConfigSet(configSetId, init, deferSync)
  	-- Initialize config sets if needed
 diff --git a/src/Classes/DropDownControl.lua b/src/Classes/DropDownControl.lua
-index bb999c49a48545c2e882a0fe7336780a8a9eee50..098783802834c16ea57886630a387b1d180adc93 100644
+index 4d2cef795c89aa3eae3b6f0b93c0c52f230b0ac5..0fbb81da31da0807382459b2b32b3b5e6937d971 100644
 --- a/src/Classes/DropDownControl.lua
 +++ b/src/Classes/DropDownControl.lua
-@@ -1,23 +1,26 @@
- -- Path of Building
- --
- -- Class: DropDown Control
- -- Basic drop down control.
- --
+@@ -6,24 +6,27 @@
  local ipairs = ipairs
  local m_min = math.min
  local m_max = math.max
  local m_floor = math.floor
+ 
+ local function drawStrikethrough(label, y, lineHeight)
+ 	local strWidth = DrawStringWidth(lineHeight, "VAR", label or "")
+ 	SetDrawColor(0.6, 0.6, 0.6)
+ 	DrawImage(nil, 0, y + lineHeight / 2, strWidth, 1)
+ end
  
  ---@class DropDownControl: Control, ControlHost, TooltipHost, SearchHost
 +---@field arrowSize? number Arrow size independent of the label font; defaults to half the control height.
@@ -2756,7 +2867,7 @@ index bb999c49a48545c2e882a0fe7336780a8a9eee50..098783802834c16ea57886630a387b1d
  				return self.list
  			end,
  			-- value mapping function
-@@ -101,41 +104,41 @@
+@@ -109,41 +112,41 @@
  	-- given listIndex is currently filtered out
  	return default
  end
@@ -2802,7 +2913,7 @@ index bb999c49a48545c2e882a0fe7336780a8a9eee50..098783802834c16ea57886630a387b1d
  			if listVal[key] == value then
  				self.selIndex = index
  				return
-@@ -180,24 +183,25 @@
+@@ -188,24 +191,25 @@
  		return false
  	end
  	if self:GetMouseOverControl() then
@@ -2828,7 +2939,7 @@ index bb999c49a48545c2e882a0fe7336780a8a9eee50..098783802834c16ea57886630a387b1d
  	local mOverComp
  	if mOver then
  		if cursorY >= y and cursorY < y + height then
-@@ -206,24 +210,26 @@
+@@ -214,24 +218,26 @@
  			mOverComp = "DROP"
  		end
  	end
@@ -2855,7 +2966,7 @@ index bb999c49a48545c2e882a0fe7336780a8a9eee50..098783802834c16ea57886630a387b1d
  			-- There's more room above the body than below
  			self.dropUp = true
  			if y - viewPort.y < self.dropHeight + 4 then
-@@ -236,64 +242,69 @@
+@@ -244,64 +250,69 @@
  			self.dropUp = false
  			self.dropHeight = lineHeight * linesBelow
  		end
@@ -2929,15 +3040,15 @@ index bb999c49a48545c2e882a0fe7336780a8a9eee50..098783802834c16ea57886630a387b1d
  		if (mOver or self.dropped) and mOverComp ~= "DROP" and not noTooltip then
  			SetDrawLayer(nil, 100)
  			self:DrawTooltip(
-@@ -312,70 +323,70 @@
- 	local selDetail = nil
- 	if self:IsSearchActive() then
- 		selLabel = "Search: " .. self:GetSearchTermPretty()
+@@ -324,76 +335,76 @@
  	else
  		local selItem = self.list[self.selIndex]
  		if type(selItem) == "table" then
  			selLabel = selItem.label
- 			selDetail = selItem.detail
+ 			selStrikethrough = selItem.strikethrough
+ 			if not self.hideSelDetail then
+ 				selDetail = selItem.detail
+ 			end
  		else
  			selLabel = selItem
  		end
@@ -2946,6 +3057,12 @@ index bb999c49a48545c2e882a0fe7336780a8a9eee50..098783802834c16ea57886630a387b1d
 -	DrawString(0, 0, "LEFT", lineHeight, "VAR", selLabel or "")
 +	SetViewport(x + 6, y + 2, width - arrowSize * 2 - 4, lineHeight)
 +	DrawString(0, textOffset, "LEFT", fontSize, "VAR", selLabel or "")
+ 	if selStrikethrough then
+-		drawStrikethrough(selLabel, 0, lineHeight)
++		drawStrikethrough(selLabel, textOffset, fontSize)
+ 		local textColor = enabled and 1 or 0.66
+ 		SetDrawColor(textColor, textColor, textColor)
+ 	end
  	if selDetail ~= nil then
 -		local dx = DrawStringWidth(lineHeight, "VAR", selDetail)
 +		local dx = DrawStringWidth(fontSize, "VAR", selDetail)
@@ -2993,8 +3110,10 @@ index bb999c49a48545c2e882a0fe7336780a8a9eee50..098783802834c16ea57886630a387b1d
  		end
  
  		-- draw dropdown items
--		SetViewport(x + 2, dropY + 2, scrollBar.enabled and width - 22 or width - 4, self.dropHeight)
-+		SetViewport(dropX + 6, dropY + 2, scrollBar.enabled and width - 26 or width - 12, self.dropHeight)
+-		local listWidth = scrollBar.enabled and width - 22 or width - 4
+-		SetViewport(x + 2, dropY + 2, listWidth, self.dropHeight)
++		local listWidth = scrollBar.enabled and width - 26 or width - 12
++		SetViewport(dropX + 6, dropY + 2, listWidth, self.dropHeight)
  		local dropIndex = 0
  		for index, listVal in ipairs(self.list) do
  			local searchInfo = self.searchInfos[index]
@@ -3007,7 +3126,7 @@ index bb999c49a48545c2e882a0fe7336780a8a9eee50..098783802834c16ea57886630a387b1d
  					SetDrawColor(0.33, 0.33, 0.33)
  					DrawImage(nil, 0, y, width - 4, lineHeight)
  				end
-@@ -385,48 +396,48 @@
+@@ -403,56 +414,56 @@
  				else
  					SetDrawColor(0.66, 0.66, 0.66)
  				end
@@ -3022,6 +3141,15 @@ index bb999c49a48545c2e882a0fe7336780a8a9eee50..098783802834c16ea57886630a387b1d
  				end
 -				DrawString(0, y, "LEFT", lineHeight, "VAR", label)
 +				DrawString(0, y + textOffset, "LEFT", fontSize, "VAR", label)
+ 				if type(listVal) == "table" and listVal.strikethrough then
+-					drawStrikethrough(label, y, lineHeight)
++					drawStrikethrough(label, y + textOffset, fontSize)
+ 					if index == self.hoverSel or index == self.selIndex then
+ 						SetDrawColor(1, 1, 1)
+ 					else
+ 						SetDrawColor(0.66, 0.66, 0.66)
+ 					end
+ 				end
  				if detail ~= nil then
  					local detail = listVal.detail
 -					local dx = DrawStringWidth(lineHeight, "VAR", detail)
@@ -3031,15 +3159,15 @@ index bb999c49a48545c2e882a0fe7336780a8a9eee50..098783802834c16ea57886630a387b1d
  					else
  						SetDrawColor(0, 0, 0)
  					end
- 					DrawImage(nil, width - dx - 8 - 22, y, width - 4, lineHeight)
+ 					DrawImage(nil, listWidth - dx - 6, y, dx + 6, lineHeight)
  					-- highlight font color if hovered or selected
  					if index == self.hoverSel or index == self.selIndex then
  						SetDrawColor(1, 1, 1)
  					else
  						SetDrawColor(0.66, 0.66, 0.66)
  					end
--					DrawString(width - dx - 4 - 22, y, "LEFT", lineHeight, "VAR", detail)
-+					DrawString(width - dx - 4 - 22, y + textOffset, "LEFT", fontSize, "VAR", detail)
+-					DrawString(listWidth - dx - 2, y, "LEFT", lineHeight, "VAR", detail)
++					DrawString(listWidth - dx - 2, y + textOffset, "LEFT", fontSize, "VAR", detail)
  				end
 -				self:DrawSearchHighlights(label, searchInfo, 0, y, width - 4, lineHeight)
 +				self:DrawSearchHighlights(label, searchInfo, 0, y, width - 4, lineHeight, fontSize, textOffset)
@@ -3061,7 +3189,7 @@ index bb999c49a48545c2e882a0fe7336780a8a9eee50..098783802834c16ea57886630a387b1d
  	end
  	return self:OnSearchChar(key)
  end
-@@ -532,42 +543,41 @@
+@@ -558,48 +569,47 @@
  		  --check width on new list
  		self:CheckDroppedWidth(self.enableDroppedWidth)
  	end
@@ -3080,12 +3208,19 @@ index bb999c49a48545c2e882a0fe7336780a8a9eee50..098783802834c16ea57886630a387b1d
  		  -- do not be smaller than the created width
  		local dWidth = self.width
  		for _, line in ipairs(self.list) do
+ 			local detailWidth = 0
  			if type(line) == "table" then
+ 				if line.detail then
+ 					-- Reserve the same right padding used when drawing the detail,
+ 					-- plus spacing between it and the label.
+-					detailWidth = DrawStringWidth(lineHeight, "VAR", line.detail) + 26
++					detailWidth = DrawStringWidth(fontSize, "VAR", line.detail) + 26
+ 				end
  				line = line.label or ""
  			end
  			  -- +10 to stop clipping
--			dWidth = m_max(dWidth, DrawStringWidth(lineHeight, "VAR", line) + 10)
-+			dWidth = m_max(dWidth, DrawStringWidth(fontSize, "VAR", line) + 10)
+-			dWidth = m_max(dWidth, DrawStringWidth(lineHeight, "VAR", line or "") + detailWidth + 10)
++			dWidth = m_max(dWidth, DrawStringWidth(fontSize, "VAR", line or "") + detailWidth + 10)
  		end
  		  -- no greater than self.maxDroppedWidth
  		self.droppedWidth = m_min(dWidth + scrollWidth, self.maxDroppedWidth)
@@ -3226,7 +3361,7 @@ index 899f5b0bcfe1ebf053db509bb60487e0b8228eb8..140a4ebc1ba88dcab684d63da38261b6
  			self.blinkStart = GetTime()
  		end
 diff --git a/src/Classes/GemSelectControl.lua b/src/Classes/GemSelectControl.lua
-index e87c36ecbc23b94447bd7b5561dfcc4c11896a19..e1a243fcca307e80188764d8fa91a5e675eaccfa 100644
+index 314ab86d541f2ac98ebeed315f4e82e0bb7cf050..b43ae72f1c0973b78b511c9300128d506793a756 100644
 --- a/src/Classes/GemSelectControl.lua
 +++ b/src/Classes/GemSelectControl.lua
 @@ -619,25 +619,25 @@
@@ -3257,7 +3392,7 @@ index e87c36ecbc23b94447bd7b5561dfcc4c11896a19..e1a243fcca307e80188764d8fa91a5e6
  			local cursorX, cursorY = GetCursorPos()
  			self.tooltip:Clear()
 diff --git a/src/Classes/ImportTab.lua b/src/Classes/ImportTab.lua
-index a44f91bc0aae98ab66f7b44513eb700f0b7fc64b..ba2af22a92f5c533e1011ec3d7dfffb87ea0f608 100644
+index f4ad27a3e0a117d2d779684bf66bb6b00e47d62f..effb21bc5076d1f55e6daef80a25a5385b40b18e 100644
 --- a/src/Classes/ImportTab.lua
 +++ b/src/Classes/ImportTab.lua
 @@ -1,28 +1,46 @@
@@ -4223,10 +4358,10 @@ index a44f91bc0aae98ab66f7b44513eb700f0b7fc64b..ba2af22a92f5c533e1011ec3d7dfffb8
  							t_insert(leagueList, char.league)
  						end
 diff --git a/src/Classes/ItemDBControl.lua b/src/Classes/ItemDBControl.lua
-index c0612ef7c75930fd4bd73c1d33f71378ad7738c3..550943265ac25fbe3d4c8ea02e3ef40481840deb 100644
+index eb81940fa5b05cfe068a61c28ef771a839606e7d..bb75195d4fa68df4d28dca6689b48018f59dacba 100644
 --- a/src/Classes/ItemDBControl.lua
 +++ b/src/Classes/ItemDBControl.lua
-@@ -16,61 +16,64 @@
+@@ -16,65 +16,68 @@
  ---@class ItemDBData
  ---@field list table<string, Item>
  ---@field byTitle? table<string, Item>
@@ -4243,6 +4378,7 @@ index c0612ef7c75930fd4bd73c1d33f71378ad7738c3..550943265ac25fbe3d4c8ea02e3ef404
  	self.itemsTab = itemsTab
  	self.db = db
  	self.dbType = dbType
+ 	self.reserveIconSpace = true
  	self.dragTargetList = { }
  	self.sortControl = { 
  		NAME = { key = "name", dir = "ASCEND", func = function(a,b) return a:gsub("^The ","") < b:gsub("^The ","") end },
@@ -4254,7 +4390,10 @@ index c0612ef7c75930fd4bd73c1d33f71378ad7738c3..550943265ac25fbe3d4c8ea02e3ef404
  	self.leaguesAndTypesLoaded = false
  	self.leagueList = { "Any league", "No league" }
  	self.typeList = { "Any type", "Armour", "Jewellery", "One Handed Melee", "Two Handed Melee" }
- 	self.slotList = { "Any slot", "Weapon 1", "Weapon 2", "Helmet", "Body Armour", "Gloves", "Boots", "Amulet", "Ring", "Belt", "Jewel", "Flask", "Graft 1", "Graft 2" }
+ 	self.slotList = { "Any slot", "Weapon 1", "Weapon 2", "Helmet", "Body Armour", "Gloves", "Boots", "Amulet", "Ring", "Belt", "Jewel", "Flask", "Graft 1", "Graft 2",
+ 		-- Wickerman (3.30)
+ 		"Head", "Body", "Arm", "Leg"
+ 	}
  	local baseY = dbType == "RARE" and -22 or -62
 -	self.controls.slot = new("DropDownControl"):DropDownControl({"BOTTOMLEFT",self,"TOPLEFT"}, {0, baseY, 179, 18}, self.slotList, function(index, value)
 -		self.listBuildFlag = true
@@ -4299,7 +4438,7 @@ index c0612ef7c75930fd4bd73c1d33f71378ad7738c3..550943265ac25fbe3d4c8ea02e3ef404
  
  function ItemDBClass:LoadLeaguesAndTypes()
  	local leagueFlag = { }
-@@ -81,51 +84,80 @@
+@@ -85,51 +88,80 @@
  				leagueFlag[leagueName] = true
  			end
  		end
@@ -4404,7 +4543,7 @@ index c0612ef7c75930fd4bd73c1d33f71378ad7738c3..550943265ac25fbe3d4c8ea02e3ef404
  		if (self.controls.obtainable.selIndex == 1 and not obtainable) or (self.controls.obtainable.selIndex == 3 and obtainable) then
  			return false
  		elseif (self.controls.obtainable.selIndex == 4 and not (source == "Vendor Recipe")) then
-@@ -247,33 +279,51 @@
+@@ -251,33 +283,51 @@
  function ItemDBClass:ListBuilder()
  	local list = { }
  	for id, item in pairs(self.db.list) do
@@ -4464,7 +4603,7 @@ index c0612ef7c75930fd4bd73c1d33f71378ad7738c3..550943265ac25fbe3d4c8ea02e3ef404
  	table.sort(list, function(a, b)
  		for _, data in ipairs(self.sortOrder) do
  			local aVal = a[data.key]
-@@ -292,26 +342,48 @@
+@@ -296,26 +346,48 @@
  						return aVal < bVal
  					end
  				end
@@ -4514,9 +4653,9 @@ index c0612ef7c75930fd4bd73c1d33f71378ad7738c3..550943265ac25fbe3d4c8ea02e3ef404
  		if launch.devMode and not res then
  			error(errMsg)
  		end
-@@ -332,24 +404,25 @@
- 		return colorCodes[item.rarity] .. item.name
- 	end
+@@ -340,24 +412,25 @@
+ function ItemDBClass:GetRowIcon(column, index, item)
+ 	return item and self.itemsTab:GetItemIcon(item)
  end
  
  function ItemDBClass:AddValueTooltip(tooltip, index, item)
@@ -4540,7 +4679,7 @@ index c0612ef7c75930fd4bd73c1d33f71378ad7738c3..550943265ac25fbe3d4c8ea02e3ef404
  		local newItem = new("Item"):Item(item.raw)
  		newItem:NormaliseQuality()
  		self.itemsTab:AddItem(newItem, true)
-@@ -365,32 +438,34 @@
+@@ -373,32 +446,34 @@
  				-- Redirect to second slot if possible
  				local altSlot = slotName:gsub("1","2")
  				if self.itemsTab:IsItemValidForSlot(newItem, altSlot) then
@@ -4576,10 +4715,10 @@ index c0612ef7c75930fd4bd73c1d33f71378ad7738c3..550943265ac25fbe3d4c8ea02e3ef404
  		local item = self.ListControl:GetHoverValue()
  		if item then
 diff --git a/src/Classes/ItemListControl.lua b/src/Classes/ItemListControl.lua
-index a38fe5fbc5e3a67248ecd6f0b454aaa9e711a4c1..0ebf59105330a3b2f3f5c1ab3514b0732cfd6044 100644
+index aff11b7152cbd9891de99060b474fc61194941bc..a52f607c416d52c00ecc596a4393ff607efe0caa 100644
 --- a/src/Classes/ItemListControl.lua
 +++ b/src/Classes/ItemListControl.lua
-@@ -1,103 +1,123 @@
+@@ -1,104 +1,124 @@
  -- Path of Building
  --
  -- Class: Item list
@@ -4614,6 +4753,7 @@ index a38fe5fbc5e3a67248ecd6f0b454aaa9e711a4c1..0ebf59105330a3b2f3f5c1ab3514b073
  	self.itemsTab = itemsTab
  	self.defaultText = "^x7F7F7FThis is the list of items that have been added to this build.\nYou can add items to this list by dragging them from\none of the other lists, or by clicking 'Add to build' when\nviewing an item."
  	self.dragTargetList = { }
+ 	self.reserveIconSpace = true
 -	self.controls.loadoutFilter = new("DropDownControl"):DropDownControl({"BOTTOMLEFT",self,"TOPLEFT"}, {0, -2, 110, 18}, nil, function()
 +	local width = self:GetProperty("width")
 +	local rowControlWidth = (width - 8) / 3
@@ -4629,11 +4769,10 @@ index a38fe5fbc5e3a67248ecd6f0b454aaa9e711a4c1..0ebf59105330a3b2f3f5c1ab3514b073
  	self.controls.loadoutFilter.enableDroppedWidth = true
 -	self.controls.sort = new("ButtonControl"):ButtonControl({"LEFT",self.controls.loadoutFilter,"RIGHT"}, {4, 0, 42, 18}, "Sort", function()
 -		itemsTab:SortItemList()
--		self:UpdateList()
++	self.controls.search = new("EditControl"):EditControl({"BOTTOMLEFT",self,"TOPLEFT"}, {0, -2, width, 18}, "", "Search", "%c", 100, function()
+ 		self:UpdateList()
 -	end)
 -	self.controls.deleteUnused = new("ButtonControl"):ButtonControl({"LEFT",self.controls.sort,"RIGHT"}, {4, 0, 84, 18}, "Del Unused", function()
-+	self.controls.search = new("EditControl"):EditControl({"BOTTOMLEFT",self,"TOPLEFT"}, {0, -2, width, 18}, "", "Search", "%c", 100, function()
-+		self:UpdateList()
 +	end, nil, nil, true)
 +	self.controls.deleteUnused = new("ButtonControl"):ButtonControl({"BOTTOMLEFT",self,"TOPLEFT"}, {0, -50, rowControlWidth, 20}, "Delete Unused", function()
  		local delList = {}
@@ -4717,7 +4856,7 @@ index a38fe5fbc5e3a67248ecd6f0b454aaa9e711a4c1..0ebf59105330a3b2f3f5c1ab3514b073
  			local itemSet = self.itemsTab.itemSets[itemSetId]
  			local title = itemSet and (itemSet.title or "Default")
  			if title and not listValues[title] then
-@@ -109,100 +129,226 @@
+@@ -110,100 +130,226 @@
  	local listKey = table.concat(list, "\0")
  	if self.loadoutListKey == listKey then
  		return false
@@ -5010,7 +5149,7 @@ index a38fe5fbc5e3a67248ecd6f0b454aaa9e711a4c1..0ebf59105330a3b2f3f5c1ab3514b073
  function ItemListClass:FindSocketedJewel(jewelId, excludeActiveSpec)
  	if not self.itemsTab.items[jewelId] or self.itemsTab.items[jewelId].type ~= "Jewel" then
  		return nil
-@@ -238,66 +384,124 @@
+@@ -239,70 +385,133 @@
  				if excludeActiveSet and (itemSet == self.itemsTab.activeItemSet or matchActive) then
  					equipSet = nil
  					matchActive = true
@@ -5094,7 +5233,9 @@ index a38fe5fbc5e3a67248ecd6f0b454aaa9e711a4c1..0ebf59105330a3b2f3f5c1ab3514b073
 -			if not slot then
 +			if otherUse or itemSet then
 +				used = "  ^9(" .. (otherUse or itemSet.title or "Default") .. ")"
-+			elseif not slot then
++			elseif slot then
++				used = "  ^9(Equipped)"
++			else
  				used = "  ^9(Unused)"
 -			elseif itemSet then
 -				used = "  ^9(Used in '" .. (itemSet.title or "Default") .. "')"
@@ -5105,6 +5246,13 @@ index a38fe5fbc5e3a67248ecd6f0b454aaa9e711a4c1..0ebf59105330a3b2f3f5c1ab3514b073
  		end
  		return colorCodes[item.rarity] .. item.name .. used
  	end
+ end
+ 
+ function ItemListClass:GetRowIcon(column, index, itemId)
++	if isGroupHeader(itemId) then
++		return nil
++	end
+ 	return self.itemsTab:GetItemIcon(self.itemsTab.items[itemId])
  end
  
  function ItemListClass:AddValueTooltip(tooltip, index, itemId)
@@ -5147,7 +5295,7 @@ index a38fe5fbc5e3a67248ecd6f0b454aaa9e711a4c1..0ebf59105330a3b2f3f5c1ab3514b073
  	if IsKeyDown("CTRL") then
  		local slotName = item:GetPrimarySlot()
  		if slotName and self.itemsTab.slots[slotName] then
-@@ -319,24 +523,25 @@
+@@ -324,24 +533,25 @@
  			end
  			self.itemsTab:PopulateSlots()
  			self.itemsTab:AddUndoState()
@@ -5173,7 +5321,7 @@ index a38fe5fbc5e3a67248ecd6f0b454aaa9e711a4c1..0ebf59105330a3b2f3f5c1ab3514b073
  function ItemListClass:OnSelDelete(index, itemId)
  	local item = self.itemsTab.items[itemId]
  	local equipSlot, equipSet = self.itemsTab:GetEquippedSlotForItem(item)
-@@ -371,18 +576,18 @@
+@@ -376,18 +586,18 @@
  				self.itemsTab:DeleteItem(item)
  				self.selIndex = nil
  				self.selValue = nil
@@ -5195,7 +5343,7 @@ index a38fe5fbc5e3a67248ecd6f0b454aaa9e711a4c1..0ebf59105330a3b2f3f5c1ab3514b073
  end
 \ No newline at end of file
 diff --git a/src/Classes/ItemSlotControl.lua b/src/Classes/ItemSlotControl.lua
-index a3f658a78e3edfd835a13200f221477d0eaa3319..12ba8f2e30fa2f02ce2150b059d282c377090243 100644
+index 6250a132af0eb9f99568acaf396104c6e4133daf..59e8f7795dfedc552de8c0fee615457b08a1e225 100644
 --- a/src/Classes/ItemSlotControl.lua
 +++ b/src/Classes/ItemSlotControl.lua
 @@ -10,25 +10,25 @@
@@ -5225,10 +5373,10 @@ index a3f658a78e3edfd835a13200f221477d0eaa3319..12ba8f2e30fa2f02ce2150b059d282c3
  		return #self.items > 1
  	end
  	self.shown = function()
-@@ -118,34 +118,38 @@
- 			-- this can be inconvenient, but otherwise it is possible to double
- 			-- equip jewels by moving the jewel while the socket is inactive
- 			abyssalSocket:SetSelItemId(0)
+@@ -133,34 +133,38 @@
+ 	for index, entry in ipairs(self.list) do
+ 		if type(entry) == "table" then
+ 			entry.detail = equipped[self.items[index]] and "^8(equipped)" or nil
  		end
  	end
  end
@@ -5266,10 +5414,10 @@ index a3f658a78e3edfd835a13200f221477d0eaa3319..12ba8f2e30fa2f02ce2150b059d282c3
  	if not main.popups[1] and self.nodeId and (self.dropped or (self:IsMouseOver() and (self.otherDragSource or not self.itemsTab.selControl))) then
  		local width = 308
 diff --git a/src/Classes/ItemsTab.lua b/src/Classes/ItemsTab.lua
-index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6b954c2dc 100644
+index 4c40b333e4ac0952792e31ee32520a3e9ad7fbfb..90a08be0170db7ddba71b7d2e0a61e77df3f0108 100644
 --- a/src/Classes/ItemsTab.lua
 +++ b/src/Classes/ItemsTab.lua
-@@ -9,38 +9,32 @@
+@@ -9,24 +9,25 @@
  local t_insert = table.insert
  local t_remove = table.remove
  local s_format = string.format
@@ -5284,21 +5432,37 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  local gemTooltip = require("Classes.GemTooltip")
 +local socketControls = require("Modules.ItemSocketControls")
  
+ local itemTypeIcons = { }
+ for itemType, file in pairs({
+ 	["Weapon"] = "icon_weapon",
+ 	["Bow"] = "icon_bow",
+ 	["Quiver"] = "icon_quiver",
+ 	["Shield"] = "icon_shield",
+ 	["Helmet"] = "icon_helmet",
+ 	["Body Armour"] = "icon_body_armour",
+ 	["Gloves"] = "icon_gloves",
+ 	["Boots"] = "icon_boots",
+ 	["Amulet"] = "icon_amulet",
+@@ -39,31 +40,24 @@
+ 	itemTypeIcons[itemType] = NewImageHandle()
+ 	itemTypeIcons[itemType]:Load("Assets/"..file..".png")
+ end
+ 
  local rarityDropList = {
  	{ label = colorCodes.NORMAL.."Normal", rarity = "NORMAL" },
  	{ label = colorCodes.MAGIC.."Magic", rarity = "MAGIC" },
  	{ label = colorCodes.RARE.."Rare", rarity = "RARE" },
  	{ label = colorCodes.UNIQUE.."Unique", rarity = "UNIQUE" },
  	{ label = colorCodes.RELIC.."Relic", rarity = "RELIC" }
--}
--
+ }
+ 
 -local socketDropList = {
 -	{ label = colorCodes.STRENGTH.."R", color = "R" },
 -	{ label = colorCodes.DEXTERITY.."G", color = "G" },
 -	{ label = colorCodes.INTELLIGENCE.."B", color = "B" },
 -	{ label = colorCodes.SCION.."W", color = "W" }
- }
- 
+-}
+-
  local baseSlots = { "Weapon 1", "Weapon 2", "Helmet", "Body Armour", "Gloves", "Boots", "Amulet", "Ring 1", "Ring 2", "Ring 3", "Belt", "Graft 1", "Graft 2", "Flask 1", "Flask 2", "Flask 3", "Flask 4", "Flask 5" }
  
  local forbiddenJewelCounterpart = {
@@ -5309,7 +5473,9 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  local influenceInfo = itemLib.influenceInfo.all
  
  local catalystQualityFormat = {
-@@ -64,93 +58,131 @@
+ 	"^x7F7F7FQuality (Attack Modifiers): "..colorCodes.MAGIC.."+%d%% (augmented)",
+ 	"^x7F7F7FQuality (Speed Modifiers): "..colorCodes.MAGIC.."+%d%% (augmented)",
+@@ -85,93 +79,131 @@
  	if entry.name and entry.id and entry.text then
  		flavourLookup[entry.name] = flavourLookup[entry.name] or {}
  		flavourLookup[entry.name][entry.id] = entry.text
@@ -5444,21 +5610,21 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  		local slot = new("ItemSlotControl"):ItemSlotControl({"TOPLEFT",prevSlot,"BOTTOMLEFT"}, 0, 2, self, slotName)
  		addSlot(slot)
  		if slotName:match("Weapon") then
-@@ -193,25 +225,25 @@
- 				if slotName:match("Weapon") then
- 					abyssal.weaponSet = 1
- 					abyssal.shown = function()
- 						return not abyssal.inactive and not self.activeItemSet.useSecondWeaponSet
- 					end
- 				end
- 				slot.abyssalSocketList[i] = abyssal
- 			end
- 		end
+@@ -226,25 +258,25 @@
+ 	self.controls.wickermanHeader = new("LabelControl"):LabelControl({"TOPLEFT",prevSlot,"BOTTOMLEFT"}, {0, 8, 0, 16}, "^7Wickerman:")
+ 	self.controls.wickermanHeader.shown = function()
+ 		return self.build.spec.treeVersion:find("3_30")
+ 	end
+ 	prevSlot = self.controls.wickermanHeader
+ 	for _, slotName in ipairs({ "Head", "Body", "Arm", "Leg" }) do
+ 		local slot = new("ItemSlotControl"):ItemSlotControl({"TOPLEFT",prevSlot,"BOTTOMLEFT"}, 0, 2, self, slotName)
+ 		slot.shown = self.controls.wickermanHeader.shown
+ 		addSlot(slot)
  	end
  
  	-- Passive tree dropdown controls
--	self.controls.specSelect = new("DropDownControl"):DropDownControl({"TOPLEFT",prevSlot,"BOTTOMLEFT"}, {0, 8, 216, 20}, nil, function(index, value)
-+	self.controls.specSelect = new("DropDownControl"):DropDownControl({"TOPLEFT",prevSlot,"BOTTOMLEFT"}, {0, 8, 235, 20}, nil, function(index, value)
+-	self.controls.specSelect = new("DropDownControl"):DropDownControl({"TOPLEFT",prevSlot,"BOTTOMLEFT",true}, {0, 8, 216, 20}, nil, function(index, value)
++	self.controls.specSelect = new("DropDownControl"):DropDownControl({"TOPLEFT",prevSlot,"BOTTOMLEFT",true}, {0, 8, 235, 20}, nil, function(index, value)
  		if self.build.treeTab.specList[index] then
  			self.build.modFlag = true
  			self.build.treeTab:SetActiveSpec(index)
@@ -5471,7 +5637,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  	self.controls.specButton = new("ButtonControl"):ButtonControl({"LEFT",prevSlot,"RIGHT"}, {4, 0, 90, 20}, "Manage...", function()
  		self.build.treeTab:OpenSpecManagePopup()
  	end)
-@@ -223,25 +255,25 @@
+@@ -256,25 +288,25 @@
  		if node.type == "Socket" then
  			t_insert(socketOrder, node)
  		end
@@ -5498,7 +5664,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  						self.build.mainSocketGroup = index
  						break
  					end
-@@ -267,101 +299,100 @@
+@@ -300,100 +332,99 @@
  					end
  				end
  			end
@@ -5523,31 +5689,32 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  
  	-- Database selector
  	self.controls.selectDBLabel = new("LabelControl"):LabelControl({"TOPLEFT",self.controls.itemList,"BOTTOMLEFT"}, {0, 14, 0, 16}, "^7Import from:")
- 	self.controls.selectDBLabel.shown = function()
- 		return self.height < 980
- 	end
- 	self.controls.selectDB = new("DropDownControl"):DropDownControl({"LEFT",self.controls.selectDBLabel,"RIGHT"}, {4, 0, 150, 18}, { "Uniques", "Rare Templates" })
+ 	self.controls.selectDB = new("DropDownControl"):DropDownControl({"LEFT",self.controls.selectDBLabel,"RIGHT"}, {4, 0, 150, 18}, { "Uniques", "Rare Templates", "Viscera" })
  
  	-- Unique database
 -	self.controls.uniqueDB = new("ItemDBControl"):ItemDBControl({"TOPLEFT",self.controls.itemList,"BOTTOMLEFT"}, {0, 76, 360, function(c) return m_min(244, self.maxY - select(2, c:GetPos())) end}, self, main.uniqueDB, "UNIQUE")
+-	self.controls.uniqueDB.y = 118
 +	self.controls.uniqueDB = new("ItemDBControl"):ItemDBControl({"TOPLEFT",self.controls.itemList,"BOTTOMLEFT"}, {0, 76, itemListWidth, function(c) return m_min(196, self.maxY - select(2, c:GetPos())) end}, self, main.uniqueDB, "UNIQUE")
- 	self.controls.uniqueDB.y = function()
--		return self.controls.selectDBLabel:IsShown() and 118 or 96
-+		return self.controls.selectDBLabel:IsShown() and 122 or 100
- 	end
++	self.controls.uniqueDB.y = 122
  	self.controls.uniqueDB.shown = function()
- 		return not self.controls.selectDBLabel:IsShown() or self.controls.selectDB.selIndex == 1
+ 		return self.controls.selectDB.selIndex == 1
  	end
  
  	-- Rare template database
 -	self.controls.rareDB = new("ItemDBControl"):ItemDBControl({"TOPLEFT",self.controls.itemList,"BOTTOMLEFT"}, {0, 76, 360, function(c) return m_min(260, self.maxY - select(2, c:GetPos())) end}, self, main.rareDB, "RARE")
+-	self.controls.rareDB.y = 78
 +	self.controls.rareDB = new("ItemDBControl"):ItemDBControl({"TOPLEFT",self.controls.itemList,"BOTTOMLEFT"}, {0, 76, itemListWidth, function(c) return m_min(196, self.maxY - select(2, c:GetPos())) end}, self, main.rareDB, "RARE")
- 	self.controls.rareDB.y = function()
--		return self.controls.selectDBLabel:IsShown() and 78 or 396
-+		return self.controls.selectDBLabel:IsShown() and 82 or 356
- 	end
++	self.controls.rareDB.y = 82
  	self.controls.rareDB.shown = function()
- 		return not self.controls.selectDBLabel:IsShown() or self.controls.selectDB.selIndex == 2
+ 		return self.controls.selectDB.selIndex == 2
+ 	end
+ 	-- Viscera database
+-	self.controls.visceraDB = new("ItemDBControl"):ItemDBControl({"TOPLEFT",self.controls.itemList,"BOTTOMLEFT"}, {0, 76, 360, function(c) return m_min(260, self.maxY - select(2, c:GetPos())) end}, self, main.visceraDB, "RARE")
+-	self.controls.visceraDB.y = 78
++	self.controls.visceraDB = new("ItemDBControl"):ItemDBControl({"TOPLEFT",self.controls.itemList,"BOTTOMLEFT"}, {0, 76, itemListWidth, function(c) return m_min(196, self.maxY - select(2, c:GetPos())) end}, self, main.visceraDB, "RARE")
++	self.controls.visceraDB.y = 82
+ 	self.controls.visceraDB.shown = function()
+ 		return self.controls.selectDB.selIndex == 3
  	end
  	-- Create/import item
 -	self.controls.craftDisplayItem = new("ButtonControl"):ButtonControl({"TOPLEFT",main.portraitMode and self.controls.setManage or self.controls.itemList,"TOPRIGHT"}, {20, main.portraitMode and 0 or -20, 120, 20}, "Craft item...", function()
@@ -5623,7 +5790,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  		if not self.displayItem then
  			return 0
  		end
-@@ -457,70 +488,34 @@
+@@ -489,70 +520,34 @@
  			return self.displayItem and (self.displayItem.usesVariantGroups and c.newVariantVisible
  				or not self.displayItem.usesVariantGroups and legacyShown())
  		end
@@ -5701,14 +5868,14 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  		return self.displayItem and self.displayItem.enchantments
  	end
  	self.controls.displayItemEnchant2 = new("ButtonControl"):ButtonControl({ "TOPLEFT", self.controls.displayItemEnchant, "TOPRIGHT", true }, { 8, 0, 160, 20 }, "Change Enchantment 2...", function()
-@@ -570,28 +565,26 @@
+@@ -602,28 +597,26 @@
  	end
  	self.controls.displayItemAddImplicit = new("ButtonControl"):ButtonControl({"TOPLEFT",self.controls.displayItemCorrupt,"TOPRIGHT",true}, {8, 0, 120, 20}, "Add Implicit...", function()
  		addImplicit.AddImplicitToDisplayItem(self, self.displayItem)
  	end)
  	self.controls.displayItemAddImplicit.shown = function()
  		return self.displayItem and
- 			self.displayItem.type ~= "Tincture" and self.displayItem.type ~= "Graft" and (self.displayItem.corruptible or ((self.displayItem.type ~= "Flask" and self.displayItem.type ~= "Jewel") and
+ 			self.displayItem.type ~= "Tincture" and self.displayItem.type ~= "Graft" and self.displayItem.type ~= "Viscera" and (self.displayItem.corruptible or ((self.displayItem.type ~= "Flask" and self.displayItem.type ~= "Jewel") and
  			(self.displayItem.rarity == "NORMAL" or self.displayItem.rarity == "MAGIC" or self.displayItem.rarity == "RARE"))) and
  			not self.displayItem.implicitsCannotBeChanged
  	end
@@ -5732,7 +5899,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  					self.displayItem[influenceInfo[index].key] = true
  				end
  			end
-@@ -601,162 +594,153 @@
+@@ -633,162 +626,153 @@
  			for i = 1, self.displayItem.affixLimit do
  				-- Force affix selectors to update
  				local drop = self.controls["displayItemAffix"..i]
@@ -5931,7 +6098,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  	end
  	for i = 1, maxModCount do
  		local prev = self.controls["displayItemAffix"..(i-1)] or self.controls.displayItemSectionAffix
-@@ -792,42 +776,42 @@
+@@ -824,42 +808,42 @@
  
  			if priorMod then
  				if flipRange(priorMod, self.displayItem.affixes[drop.list[drop.selIndex].modList[index]]) then
@@ -5976,7 +6143,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  					for _, line in ipairs(mod) do
  						tooltip:AddLine(14, "^7"..line)
  					end
-@@ -927,35 +911,35 @@
+@@ -959,35 +943,35 @@
  					else
  						mod = self.displayItem.affixes[modList[1 + round((#modList - 1) * (main.defaultItemAffixQuality or 0.5))]]
  					end
@@ -6014,7 +6181,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  				local mod = self.displayItem.affixes[modId]
  				for _, line in ipairs(mod) do
  					tooltip:AddLine(16, itemLib.applyRange(line, range))
-@@ -980,47 +964,35 @@
+@@ -1012,47 +996,35 @@
  			local ignoreModType = self.displayItem.rareLikeUnique and self.displayItem.rareLikeUnique.ignoreModType
  			return ignoreModType and "^7Explicit:"
  				or drop.outputTable == "prefixes" and "^7Prefix:"
@@ -6064,7 +6231,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  	self.controls.displayItemClusterJewelPositions = new("LabelControl"):LabelControl({"TOPLEFT",self.controls.displayItemSectionClusterJewelPositions,"TOPLEFT"}, {0, 0, 0, 14}, "^7Notable positions (relative to entrance):")
  	self.controls.displayItemClusterJewelPositions.shown = function()
  		local item = self.displayItem
-@@ -1157,25 +1129,25 @@
+@@ -1189,25 +1161,25 @@
  			-- hack: set property according to item. the state is not a prop and so can't be set as a function value
  			if line and line.mutated then
  				box.state = true
@@ -6091,7 +6258,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  				self:UpdateDisplayItemTooltip()
  				self:UpdateCustomControls()
  			end
-@@ -1185,25 +1157,25 @@
+@@ -1217,25 +1189,25 @@
  			if modLine then
  				-- it's possible for the range to change while this slider is
  				-- hidden, so correct the slider to show the same value
@@ -6118,7 +6285,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  		end)
  		self.controls["displayItemStackedRangeLine" .. i].shown = function()
  			return slider:IsShown() or box:IsShown()
-@@ -1489,25 +1461,29 @@
+@@ -1523,25 +1495,29 @@
  			maxY = m_max(maxY, y + ttH + 4)
  			maxX = m_max(maxX, x + ttW + 80)
  		end
@@ -6149,7 +6316,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  
  	for _, event in ipairs(inputEvents) do
  		if event.type == "KeyDown" then
-@@ -1595,30 +1571,30 @@
+@@ -1629,30 +1605,30 @@
  							self:ToggleDisplayItemModLine(line.modLine)
  							break
  						end
@@ -6185,13 +6352,13 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  	self.controls.specSelect:SetList(self.build.treeTab:GetSpecList())
  end
  
-@@ -1664,48 +1640,53 @@
- 			end
- 		end
+@@ -1739,48 +1715,53 @@
  	end
  	self.build.buildFlag = true
  	self:PopulateSlots()
- 	self.build:SyncLoadouts()
+ 	if not deferSync then
+ 		self.build:SyncLoadouts()
+ 	end
  end
  
  -- Equips the given item in the given item set
@@ -6239,7 +6406,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  end
  
  -- Updates the status and position of the socket controls
-@@ -1847,72 +1828,39 @@
+@@ -1925,72 +1906,39 @@
  					other:BuildModList()
  					self.build.buildFlag = true
  					break
@@ -6316,7 +6483,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  		if not slot.nodeId then
  			for _, itemSet in pairs(self.itemSets) do
  				if itemSet[slotName].selItemId == item.id then
-@@ -2076,24 +2024,26 @@
+@@ -2154,24 +2102,26 @@
  			control.selIndex = selectedIndex or 1
  			control.variantGroupId = groupId
  			control.newVariantVisible = true
@@ -6343,7 +6510,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  		if item.usesVariantGroups then
  			self:UpdateDisplayItemVariantControls()
  		else
-@@ -2125,50 +2075,42 @@
+@@ -2203,50 +2153,42 @@
  			self.controls.displayItemAltVariant5.list = item.variantList
  			self.controls.displayItemAltVariant5.selIndex = item.variantAlt5
  			self.controls.displayItemAltVariant5:CheckDroppedWidth(true)
@@ -6398,7 +6565,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  
  function ItemsTabClass:UpdateDisplayItemTooltip()
  	self.clusterJewelNotablePositions = itemLib.getClusterJewelNotablePositions(self.displayItem, self.build.data.clusterJewels.notableSortOrder)
-@@ -2184,31 +2126,25 @@
+@@ -2262,31 +2204,25 @@
  	modLine.disabled = not modLine.disabled
  	self.displayItem:BuildAndParseRaw()
  	self:UpdateDisplayItemTooltip()
@@ -6431,7 +6598,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  	for skillId, skill in pairs(item.clusterJewel.skills) do
  		if not unavailableSkills[skillId] then
  			t_insert(skillList, { label = skill.name, skillId = skillId })
-@@ -2989,53 +2925,53 @@
+@@ -3092,53 +3028,53 @@
  			controls.enchantment:SetSel(1)
  			if controls.sort then
  				applySort(controls.sort.list[controls.sort.selIndex].stat, true)
@@ -6463,7 +6630,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
 +	controls.enchantment = new("DropDownControl"):DropDownControl({"TOPLEFT",nil,"TOPLEFT"}, {100, 70, 600, 18}, enchantmentList)
  	controls.enchantment.tooltipFunc = function(tooltip, mode, index)
  		tooltip:Clear()
- 		self:AddItemTooltip(tooltip, enchantItem(index), nil, true)
+ 		self:AddItemTooltip(tooltip, enchantItem(index), self:GetComparisonSlotNameForItem(self.displayItem, true), true)
  	end
  	controls.save = new("ButtonControl"):ButtonControl(nil, {-88, 100, 80, 20}, "Enchant", function()
  		self:SetDisplayItem(enchantItem())
@@ -6490,7 +6657,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  			for _, mod in ipairs(modList) do
  				local line = mod.line
  				local anoint = line:find("Allocates ([a-zA-Z ]+)")
-@@ -3170,25 +3106,48 @@
+@@ -3285,25 +3221,48 @@
  	end
  	controls.close = new("ButtonControl"):ButtonControl({"TOPLEFT", controls.save, "TOPRIGHT" }, {10, 0, 80, 20}, "Cancel", function()
  		main:ClosePopup()
@@ -6540,7 +6707,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  			end
  		end
  	end
-@@ -3391,147 +3350,148 @@
+@@ -3506,147 +3465,148 @@
  		end
  		if not addingImplicits then
  			for i, modLine in ipairs(item.explicitModLines) do
@@ -6726,7 +6893,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  		local shownVal
  		if i <= itemMaxCorruptImplicits then
  			shownVal = not self.displayItem.implicitsCannotBeChanged
-@@ -3547,36 +3507,36 @@
+@@ -3662,36 +3622,36 @@
  				local otherIdx = (i % 2 == 0) and (i - 1) or (i + 1)
  				local modType = i <= 2 and "ScourgeUpside" or "ScourgeDownside"
  				-- remove selected entry from other dropdown of the same type
@@ -6746,7 +6913,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  	end)
  	controls.save.tooltipFunc = function(tooltip)
  		tooltip:Clear()
- 		self:AddItemTooltip(tooltip, corruptItem(controls.implicit1.shown), nil, false)
+ 		self:AddItemTooltip(tooltip, corruptItem(controls.implicit1.shown), self:GetComparisonSlotNameForItem(self.displayItem, true), false)
  	end
 -	controls.close = new("ButtonControl"):ButtonControl({ "BOTTOM", nil, "BOTTOM" }, { 45, -4, 80, 20 }, "Cancel", function()
 +	controls.close = new("ButtonControl"):ButtonControl({ "BOTTOM", nil, "BOTTOM" }, { (80 + gap) / 2, -padding, 80, controlHeight }, "Cancel", function()
@@ -6766,7 +6933,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  	local sortList, sortStats = buildModSortList()
  	local function setDefaultSortOrder()
  		for index, listMod in ipairs(modList) do
-@@ -3798,25 +3758,25 @@
+@@ -3913,25 +3873,25 @@
  				t_insert(modList, {
  					label = table.concat(mod, "/") .. " (" .. mod.type .. ")",
  					mod = mod,
@@ -6793,7 +6960,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  			t_insert(sourceList, { label = "Necropolis", sourceId = "NECROPOLIS"})
  		end
  		if not self.displayItem.clusterJewel and self.displayItem.type ~= "Flask" and self.displayItem.type ~= "Graft" then
-@@ -3845,99 +3805,123 @@
+@@ -3960,99 +3920,123 @@
  	-- TODO: given that we need to do this, it would be better to just keep a
  	-- list of matching mod ids, rather than building a list to check, and then
  	-- building it again when selecting it
@@ -6914,7 +7081,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  	end)
  	controls.save.tooltipFunc = function(tooltip)
  		tooltip:Clear()
- 		self:AddItemTooltip(tooltip, addModifier())
+ 		self:AddItemTooltip(tooltip, addModifier(), self:GetComparisonSlotNameForItem(self.displayItem, true))
  	end
 -	controls.close = new("ButtonControl"):ButtonControl(nil, {45, 75, 80, 20}, "Cancel", function()
 +	controls.close = new("ButtonControl"):ButtonControl({"BOTTOMLEFT",nil,"BOTTOM"}, {gap / 2, -padding, 80, controlHeight}, "Cancel", function()
@@ -6943,7 +7110,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  	local function buildCrucibleMods()
  		for i, mod in pairs(self.build.data.crucible) do
  			if self.displayItem:CanHaveMod(mod) then
-@@ -3966,85 +3950,74 @@
+@@ -4081,85 +4065,74 @@
  		for _, tierList in ipairs(modList) do
  			table.sort(tierList, function(a, b)
  				if b ~= "None" then
@@ -7020,7 +7187,7 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
 -	end)
 -	controls.save.tooltipFunc = function(tooltip)
 -		tooltip:Clear()
--		self:AddItemTooltip(tooltip, addModifier())
+-		self:AddItemTooltip(tooltip, addModifier(), self:GetComparisonSlotNameForItem(self.displayItem, true))
 -	end
 -	controls.close = new("ButtonControl"):ButtonControl(nil, {45, 157, 80, 20}, "Cancel", function()
 -		main:ClosePopup()
@@ -7040,10 +7207,10 @@ index e370df57fe3ee0949d1d1b8759518d8f2c64a9a1..14e42e8ce0afc624b5f7c2447bc67ca6
  		end
  	end
 diff --git a/src/Classes/ListControl.lua b/src/Classes/ListControl.lua
-index 554075835035596abb5e2abaaf71570b320d8aa8..9b49a46f6bd23ed14cd2cae60d6e18ad5224304e 100644
+index 560176b52cb45849c666c1aa91ccd69e2d2c9f3b..273e60c77b3930d35af7bceba15e7d83a8eb67ff 100644
 --- a/src/Classes/ListControl.lua
 +++ b/src/Classes/ListControl.lua
-@@ -23,24 +23,25 @@
+@@ -24,24 +24,25 @@
  -- :OverrideSelectIndex(index) [Called when an index is selected, return true to prevent default action]
  -- :SetHighlightColor(index, value) [Called when querying if a row is highlighted by parent element class]
  --
@@ -7069,7 +7236,7 @@ index 554075835035596abb5e2abaaf71570b320d8aa8..9b49a46f6bd23ed14cd2cae60d6e18ad
  function ListClass:ListControl(anchor, rect, rowHeight, scroll, isMutable, list, forceTooltip)
  	self:Control(anchor, rect)
  	self:ControlHost()
-@@ -198,53 +199,55 @@
+@@ -199,51 +200,53 @@
  		SetDrawColor(1, 1, 1)
  	else
  		SetDrawColor(0.5, 0.5, 0.5)
@@ -7102,15 +7269,12 @@ index 554075835035596abb5e2abaaf71570b320d8aa8..9b49a46f6bd23ed14cd2cae60d6e18ad
  			local lineY = rowHeight * (index - 1) - scrollOffsetV + (self.colLabels and 18 or 0)
  			local value = list[index]
  			local text = self:GetRowValue(colIndex, index, value)
- 			local icon = nil
- 			if self.GetRowIcon then 
- 				icon = self:GetRowIcon(colIndex, index, value)
- 			end
+ 			local icon = self.GetRowIcon and self:GetRowIcon(colIndex, index, value)
+-			local textX = (icon or self.reserveIconSpace) and 18 or 0
++			local textX = textOffsetX + ((icon or self.reserveIconSpace) and 18 or 0)
  			local textWidth = DrawStringWidth(textHeight, colFont, text)
--			if textWidth > colWidth - 2 then
--				local clipIndex = DrawStringCursorIndex(textHeight, colFont, text, colWidth - clipWidth - 2, 0)
-+			if textWidth > colWidth - textOffsetX - 2 then
-+				local clipIndex = DrawStringCursorIndex(textHeight, colFont, text, colWidth - textOffsetX - clipWidth - 2, 0)
+ 			if textWidth > colWidth - textX - 2 then
+ 				local clipIndex = DrawStringCursorIndex(textHeight, colFont, text, colWidth - textX - clipWidth - 2, 0)
  				text = text:sub(1, clipIndex - 1) .. "..."
  				textWidth = DrawStringWidth(textHeight, colFont, text)
  			end
@@ -7121,14 +7285,14 @@ index 554075835035596abb5e2abaaf71570b320d8aa8..9b49a46f6bd23ed14cd2cae60d6e18ad
  					ttValue = value
  					ttX = x + 2 + colOffset
  					ttY = lineY + y + 2
- 					ttWidth = m_max(textWidth + 8, relX - colOffset)
+ 					ttWidth = m_max(textX + textWidth + 8, relX - colOffset)
  				end
  			end
  			if self.showRowSeparators then
  				if self.hasFocus and value == self.selValue then
  					SetDrawColor(1, 1, 1)
  				elseif value == ttValue then
-@@ -275,28 +278,28 @@
+@@ -274,25 +277,25 @@
  				if self.otherDragSource and self.CanDragToValue and self:CanDragToValue(index, value, self.otherDragSource) then
  					SetDrawColor(0, 0.2, 0)
  				else
@@ -7140,15 +7304,11 @@ index 554075835035596abb5e2abaaf71570b320d8aa8..9b49a46f6bd23ed14cd2cae60d6e18ad
  				SetDrawColor(1, 1, 1)
  			end
  			-- TODO: handle icon size properly, for now assume they are 16x16
- 			if icon == nil then
--				DrawString(colOffset, lineY + textOffsetY, "LEFT", textHeight, colFont, text)
-+				DrawString(colOffset + textOffsetX, lineY + textOffsetY, "LEFT", textHeight, colFont, text)
- 			else
+ 			if icon then
 -				DrawImage(icon, colOffset, lineY, 16, 16)
--				DrawString(colOffset + 16 + 2, lineY + textOffsetY, "LEFT", textHeight, colFont, text)
 +				DrawImage(icon, colOffset + textOffsetX, lineY, 16, 16)
-+				DrawString(colOffset + textOffsetX + 16 + 2, lineY + textOffsetY, "LEFT", textHeight, colFont, text)
  			end
+ 			DrawString(colOffset + textX, lineY + textOffsetY, "LEFT", textHeight, colFont, text)
  		end
  		if self.colLabels then
  			local mOver = relX >= colOffset and relX <= colOffset + colWidth and relY >= 0 and relY <= 18
@@ -7159,7 +7319,6 @@ index 554075835035596abb5e2abaaf71570b320d8aa8..9b49a46f6bd23ed14cd2cae60d6e18ad
  				DrawImage(nil, colOffset + 1, 2, colWidth - 2, 16)
  			else
  				SetDrawColor(0.5, 0.5, 0.5)
- 				DrawImage(nil, colOffset, 1, colWidth, 18)
 diff --git a/src/Classes/ModDB.lua b/src/Classes/ModDB.lua
 index ffaf1e5ea591bd8aabbacb7f29f96c684deb79cf..81b88184602c187a5f9ef95fd096173f7b2b814a 100644
 --- a/src/Classes/ModDB.lua
@@ -7227,7 +7386,7 @@ index ec686674d772a7ac27d1fef77b28d8c7d18678e1..46f06f06b7d5fa3d7cc0ff28b094e4df
  ---@param mod table
  ---@return boolean @Whether any mod was replaced
 diff --git a/src/Classes/ModStore.lua b/src/Classes/ModStore.lua
-index 0dd30e41d664333f5532f376f2c443d90bbc97f8..40159353f12c75de02f664303eacdddeac610220 100644
+index 57f717049bd85f92229d0f3f64f1bad0ed773453..03314691982e53ff992d55c6ee6043ae5b1957a8 100644
 --- a/src/Classes/ModStore.lua
 +++ b/src/Classes/ModStore.lua
 @@ -28,25 +28,27 @@
@@ -7544,7 +7703,7 @@ index f5b86e4084addd0fec355e276eb159054ee4fdd8..1d6683433c8f0942d1f8cb31868b4b03
  		skillsTab.build.buildFlag = true
  		return skillsTab.gemSlots[1].nameSpec
 diff --git a/src/Classes/SkillsTab.lua b/src/Classes/SkillsTab.lua
-index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced869b5563 100644
+index 04d383461cd197e3f4292fb399d90665853484a1..428445c177a50eadf1a255c6f825706721aaa29d 100644
 --- a/src/Classes/SkillsTab.lua
 +++ b/src/Classes/SkillsTab.lua
 @@ -1,23 +1,57 @@
@@ -7938,7 +8097,7 @@ index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced
  	-- Initialise skill sets
  	self.skillSets = { }
  	self.skillSetOrderList = { 1 }
- 	self:NewSkillSet(1)
+ 	self:CreateSkillSet(1)
  	self:SetActiveSkillSet(1)
  
  	-- Skill gem slots
@@ -7977,7 +8136,7 @@ index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced
  	local socketGroup = { }
  	socketGroup.enabled = node.attrib.active == "true" or node.attrib.enabled == "true"
  	socketGroup.includeInFullDPS = node.attrib.includeInFullDPS and node.attrib.includeInFullDPS == "true"
-@@ -512,24 +573,26 @@
+@@ -513,24 +574,26 @@
  		gemInstance.skillMinionSkill = tonumber(child.attrib.skillMinionSkill)
  		gemInstance.skillMinionSkillCalcs = tonumber(child.attrib.skillMinionSkillCalcs)
  		t_insert(socketGroup.gemList, gemInstance)
@@ -8004,7 +8163,7 @@ index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced
  		self.controls.defaultLevel:SelByValue("normalMaximum", "gemLevel")
  	end
  	self.defaultGemLevel = self.controls.defaultLevel:GetSelValueByKey("gemLevel")
-@@ -624,24 +687,37 @@
+@@ -625,24 +688,37 @@
  				} })
  			end
  			t_insert(child, node)
@@ -8042,7 +8201,7 @@ index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced
  	self.x = self.x - self.controls.scrollBarH.offset
  
  	for _, event in ipairs(inputEvents) do
-@@ -680,24 +756,27 @@
+@@ -681,24 +757,27 @@
  	end
  	self.controls.setSelect:SetList(newSetList)
  
@@ -8070,7 +8229,7 @@ index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced
  	end
  	for _, gemInstance in ipairs(socketGroup.gemList) do
  		skillText = skillText .. string.format("%s %d/%d %s %d\r\n", gemInstance.nameSpec, gemInstance.level, gemInstance.quality, gemInstance.enabled and "" or "DISABLED", gemInstance.count or 1)
-@@ -774,25 +853,25 @@
+@@ -775,25 +854,25 @@
  		end)
  	end
  	slot.delete.shown = function()
@@ -8097,7 +8256,7 @@ index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced
  				nameSpec = "",
  				level = 1,
  				quality = self.defaultGemQuality or 0,
-@@ -830,72 +909,73 @@
+@@ -831,72 +910,73 @@
  		slot.count:SetText(gemInstance.count or 1)
  		if addUndo then
  			self:AddUndoState()
@@ -8174,7 +8333,7 @@ index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced
  				tooltip:AddLine(18, colorCodes.GEM..grantedEffect.name)
  				-- Hardcoded to use 20% quality instead of grabbing from gem, this is for consistency and so we always show something
  				tooltip:AddLine(16, colorCodes.NORMAL.."At +20% Quality:")
-@@ -926,42 +1006,44 @@
+@@ -927,42 +1007,44 @@
  					addQualityLines(qualityTable, gemData.grantedEffect)
  					tooltip:AddSeparator(10)
  				end
@@ -8220,7 +8379,7 @@ index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced
  			slot.enableGlobal1.state = true
  			gemInstance.enableGlobal1 = true
  			slot.enableGlobal2.state = true
-@@ -982,51 +1064,43 @@
+@@ -983,51 +1065,43 @@
  					self.displayGroup.gemList[index].enabled = not self.displayGroup.gemList[index].enabled
  					self.build:AddStatComparesToTooltip(tooltip, calcBase, output, self.displayGroup.gemList[index].enabled and "^7Disabling this gem will give you:" or "^7Enabling this gem will give you:")
  				end
@@ -8274,7 +8433,7 @@ index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced
  		return index <= #self.displayGroup.gemList
  	end
  	self.controls["gemSlot"..index.."Count"] = slot.count
-@@ -1088,24 +1162,25 @@
+@@ -1089,24 +1163,25 @@
  		end
  		local slot = self.gemSlots[slotIndex]
  		if slotIndex == #self.displayGroup.gemList + 1 then
@@ -8290,17 +8449,17 @@ index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced
 +	self.controls.imbuedSupportLabel:SetAnchor("TOPLEFT", self.gemSlots[#self.displayGroup.gemList + 1].delete, "BOTTOMLEFT", 0, 26)
  end
  
+ -- Resolve both saved gem names and import names, which may include "Support".
+ function SkillsTabClass:FindImbuedSupport(name)
+ 	local gemData = self.build.data
+ 	local lowerName = name:lower()
+ 	local gemId = gemData.gemForBaseName[lowerName .. " support"] or gemData.gemForBaseName[lowerName]
+ 	local gem = gemId and gemData.gems[gemId]
+ 	return gem and gem.grantedEffect and gem.grantedEffect.support and gem or nil
+ end
+ 
  -- Find the skill gem matching the given specification
- function SkillsTabClass:FindSkillGem(nameSpec)
- 	-- Search for gem name using increasingly broad search patterns
- 	local patternList = {
- 		"^ "..nameSpec:gsub("%a", function(a) return "["..a:upper()..a:lower().."]" end).."$", -- Exact match (case-insensitive)
- 		"^"..nameSpec:gsub("%a", " %0%%l+").."$", -- Simple abbreviation ("CtF" -> "Cold to Fire")
- 		"^ "..nameSpec:gsub(" ",""):gsub("%l", "%%l*%0").."%l+$", -- Abbreviated words ("CldFr" -> "Cold to Fire")
- 		"^"..nameSpec:gsub(" ",""):gsub("%a", ".*%0"), -- Global abbreviation ("CtoF" -> "Cold to Fire")
- 		"^"..nameSpec:gsub(" ",""):gsub("%a", function(a) return ".*".."["..a:upper()..a:lower().."]" end), -- Case insensitive global abbreviation ("ctof" -> "Cold to Fire")
- 	}
-@@ -1222,73 +1297,128 @@
+@@ -1232,73 +1307,128 @@
  				gemInstance.level = gemInstance.gemData.naturalMaxLevel
  				gemInstance.naturalMaxLevel = gemInstance.level
  			end
@@ -8431,15 +8590,15 @@ index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced
  		self.controls.includeInFullDPS.state = socketGroup.includeInFullDPS and socketGroup.enabled
  		self.controls.groupCount:SetText(socketGroup.groupCount or 1)
  		if socketGroup.imbuedSupport then
- 			local gemId = data.gems[data.gemForBaseName[socketGroup.imbuedSupport:lower().." support"]]
- 			self.controls.imbuedSupport.gemId = gemId
+ 			local gem = self:FindImbuedSupport(socketGroup.imbuedSupport)
+ 			self.controls.imbuedSupport.gemId = gem
  			self.controls.imbuedSupport:SetText(socketGroup.imbuedSupport)
- 			self.controls.imbuedSupport.inactiveCol = data.skillColorMap[gemId.grantedEffect.color]
+ 			self.controls.imbuedSupport.inactiveCol = gem and data.skillColorMap[gem.grantedEffect.color] or "^8"
  		else
  			self.controls.imbuedSupport.gemId = nil
  			self.controls.imbuedSupport:SetText("")
  		end
-@@ -1385,26 +1515,67 @@
+@@ -1399,26 +1529,67 @@
  				gemInstance.color,
  				(gemInstance.grantedEffect and gemInstance.grantedEffect.name) or (gemInstance.gemData and gemInstance.gemData.name) or gemInstance.nameSpec,
  				displayEffect.srcInstance and displayEffect.srcInstance.level or displayEffect.level,
@@ -8507,7 +8666,7 @@ index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced
  				newGroup.gemList[gemIndex] = copyTable(gem, true)
  			end
  			newSkillSet.socketGroupList[socketGroupIndex] = newGroup
-@@ -1427,24 +1598,25 @@
+@@ -1441,24 +1612,25 @@
  	wipeTable(self.skillSetOrderList)
  	for k, v in ipairs(state.skillSetOrderList) do
  		self.skillSetOrderList[k] = v
@@ -8534,7 +8693,7 @@ index f1326ddc98037d1856a61a1c002b53dfa2732cfd..79574c523fa6a5990f83eaa3c85e4ced
  end
  
 diff --git a/src/Classes/Tooltip.lua b/src/Classes/Tooltip.lua
-index 832793aedde015c18a125dec940685812294fd27..f0e10ed947ad6515bd3de577a1c89959278bb64e 100644
+index 8c8044c69b40bbdf5de376a6109bf079bc7ca7e2..ed7e2e478a52425693b5262e3eea0442b3affb0d 100644
 --- a/src/Classes/Tooltip.lua
 +++ b/src/Classes/Tooltip.lua
 @@ -91,46 +91,48 @@
@@ -8796,8 +8955,8 @@ index 832793aedde015c18a125dec940685812294fd27..f0e10ed947ad6515bd3de577a1c89959
  	end
  	local config
  	if self.tooltipHeader and main.showFlavourText and self.lines[1] and self.lines[1].text then
- 		local rarity = tostring(self.tooltipHeader):upper()
- 		config = headerConfigs[rarity] or headerConfigs.NORMAL
+ 		local headerType = tostring(self.tooltipHeader):upper()
+ 		config = headerConfigs[headerType] or headerConfigs.NORMAL
  		self.titleYOffset = config.textYOffset or 0
  	end
  	local ttX = x
@@ -8848,7 +9007,7 @@ index 832793aedde015c18a125dec940685812294fd27..f0e10ed947ad6515bd3de577a1c89959
  				-- Only skip first separator for items and skill gems
  				local tooltipType = self.tooltipHeader and tostring(self.tooltipHeader):upper() or ""
  				if main.showFlavourText and not firstSeparatorSkipped and
- 				(tooltipType == "RELIC" or tooltipType == "UNIQUE" or tooltipType == "RARE" or tooltipType == "MAGIC" or tooltipType == "GEM") then
+ 				(tooltipType == "RELIC" or tooltipType == "UNIQUE" or tooltipType == "RARE" or tooltipType == "MAGIC" or tooltipType == "GEM" or tooltipType == "VISCERA") then
  					firstSeparatorSkipped = true
  					skip = true
  				else
@@ -8869,10 +9028,10 @@ index 832793aedde015c18a125dec940685812294fd27..f0e10ed947ad6515bd3de577a1c89959
  					end
  					SetDrawColor(1,1,1)
 diff --git a/src/Classes/TreeTab.lua b/src/Classes/TreeTab.lua
-index 0dcb91e393330a080a04770fec14e618a3cab2f0..76646b436e1be36d82a9f6f77beb098c0f5476a7 100644
+index 03d4b20a60a1262cc6ead89ccd8f3dfe9d969a2f..039fe5ac4f55026f385d65ebb3e849ef0b37eca9 100644
 --- a/src/Classes/TreeTab.lua
 +++ b/src/Classes/TreeTab.lua
-@@ -186,35 +186,36 @@
+@@ -187,35 +187,36 @@
  
  	-- table holding all realm/league pairs. (allLeagues[realm] = [league.id,...])
  	self.tradeLeaguesList = {}
@@ -8911,7 +9070,7 @@ index 0dcb91e393330a080a04770fec14e618a3cab2f0..76646b436e1be36d82a9f6f77beb098c
  			return
  		end
  
-@@ -263,24 +264,27 @@
+@@ -264,24 +265,27 @@
  	self.powerStatList = { }
  	for _, stat in ipairs(data.powerStatList) do
  		if not stat.ignoreForNodes then
@@ -8939,7 +9098,7 @@ index 0dcb91e393330a080a04770fec14e618a3cab2f0..76646b436e1be36d82a9f6f77beb098c
  			self.jumpToY = selectedNode.y
  		end
  	end)
-@@ -393,43 +397,43 @@
+@@ -394,43 +398,43 @@
  	-- Determine positions if one line of controls doesn't fit in the screen width
  	local linesHeight = 24
  	local rightMargin = 10
@@ -8987,7 +9146,7 @@ index 0dcb91e393330a080a04770fec14e618a3cab2f0..76646b436e1be36d82a9f6f77beb098c
  	if viewPort.width >= convertMaxWidth then
  		convertTwoLineHeight = 0
  		self.controls.specConvert:SetAnchor("LEFT", self.controls.specConvertText, "RIGHT", 8, 0)
-@@ -453,36 +457,35 @@
+@@ -454,36 +458,35 @@
  	local newSpecList = self:GetSpecList()
  	self.controls.compareSelect.selIndex = self.activeCompareSpec
  	self.controls.compareSelect:SetList(newSpecList)
@@ -9025,7 +9184,7 @@ index 0dcb91e393330a080a04770fec14e618a3cab2f0..76646b436e1be36d82a9f6f77beb098c
  	DrawImage(nil, viewPort.x, viewPort.y + viewPort.height - (34 + bottomDrawerHeight + linesHeight), viewPort.width, 4)
  
  	self:DrawControls(viewPort)
-@@ -1035,25 +1038,24 @@
+@@ -1050,25 +1053,24 @@
  		controls.close =  new("ButtonControl"):ButtonControl(nil, {0, 30 + passiveMasteryControlHeight, 90, 20}, "Cancel", function()
  			node.sd = cachedSd
  			node.allMasteryOptions = cachedAllMasteryOption
@@ -9234,15 +9393,15 @@ index b324c47cddba1414dc2a47e1f5eb8404dc719aa5..41ee8c0e083be3c6453fad6389027a6f
  
  return M
 diff --git a/src/Modules/Build.lua b/src/Modules/Build.lua
-index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc507a4a0668 100644
+index fdfacda2a35f0b8b39e2bbb6d1afdd8c541cde4d..9f2023c94a0c46b40233b0572cc2e33193d8c7ef 100644
 --- a/src/Modules/Build.lua
 +++ b/src/Modules/Build.lua
-@@ -5,30 +5,61 @@
- --
+@@ -6,30 +6,61 @@
  local pairs = pairs
  local ipairs = ipairs
  local next = next
  local t_insert = table.insert
+ local t_remove = table.remove
  local t_sort = table.sort
  local m_min = math.min
  local m_max = math.max
@@ -9299,7 +9458,7 @@ index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc50
  ---matchFlags
  ---  Compares the skill flags table against the line flag settings
  ---  Required enabling flags check takes precedence over disabling flags check
-@@ -110,131 +141,149 @@
+@@ -114,131 +145,149 @@
  	end
  
  	self.abortSave = true
@@ -9487,11 +9646,11 @@ index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc50
  				local mult
  				if diff <= 0 then
  					mult = 1
-@@ -247,71 +296,76 @@
+@@ -251,205 +300,211 @@
  				end
  				if mult > 0.01 then
  					local line = level
- 					if level >= 68 then 
+ 					if level >= 68 then
  						line = line .. string.format(" (Tier %d)", level - 67)
  					end
  					line = line .. string.format(": %.1f%%", mult * 100)
@@ -9514,7 +9673,7 @@ index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc50
  					self.spec:SelectClass(value.classId)
  					self.spec:AddUndoState()
  					self.spec:SetWindowTitleWithBuildClass()
- 					self.buildFlag = true					
+ 					self.buildFlag = true
  				end, "Connect Path", function()
  					if self.spec:ConnectToClass(value.classId) then
  						self.spec:SelectClass(value.classId)
@@ -9567,21 +9726,19 @@ index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc50
  		if value == "^7^7Help >>" then
  			main:OpenAboutPopup(7)
  			self.controls.buildLoadouts:SetSel(1)
-@@ -408,135 +462,136 @@
- 		if newItemId ~= self.itemsTab.activeItemSetId then
- 			self.itemsTab:SetActiveItemSet(newItemId)
+ 			return
  		end
- 		if newSkillId ~= self.skillsTab.activeSkillSetId then
- 			self.skillsTab:SetActiveSkillSet(newSkillId)
+ 		if value == "^7^7Manage" then
+ 			self:OpenBuildSetManagePopup()
  		end
- 		if newConfigId ~= self.configTab.activeConfigSetId then
- 			self.configTab:SetActiveConfigSet(newConfigId)
- 		end
+ 
+ 		local loadout = self:GetLoadoutByName(value)
+ 		self:SetActiveLoadout(loadout)
  
  		self.controls.buildLoadouts:SelByValue(value)
  	end)
 +	self.controls.buildLoadouts.clampDrop = true
- 	
+ 
  	if buildName == "~~temp~~" then
  		-- Remove temporary build file
  		os.remove(self.dbFileName)
@@ -9724,7 +9881,7 @@ index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc50
  	end)
  	function self.controls.mainSkillMinion.CanReceiveDrag(control, type, value)
  		if type == "Item" and control.list[control.selIndex] and control.list[control.selIndex].itemSetId then
-@@ -550,37 +605,51 @@
+@@ -463,37 +518,51 @@
  	end
  	function self.controls.mainSkillMinion.tooltipFunc(tooltip, mode, index, value)
  		tooltip:Clear()
@@ -9780,7 +9937,7 @@ index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc50
  	self.controls.warnings.Draw = function(control)
  		if #self.controls.warnings.lines > 0 then
  			local count = 0
-@@ -918,30 +987,37 @@
+@@ -1086,30 +1155,37 @@
  		local labSuggest = level < 33 and ""
  			or level < 55 and "\nLabyrinth: Normal Lab"
  			or level < 68 and "\nLabyrinth: Cruel Lab"
@@ -9792,7 +9949,7 @@ index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc50
  		if AscUsed > ascMax then InsertIfNew(self.controls.warnings.lines, "You have too many ascendancy points allocated") end
  		if SecondaryAscUsed > secondaryAscMax then InsertIfNew(self.controls.warnings.lines, "You have too many secondary ascendancy points allocated") end
  		self.Act = level < 90 and act <= 10 and act or "Endgame"
- 		
+ 
 -		self.controls.pointDisplay.str = string.format("%s%3d / %3d   %s%d / %d",
 +		self.controls.pointDisplay.wideStr = string.format("%s%3d / %3d   %s%d / %d",
  			PointsUsed > usedMax and colorCodes.NEGATIVE or "^7",
@@ -9810,7 +9967,7 @@ index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc50
  		self.controls.pointDisplay.req = string.format(
  			"Required Level: %d\nEstimated Progress:\nAct: %s\nQuestpoints: %d\nExtra Skillpoints: %d%s",
  			level, self.Act, acts[act].questPoints, actExtra(act, extra), labSuggest
- 		)		
+ 		)
  	end
  end
  
@@ -9819,7 +9976,7 @@ index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc50
  		return true
  	end
  	self:OpenSavePopup(mode)
-@@ -957,24 +1033,29 @@
+@@ -1125,24 +1201,29 @@
  			self.buildName = "~~temp~~"
  			self.dbFileSubPath = ""
  			self:SaveDBFile()
@@ -9849,7 +10006,7 @@ index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc50
  	if xml.attrib.viewMode then
  		self.viewMode = xml.attrib.viewMode
  	end
-@@ -1148,24 +1229,68 @@
+@@ -1316,24 +1397,68 @@
  			end
  		end
  		secondaryDrop:SetList(entries)
@@ -9918,7 +10075,7 @@ index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc50
  	end
  
  	for id, event in ipairs(inputEvents) do
-@@ -1238,24 +1363,25 @@
+@@ -1406,24 +1531,25 @@
  			if self.overlayBreakdownControl then
  				self.overlayBreakdownControl:OnKeyUp(event.key)
  				self.overlayBreakdownControl = nil
@@ -9944,7 +10101,7 @@ index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc50
  		-- Wipe Global Cache
  		wipeGlobalCache()
  
-@@ -1281,30 +1407,29 @@
+@@ -1449,30 +1575,29 @@
  		self:RefreshStatList()
  	end
  	if main.decimalSeparator ~= self.lastShowDecimalSeparator then
@@ -9967,7 +10124,7 @@ index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc50
 +		height = main.screenH - 34
  	}
  	if self.viewMode == "IMPORT" then
- 		self.importTab:Draw(tabViewPort, inputEvents)  
+ 		self.importTab:Draw(tabViewPort, inputEvents)
  	elseif self.viewMode == "NOTES" then
  		self.notesTab:Draw(tabViewPort, inputEvents)
  	elseif self.viewMode == "PARTY" then
@@ -9977,7 +10134,7 @@ index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc50
  	elseif self.viewMode == "TREE" then
  		self.treeTab:Draw(tabViewPort, inputEvents)
  	elseif self.viewMode == "SKILLS" then
-@@ -1321,34 +1446,33 @@
+@@ -1489,34 +1614,33 @@
  	for _, pane in ipairs(self.overlayPanes) do
  		if pane.isOverlay then
  			pane:DrawOverlay(main.viewPort, inputEvents)
@@ -10016,7 +10173,7 @@ index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc50
  
  function buildMode:SetDisplayStat(hovered, pin)
  	if not hovered or (not pin and self.controls.breakdown.pinned) then
-@@ -1412,38 +1536,41 @@
+@@ -1580,38 +1704,41 @@
  		self:Init(self.dbFileName, self.buildName, nil, true)
  	end)
  	controls.cancel = new("ButtonControl"):ButtonControl(nil, {60, 170, 70, 20}, "Cancel", function()
@@ -10058,7 +10215,7 @@ index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc50
  	main:OpenPopup(300, 100, "Save Changes", controls)
  end
  
-@@ -2316,20 +2443,22 @@
+@@ -2788,24 +2915,26 @@
  		return true
  	end
  	file:write(xmlText)
@@ -10080,12 +10237,16 @@ index c472060134d3b756f37b713dc16af8837a81faee..e8131daa3447b71bf140dd5f2fafcc50
  	end
  end
  
- return buildMode
+ -- Opens the build set manager
+ function buildMode:OpenBuildSetManagePopup()
+ 	main:OpenPopup(400, 290, "Manage Loadouts", {
+ 		new("BuildSetListControl"):BuildSetListControl(nil, { 0, 50, 380, 200 }, self),
+ 		new("ButtonControl"):ButtonControl(nil, { 0, 260, 90, 20 }, "Done", function()
 diff --git a/src/Modules/CalcActiveSkill.lua b/src/Modules/CalcActiveSkill.lua
-index 938e89ff78d72b1d8f171ef9149354dcb9da0cc7..03c67a77ade7b0722a8c82e423af627ac3b14c44 100644
+index 49f1b8bd8a14dcbed34ff9125f38c166f05e73b1..dd95742b9cc33d5fe2c858a63158772160bc432a 100644
 --- a/src/Modules/CalcActiveSkill.lua
 +++ b/src/Modules/CalcActiveSkill.lua
-@@ -170,29 +170,29 @@
+@@ -179,29 +179,29 @@
  		level = skill.activeEffect.level,
  		quality = skill.activeEffect.quality
  	}
@@ -10112,12 +10273,12 @@ index 938e89ff78d72b1d8f171ef9149354dcb9da0cc7..03c67a77ade7b0722a8c82e423af627a
  	return newSkill, newEnv
  end
  
- -- Get weapon flags and info for given weapon
- local function getWeaponFlags(env, weaponData, weaponTypes)
- 	local info = env.data.weaponTypeInfo[weaponData.type]
- 	if not info then
- 		return
-@@ -480,25 +480,25 @@
+ -- Check for "asThoughUsing..." weaponTypes match, which is mechanically different from "countAs..."
+ ---@param weaponData table
+ ---@param types table
+ ---@return boolean @whether a match was found
+ local function checkAsThoughWeaponTypes(weaponData, types)
+@@ -516,25 +516,25 @@
  	if skillFlags.weapon1Attack then
  		activeSkill.weapon1Cfg = copyTable(activeSkill.skillCfg, true)
  		activeSkill.weapon1Cfg.skillCond = setmetatable({ ["MainHandAttack"] = true }, { __index = activeSkill.skillCfg.skillCond })
@@ -10145,7 +10306,7 @@ index 938e89ff78d72b1d8f171ef9149354dcb9da0cc7..03c67a77ade7b0722a8c82e423af627a
  	-- Mods which apply curses are not disabled by Gruthkul's Pelt
  	local curseApplicationSkill = activeSkill.socketGroup and activeSkill.socketGroup.sourceItem ~= nil and activeSkill.skillFlags.curse and activeSkill.activeEffect.srcInstance and activeSkill.activeEffect.srcInstance.noSupports and activeSkill.activeEffect.srcInstance.triggered
 diff --git a/src/Modules/CalcMirages.lua b/src/Modules/CalcMirages.lua
-index b6826b567ea927936791d783ae9bd388723bdef5..b7ff9a32be7aa71ae35f5bd7a0970a6129f399a6 100644
+index 82b4f3f0a1b5d4cad696c80de9897fe10faa4070..43a9f2a1eb75c061d335305bda8496567786e7f2 100644
 --- a/src/Modules/CalcMirages.lua
 +++ b/src/Modules/CalcMirages.lua
 @@ -115,24 +115,27 @@
@@ -10177,10 +10338,10 @@ index b6826b567ea927936791d783ae9bd388723bdef5..b7ff9a32be7aa71ae35f5bd7a0970a61
  							return GlobalCache.cachedData[env.mode][uuid].ActiveSkill
  						end
 diff --git a/src/Modules/CalcPerform.lua b/src/Modules/CalcPerform.lua
-index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a2df806e7 100644
+index 2aaa8459a8199ff3a9813b75b1010dcbef7267e0..997d256c46fe43f8411990b6d68a601c8436e34e 100644
 --- a/src/Modules/CalcPerform.lua
 +++ b/src/Modules/CalcPerform.lua
-@@ -33,45 +33,63 @@
+@@ -34,45 +34,63 @@
  	if not GlobalCache.cachedData[env.mode][uuid] or env.mode == "CALCULATOR" then
  		calcs.buildActiveSkill(env, env.mode, activeSkill, uuid, {uuid})
  	end
@@ -10246,7 +10407,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  	local condList = modDB.conditions
  
  	local lowLifePerc = modDB:Sum("BASE", nil, "LowLifePercentage")
-@@ -617,25 +635,25 @@
+@@ -631,25 +649,25 @@
  end
  
  local function applyEnemyModifiers(actor, clearCache)
@@ -10273,8 +10434,36 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  	local enemyDB = actor.enemy.modDB
  	---@class Output
  	local output = actor.output
-@@ -1286,37 +1304,41 @@
- function calcs.perform(env, skipEHP)
+@@ -1193,26 +1211,26 @@
+ local function initMinionModDB(env, activeSkill, output, itemsLoaded)
+ 	local modDB = env.modDB
+ 	local minion = activeSkill.minion
+ 	minion.output = output or { }
+ 	minion.modDB.multipliers["Level"] = minion.level
+ 	calcs.initModDB(env, minion.modDB)
+ 	local baseLife = minion.lifeTable[minion.level] * minion.minionData.life
+ 	if minion.hostile then
+ 		baseLife = baseLife * (env.data.mapLevelLifeMult[env.enemyLevel] or 1)
+ 	end
+ 	minion.modDB:NewMod("Life", "BASE", m_floor(baseLife), "Base")
+ 	if minion.minionData.energyShield then
+-		local esTable = (env.minion.hostile and env.minion.lifeTable) or (env.player.mainSkill.skillFlags.spectre and env.minion.lifeTable) or env.data.monsterAllyLifeTable
+-		local baseES = m_floor(esTable[env.minion.level] * minion.minionData.life) * (minion.minionData.energyShield * (data.gameConstants["EnergyShieldRatioOfLife"] / 100))
++		local esTable = (minion.hostile or activeSkill.skillFlags.spectre) and minion.lifeTable or env.data.monsterAllyLifeTable
++		local baseES = m_floor(esTable[minion.level] * minion.minionData.life) * (minion.minionData.energyShield * (data.gameConstants["EnergyShieldRatioOfLife"] / 100))
+ 		if minion.hostile then
+ 			baseES = baseES * (env.data.mapLevelLifeMult[env.enemyLevel] or 1)
+ 		end
+ 		minion.modDB:NewMod("EnergyShield", "BASE", m_floor(baseES), "Base")
+ 	end
+ 	minion.modDB:NewMod("Armour", "BASE", round(env.data.monsterArmourTable[minion.level] * (minion.minionData.armour or 1)), "Base")
+ 	minion.modDB:NewMod("Evasion", "BASE", round(env.data.monsterEvasionTable[minion.level] * (minion.minionData.evasion or 1)), "Base")
+ 	if modDB:Flag(nil, "MinionAccuracyEqualsAccuracy") then
+ 		minion.modDB:NewMod("Accuracy", "BASE", calcLib.val(modDB, "Accuracy") + calcLib.val(modDB, "Dex") * (modDB:Override(nil, "DexAccBonusOverride") or data.misc.AccuracyPerDexBase), "Player")
+ 	else
+ 		minion.modDB:NewMod("CannotBeEvaded", "FLAG", 1, "Minion Attacks always hit")
+ 	end
+@@ -1310,41 +1328,45 @@
  	local modDB = env.modDB
  	local enemyDB = env.enemyDB
  
@@ -10282,7 +10471,8 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  	env.keystonesAdded = { }
  	modLib.mergeKeystones(env, env.modDB)
  
- 	-- Build minion skills
+ 	-- Build minion skills and find the active Guardian.
+ 	local guardian
  	for _, activeSkill in ipairs(env.player.activeSkillList) do
  		activeSkill.skillModList = new("ModList"):ModList(activeSkill.baseSkillModList)
  		if activeSkill.minion then
@@ -10291,6 +10481,10 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  			activeSkill.minion.modDB.actor = activeSkill.minion
  			calcs.createMinionSkills(env, activeSkill)
  			activeSkill.skillPartName = activeSkill.minion.mainSkill.activeEffect.grantedEffect.name
+ 			if activeSkill.minion.type == "AnimatedArmour" and not activeSkill.skillFlags.disable
+ 				and (not guardian or activeSkill == env.player.mainSkill) then
+ 				guardian = activeSkill.minion
+ 			end
  		end
  	end
  
@@ -10315,8 +10509,8 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  		output.Minion = { }
  		initMinionModDB(env, env.player.mainSkill, output.Minion)
  	end
- 	if env.aegisModList then
-@@ -1717,64 +1739,64 @@
+ 	if guardian and guardian ~= env.minion then
+@@ -1763,64 +1785,64 @@
  			end
  			local effectMod = 1 + (flaskEffectInc) / 100
  			local effectModNonPlayer = 1 + (flaskEffectIncNonPlayer) / 100
@@ -10395,7 +10589,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  		table.sort(orderedFlasks, function(a, b)
  			local posA = slotIndex[a] or 0
  			local posB = slotIndex[b] or 0
-@@ -1884,44 +1906,44 @@
+@@ -1930,44 +1952,44 @@
  
  		local function calcTinctureMods(item, baseName, buffModList, modList)
  			local tinctureEffectInc = effectInc + item.tinctureData.effectInc
@@ -10404,7 +10598,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  			end
  			-- Compute tincture effect multiplier.
  			-- Tincture effect multiplier is rounded to 2 decimal places before applying it.
- 			local effectMod = math.floor((1 + (tinctureEffectInc) / 100) * (1 + (item.quality or 0) / 100) * 100) / 100 
+ 			local effectMod = math.floor((1 + (tinctureEffectInc) / 100) * (1 + (item.quality or 0) / 100) * 100) / 100
  
  			-- same deal as flasks, go look at the comment there
  			if buffModList[1] then
@@ -10446,7 +10640,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  			local posB = slotIndex[b] or 0
  			if posA ~= posB then
  				return posA < posB
-@@ -1965,26 +1987,25 @@
+@@ -2011,26 +2033,25 @@
  		-- Merge keystones again to catch any that were added by flasks
  		modLib.mergeKeystones(env, env.modDB)
  	end
@@ -10474,7 +10668,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  			end
  		end
  		doActorAttribsConditions(env, env.minion)
-@@ -2261,41 +2282,41 @@
+@@ -2330,41 +2351,41 @@
  						if tagName == "beast" then
  							modDB.conditions["HaveBeastSpectre"] = true
  							break
@@ -10520,7 +10714,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  	end
  
  	-- To support maximum sustainable stages for the following skills we need to get the data from already
-@@ -2339,60 +2360,60 @@
+@@ -2408,63 +2429,63 @@
  				-- Nothing!
  			elseif buff.enemyCond and not enemyDB:GetCondition(buff.enemyCond) then
  				-- Also nothing :/
@@ -10573,6 +10767,9 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  						local inc = modStore:Sum("INC", skillCfg, "BuffEffect", "BuffEffectOnSelf", "BuffEffectOnPlayer")
  						local more = modStore:More(skillCfg, "BuffEffect", "BuffEffectOnSelf")
  						srcList:ScaleAddList(buff.modList, (1 + inc / 100) * more)
+ 						if not guards[buff.name] then
+ 							t_insert(guardOrder, buff.name)
+ 						end
 -						mergeBuff(srcList, guards, buff.name)
 +						mergeBuff(env, srcList, guards, buff.name)
  					end
@@ -10587,7 +10784,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  						local extraExertions = modStore:Sum("BASE", nil, "ExtraExertedAttacks") or 0
  						local exertMultiplier = modStore:More(nil, "ExtraExertedAttacks")
  						env.player.modDB:NewMod("Num"..warcryName.."Exerts", "BASE", m_floor((baseExerts + extraExertions) * exertMultiplier))
-@@ -2403,71 +2424,71 @@
+@@ -2475,71 +2496,71 @@
  					end
  					if not activeSkill.skillModList:Flag(nil, "CannotShareWarcryBuffs") then
  						local warcryPower = modDB:Override(nil, "WarcryPower") or m_max((modDB:Sum("BASE", nil, "WarcryPower") or 0) * (1 + (modDB:Sum("INC", nil, "WarcryPower") or 0)/100), (modDB:Sum("BASE", nil, "MinimumWarcryPower") or 0))
@@ -10665,7 +10862,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  				if env.mode_buffs then
  					-- Check for extra modifiers to apply to aura skills
  					local extraAuraModList = { }
-@@ -2486,99 +2507,99 @@
+@@ -2558,99 +2579,99 @@
  					end
  					if not activeSkill.skillData.auraCannotAffectSelf then
  						local inc = skillModList:Sum("INC", skillCfg, "AuraEffect", "BuffEffect", "BuffEffectOnSelf", "AuraEffectOnSelf", "AuraBuffEffect", "SkillAuraEffectOnSelf")
@@ -10774,7 +10971,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  						end
  						if not auraDebuffFound then
  							activeSkill.debuffSkill = true
-@@ -2590,51 +2611,51 @@
+@@ -2662,51 +2683,51 @@
  										mod.value = mod.value + value.mod.value
  										add = false
  										break
@@ -10829,7 +11026,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  									break
  								end
  							end
-@@ -2646,44 +2667,44 @@
+@@ -2718,44 +2739,44 @@
  						if not (modDB:Flag(nil, "SelfAurasOnlyAffectYou")) then
  							local inc = skillModList:Sum("INC", skillCfg, "AuraEffect", "BuffEffect", "DebuffEffect")
  							local more = skillModList:More(skillCfg, "AuraEffect", "BuffEffect", "DebuffEffect")
@@ -10876,7 +11073,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  				end
  				if (not skipCurse) and (env.mode_effective and (not enemyDB:Flag(nil, "Hexproof") or modDB:Flag(nil, "CursesIgnoreHexproof") or activeSkill.skillData.ignoreHexLimit or activeSkill.skillData.ignoreHexproof) or mark) then
  					local curse = {
-@@ -2700,39 +2721,39 @@
+@@ -2772,39 +2793,39 @@
  					end
  					local more = skillModList:More(skillCfg, "CurseEffect")
  					local moreMark = more
@@ -10920,7 +11117,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  						and not env.minion.modDB:Flag(nil, "Condition:CannotBeDamaged") and not env.minion.mainSkill.summonSkill.skillTypes[SkillType.MinionsAreUndamagable]
  				if env.mode_buffs and (#linkSkills < 1) and (partyTabEnableExportBuffs or linksApplyToMinions) then
  					-- Check for extra modifiers to apply to link skills
-@@ -2749,40 +2770,40 @@
+@@ -2821,40 +2842,40 @@
  						if add then
  							t_insert(extraLinkModList, copyTable(value.mod, true))
  							-- special handling to add this early
@@ -10964,7 +11161,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  			end
  			local effect = m_floor(6 * (1 + witherEffect / 100))
  			modDB:NewMod("WitherEffectStack", "MAX", effect)
-@@ -2794,77 +2815,64 @@
+@@ -2866,77 +2887,64 @@
  					if not activeSkill.skillModList:Flag(activeSkill.skillCfg, "CannotIgnite") then
  						local value = activeSkill.skillModList:Sum("BASE", activeSkill.skillCfg, "CombustionFireResist")
  						enemyDB:NewMod("FireResist", "BASE", value, "Combustion", { type = "GlobalEffect", effectType = "Debuff", effectName = "Combustion" }, { type = "Condition", var = "Ignited" })
@@ -11048,7 +11245,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  							for _, value in ipairs(activeSkill.minion.modDB:List(skillCfg, "ExtraAuraEffect")) do
  								local add = true
  								for _, mod in ipairs(extraAuraModList) do
-@@ -2881,117 +2889,117 @@
+@@ -2953,117 +2961,117 @@
  							if not (activeSkill.minion.modDB:Flag(nil, "SelfAurasCannotAffectAllies") or activeSkill.minion.modDB:Flag(nil, "SelfAurasOnlyAffectYou") or activeSkill.minion.modDB:Flag(nil, "SelfAuraSkillsCannotAffectAllies") or skillModList:Flag(skillCfg, "SelfAurasAffectYouAndLinkedTarget")) then
  								if not modDB:Flag(nil, "AlliesAurasCannotAffectSelf") and not modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] then
  									local inc = skillModList:Sum("INC", skillCfg, "AuraEffect", "BuffEffect", "BuffEffectOnPlayer", "AuraBuffEffect") + modDB:Sum("INC", skillCfg, "BuffEffectOnSelf", "AuraEffectOnSelf")
@@ -11179,7 +11376,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  										if allyBuffs["AuraDebuff"] and allyBuffs["AuraDebuff"][buff.name] and allyBuffs["AuraDebuff"][buff.name].effectMult / 100 > mult then
  											mult = 0
  										end
-@@ -3004,148 +3012,148 @@
+@@ -3076,148 +3084,148 @@
  							if env.minion and env.minion == activeSkill.minion then
  								env.minion.modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
  							end
@@ -11351,7 +11548,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  
  	-- Process stats from alternate charges
  	if env.mode_combat then
-@@ -3164,25 +3172,25 @@
+@@ -3236,25 +3244,25 @@
  			modDB:NewMod("EnemyBrittleEffect", "MORE", effectPerAffliction, "Affliction Charges", { type = "Multiplier", var = "AfflictionCharge" } )
  			modDB:NewMod("EnemySapEffect", "MORE", effectPerAffliction, "Affliction Charges", { type = "Multiplier", var = "AfflictionCharge" } )
  		end
@@ -11378,7 +11575,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  					for _, tag in ipairs(mod) do
  						if tag.type == "GlobalEffect" and tag.effectType == "Curse" then
  							t_insert(curseModList, mod)
-@@ -3198,43 +3206,43 @@
+@@ -3270,43 +3278,43 @@
  						modDB.conditions["AffectedBy"..grantedEffect.name:gsub(" ","")] = true
  						local cfg = { skillName = grantedEffect.name }
  						local inc = modDB:Sum("INC", cfg, "CurseEffectOnSelf") + gemModList:Sum("INC", nil, "CurseEffectAgainstPlayer")
@@ -11424,7 +11621,7 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  	end
  
  
-@@ -3353,25 +3361,25 @@
+@@ -3426,25 +3434,25 @@
  			t_insert(guardSlots, { name = name, modList = modList })
  		elseif not nonVaal then
  			t_insert(guardSlots, { name = name, modList = modList })
@@ -11451,33 +11648,33 @@ index d683aab3ce3a3b96fdc13bac149cbf6d1ff76249..b183b01bdfa0777eeb7ccacea3e7783a
  		if env.minion then
  			addMinionModifiers(modList, env.player.mainSkill.skillCfg, env.minion)
  		end
-@@ -3432,25 +3440,25 @@
- 		-- Set the life/mana reservations again as we now have increased mana from overcapped lightning resistance
- 		doActorLifeMana(env.player)
- 		doActorLifeManaReservation(env.player, true)
- 	end
- 
+@@ -3510,25 +3518,25 @@
  	if modDB:Flag(env.player.mainSkill.skillCfg, "Condition:CanInflictHallowingFlame") then
  		local magnitude = modDB:Override(nil, "HallowingFlameMagnitude") or modDB:Sum("INC", nil, "HallowingFlameMagnitude")
  		local val = m_floor(25 * (1 + magnitude / 100)) -- Hallowing flame grants Attack Hits against you gain 25% of Physical Damage as Extra Fire Damage
  		modDB:NewMod("ExtraAura", "LIST", { mod = modLib.createMod("PhysicalDamageGainAsFire", "BASE", val, "Hallowing Flame", { type = "GlobalEffect", effectType = "Global", unscalable = true }, { type = "ActorCondition", actor = "enemy", var = "HallowingFlame" }, { type = "Multiplier", var = "HallowingFlame", actor = "enemy" }) })
  	end
  
- 	-- Check for extra auras
+ 	-- Apply extra auras from the player, the Guardian, and imported party members.
+ 	local function applyExtraAura(targetDB, modList)
+ 		local inc = targetDB:Sum("INC", nil, "BuffEffectOnSelf", "AuraEffectOnSelf")
+ 		local more = targetDB:More(nil, "BuffEffectOnSelf", "AuraEffectOnSelf")
+ 		targetDB:ScaleAddList(modList, (1 + inc / 100) * more)
+ 	end
 -	buffExports["Aura"]["extraAura"] = { effectMult = 1, modList = new("ModList"):ModList() }
 +	buffExports["Aura"]["extraAura"] = { effectMult = 1, modList = calcs.newModList(env) }
  	for _, value in ipairs(modDB:List(nil, "ExtraAura")) do
  		local modList = { value.mod }
  		if not value.onlyAllies and not (value.fromAllies and modDB:Flag(nil, "AlliesAurasCannotAffectSelf")) then
- 			local inc = modDB:Sum("INC", nil, "BuffEffectOnSelf", "AuraEffectOnSelf")
- 			local more = modDB:More(nil, "BuffEffectOnSelf", "AuraEffectOnSelf")
- 			modDB:ScaleAddList(modList, (1 + inc / 100) * more)
+ 			applyExtraAura(modDB, modList)
  			if not value.notBuff then
  				modDB.multipliers["BuffOnSelf"] = (modDB.multipliers["BuffOnSelf"] or 0) + 1
  			end
  		end
  		if value.fromAllies or not modDB:Flag(nil, "SelfAurasCannotAffectAllies") then
  			if env.minion then
+ 				applyExtraAura(env.minion.modDB, modList)
+ 			end
 diff --git a/src/Modules/CalcRelevance.lua b/src/Modules/CalcRelevance.lua
 new file mode 100644
 index 0000000000000000000000000000000000000000..33afd6822026480ed5044aa337d3f8c88fe609ab
@@ -11654,10 +11851,10 @@ index 0000000000000000000000000000000000000000..33afd6822026480ed5044aa337d3f8c8
 +
 +return calcs
 diff --git a/src/Modules/CalcSections.lua b/src/Modules/CalcSections.lua
-index 0f5b1c7f1ca2037ee5c142873e4b8c6e9219de47..f05db0e41cecb7e04624f8f21946df346cd843a8 100644
+index b103db1be516ac2b4ee203392623c76465cf764e..353e55d98065ec315493537078400f3cf6e2a7a6 100644
 --- a/src/Modules/CalcSections.lua
 +++ b/src/Modules/CalcSections.lua
-@@ -1811,66 +1811,66 @@
+@@ -1820,66 +1820,66 @@
  		{ label = "Mana Flask Charges/s", modName = "ManaFlaskChargesGenerated", modType = "BASE"},
  		{ label = "Generic Flask Charges/s", modName = { "FlaskChargesGenerated", "FlaskChargesGeneratedPerEmptyFlask" }, modType = "BASE" }}, },
  } }, { defaultCollapsed = true, label = "Tinctures", data = {
@@ -11727,7 +11924,7 @@ index 0f5b1c7f1ca2037ee5c142873e4b8c6e9219de47..f05db0e41cecb7e04624f8f21946df34
  	{ label = "Minimum Stacks", haveOutput = "MinimumFortification", { format = "{0:output:MinimumFortification}",  { breakdown = "MinimumFortification" }, { modName = "MinimumFortification" }, }, },
  	{ label = "Duration", haveOutput = "FortifyDuration", { format = "{2:output:FortifyDuration}s",  { breakdown = "FortifyDuration" }, { modName = "FortifyDuration" }, }, },
  	{ label = "Less Dmg. Taken", haveOutput = "FortificationEffect", { format = "{output:FortificationEffect}%",  { breakdown = "FortificationEffect" }, { modName = "Condition:NoFortificationMitigation" }, }, },
-@@ -1878,45 +1878,45 @@
+@@ -1887,45 +1887,45 @@
  	{ label = "Stun Avoid Chance", haveOutput = "StunAvoidChance", { format = "{0:output:StunAvoidChance}%",  { breakdown = "StunAvoidChance" }, { modName = { "AvoidStun", "StunImmune" } }, }, },
  	{ label = "Stun Threshold", { format = "{0:output:StunThreshold}", { breakdown = "StunThreshold" }, { modName = { "StunThreshold", "StunThresholdManaPercent", "StunThresholdEnergyShieldPercent" } }, }, },
  	{ label = "Stun Chance", { format = "{0:output:SelfStunChance}%", { breakdown = "SelfStunChance" }, }, },
@@ -11776,7 +11973,7 @@ index 0f5b1c7f1ca2037ee5c142873e4b8c6e9219de47..f05db0e41cecb7e04624f8f21946df34
  	{ label = "Chill Effect", { format = "{1:output:SelfChillEffect}%", { modName = "SelfChillEffect" }, }, },
  	{ label = "Shock Effect", { format = "{1:output:SelfShockEffect}%", { modName = "SelfShockEffect" }, }, },
 diff --git a/src/Modules/CalcSetup.lua b/src/Modules/CalcSetup.lua
-index 55b3425d0253028a678f4b8cd1c79a48dca9d547..17b268b5c008f8b8e1cda2127e6b9fde73fabeda 100644
+index e6535b0538dadb114ebabda24bf2216f8e7667ca..c72d6e5c66c51ade4af6fb5f1cd94db8182ad592 100644
 --- a/src/Modules/CalcSetup.lua
 +++ b/src/Modules/CalcSetup.lua
 @@ -10,25 +10,25 @@
@@ -12273,12 +12470,12 @@ index 55b3425d0253028a678f4b8cd1c79a48dca9d547..17b268b5c008f8b8e1cda2127e6b9fde
 +	elseif specEnv.reuseSetup then
 +		-- Copy rather than link the cached base mods so every query keeps a fresh
 +		-- environment's mod order and shares one set of global limits.
-+		env.modDB.parent = nil
-+		env.enemyDB.parent = nil
++		env.modDB.parent = false
++		env.enemyDB.parent = false
 +		mergeDB(env.modDB, cachedPlayerDB)
 +		mergeDB(env.enemyDB, cachedEnemyDB)
 +		if cachedMinionDB and env.minion then
-+			env.minion.modDB.parent = nil
++			env.minion.modDB.parent = false
 +			mergeDB(env.minion.modDB, cachedMinionDB)
 +		end
  	else
@@ -12423,9 +12620,9 @@ index 55b3425d0253028a678f4b8cd1c79a48dca9d547..17b268b5c008f8b8e1cda2127e6b9fde
  				if not build.spec.treeVersion:find("3_27") then
  					goto continue
  				end
- 			end
- 			-- ignore item in Ring 3 if The Unseen Hand is not allocated
-@@ -837,25 +1028,25 @@
+ 			elseif (slotName == "Head" or slotName == "Body" or slotName == "Arm" or slotName == "Leg") and not env.spec.treeVersion:find("3_30") then
+ 				goto continue
+@@ -839,25 +1030,25 @@
  			end
  			if item and item.grantedSkills then
  				-- Find skills granted by this item
@@ -12452,7 +12649,7 @@ index 55b3425d0253028a678f4b8cd1c79a48dca9d547..17b268b5c008f8b8e1cda2127e6b9fde
  				-- Slot is a jewel socket, check if socket is allocated
  				if not env.allocNodes[slot.nodeId] then
  					goto continue
-@@ -1106,25 +1297,25 @@
+@@ -1123,25 +1314,25 @@
  						env.itemModDB.conditions[cond.."In"..slot.parentSlot.slotName] = true
  						env.itemModDB.multipliers[mult.."In"..slot.parentSlot.slotName] = (env.itemModDB.multipliers[mult.."In"..slot.parentSlot.slotName] or 0) + 1
  					end
@@ -12479,7 +12676,7 @@ index 55b3425d0253028a678f4b8cd1c79a48dca9d547..17b268b5c008f8b8e1cda2127e6b9fde
  						if add then
  							env.aegisModList:ScaleAddMod(mod, scale)
  						else
-@@ -1159,43 +1350,43 @@
+@@ -1176,43 +1367,43 @@
  							end
  						end
  						item:NormaliseQuality()
@@ -12525,7 +12722,7 @@ index 55b3425d0253028a678f4b8cd1c79a48dca9d547..17b268b5c008f8b8e1cda2127e6b9fde
  						if add then
  							env.weaponModList1:ScaleAddMod(mod, scale)
  						else
-@@ -1233,58 +1424,58 @@
+@@ -1250,60 +1441,60 @@
  						local otherRingKey = otherRing.baseName:gsub(" ", "").."Equipped"
  						if otherRingKey then
  							env.itemModDB.multipliers[otherRingKey] = (env.itemModDB.multipliers[otherRingKey] or 0) + 1
@@ -12556,8 +12753,9 @@ index 55b3425d0253028a678f4b8cd1c79a48dca9d547..17b268b5c008f8b8e1cda2127e6b9fde
  						combinedList:MergeMod(mod)
  					end	
  					env.itemModDB:ScaleAddList(combinedList, scale)
- 				elseif item.type == "Gloves" and calcLib.mod(env.initialNodeModDB, nil, "EffectOfBonusesFromGloves") ~=1 then
- 					scale = calcLib.mod(env.initialNodeModDB, nil, "EffectOfBonusesFromGloves") - 1
+ 				-- Apply increased/reduced bonuses from equipped gloves from Custom Modifiers and Wickerman items, as well as passives.
+ 				elseif item.type == "Gloves" and calcLib.mod(equipmentBonusModDB, nil, "EffectOfBonusesFromGloves") ~=1 then
+ 					scale = calcLib.mod(equipmentBonusModDB, nil, "EffectOfBonusesFromGloves") - 1
 -					local combinedList = new("ModList"):ModList()
 +					local combinedList = calcs.newModList(env)
  					for _, mod in ipairs(srcList) do
@@ -12570,8 +12768,9 @@ index 55b3425d0253028a678f4b8cd1c79a48dca9d547..17b268b5c008f8b8e1cda2127e6b9fde
  						combinedList:MergeMod(mod, true)
  					end
  					env.itemModDB:AddList(combinedList)
- 				elseif item.type == "Boots" and calcLib.mod(env.initialNodeModDB, nil, "EffectOfBonusesFromBoots") ~= 1 then
- 					scale = calcLib.mod(env.initialNodeModDB, nil, "EffectOfBonusesFromBoots") - 1
+ 				-- Apply increased/reduced bonuses from equipped boots from Custom Modifiers and Wickerman items, as well as passives.
+ 				elseif item.type == "Boots" and calcLib.mod(equipmentBonusModDB, nil, "EffectOfBonusesFromBoots") ~= 1 then
+ 					scale = calcLib.mod(equipmentBonusModDB, nil, "EffectOfBonusesFromBoots") - 1
 -					local combinedList = new("ModList"):ModList()
 +					local combinedList = calcs.newModList(env)
  					for _, mod in ipairs(srcList) do
@@ -12591,7 +12790,7 @@ index 55b3425d0253028a678f4b8cd1c79a48dca9d547..17b268b5c008f8b8e1cda2127e6b9fde
  				if item.classRestriction then
  					env.itemModDB.conditions[item.title:gsub(" ", "")] = item.classRestriction
  				end
-@@ -1387,25 +1578,30 @@
+@@ -1412,25 +1603,30 @@
  			else
  				env.flasks[override.toggleFlask] = true
  			end
@@ -12614,16 +12813,16 @@ index 55b3425d0253028a678f4b8cd1c79a48dca9d547..17b268b5c008f8b8e1cda2127e6b9fde
  	-- Merge env.itemModDB with env.ModDB
  	mergeDB(env.modDB, env.itemModDB)
  
- 	-- Add granted passives (e.g., amulet anoints)
+ 	-- Add granted passives (e.g., amulet anoints or Putrid Seed passives)
  	if not accelerate.nodeAlloc then
- 		for _, passive in pairs(env.modDB:List(nil, "GrantedPassive")) do
+ 		for _, passive in pairs(tableConcat(env.modDB:List(nil, "GrantedPassive"), env.initialNodeModDB:List(nil, "GrantedPassive"))) do
  			local node = env.spec.tree.notableMap[passive] or env.spec.tree.ascendancyMap[passive]
  			local specNode = node and env.spec.nodes[node.id] -- use the conquered node data, if available
  			node = node or build.latestTree.ascendancyMap[passive]
  			if node and (not override.removeNodes or not override.removeNodes[node.id]) then
  				env.allocNodes[node.id] = specNode or node
  				env.grantedPassives[node.id] = true
-@@ -1431,48 +1627,50 @@
+@@ -1456,64 +1652,66 @@
  			matchedName[name] = { side = ascTbl.side, matched = false }
  		end
  	end
@@ -12662,6 +12861,23 @@ index 55b3425d0253028a678f4b8cd1c79a48dca9d547..17b268b5c008f8b8e1cda2127e6b9fde
 +	setSetupObservation(specEnv, queryObserver, true)
  	-- Merge Granted Skills Tables
  	env.grantedSkills = tableConcat(env.grantedSkillsNodes, env.grantedSkillsItems)
+ 	-- Create skill groups for influence-gated curses entered in Custom Modifiers, just like item-granted curses.
+-	for _, skill in ipairs(build.configTab.modList:List(nil, "ExtraSkill")) do
++	for _, skill in ipairs(calcs.observedModList(env, build.configTab.modList):List(nil, "ExtraSkill")) do
+ 		if skill.itemRequirement and env.data.skills[skill.skillId] then
+ 			local grantedSkill = copyTable(skill)
+ 			grantedSkill.source = "Config"
+ 			grantedSkill.nameSpec = env.data.skills[skill.skillId].name
+ 			t_insert(env.grantedSkills, grantedSkill)
+ 		end
+ 	end
+ 	-- Only grant these curses while enough items of the required influence are equipped.
+ 	for index = #env.grantedSkills, 1, -1 do
+ 		local requirement = env.grantedSkills[index].itemRequirement
+ 		if requirement and env.itemModDB:GetMultiplier(requirement.multiplier) < requirement.count then
+ 			t_remove(env.grantedSkills, index)
+ 		end
+ 	end
  
 +	local skillPhase = markSetupPhase(specEnv, env)
  	if not accelerate.skills then
@@ -12676,7 +12892,7 @@ index 55b3425d0253028a678f4b8cd1c79a48dca9d547..17b268b5c008f8b8e1cda2127e6b9fde
  				calcLib.validateGemLevel(normalizedGrantedSkill)
  				return normalizedGrantedSkill.level
  			end
-@@ -1913,74 +2111,63 @@
+@@ -1978,74 +2176,63 @@
  						activeSkillIndex = group.mainActiveSkillCalcs
  					else
  						activeSkillIndex = m_min(#socketGroupSkillList, group.mainActiveSkill or 1)
@@ -12754,7 +12970,7 @@ index 55b3425d0253028a678f4b8cd1c79a48dca9d547..17b268b5c008f8b8e1cda2127e6b9fde
  			end
  			-- These mods were modified with special expressions in buildActiveSkillModList() use old one to avoid more calculations
  			activeSkill.skillData.manaReservationPercent = skillData.manaReservationPercent
-@@ -1988,17 +2175,19 @@
+@@ -2053,17 +2240,19 @@
  			activeSkill.skillData.storedUses = skillData.storedUses
  			activeSkill.skillData.CritChance = skillData.CritChance
  			activeSkill.skillData.attackTime = skillData.attackTime
@@ -12903,7 +13119,7 @@ index 0000000000000000000000000000000000000000..d0c828859c89e7e9d12ca9e3a5daa4ec
 +
 +return calcs
 diff --git a/src/Modules/CalcTriggers.lua b/src/Modules/CalcTriggers.lua
-index b974cf8711d3734d3043e91d353a27a5c16f38f4..9eb758d1fa49848de1e3a0f235c0fad0a81aa47b 100644
+index 25a701c352a59b204048f616dcfa74d3a0c08cff..9baaa4437b39d69fe302228799855b65f457db7b 100644
 --- a/src/Modules/CalcTriggers.lua
 +++ b/src/Modules/CalcTriggers.lua
 @@ -68,24 +68,26 @@
@@ -12933,7 +13149,7 @@ index b974cf8711d3734d3043e91d353a27a5c16f38f4..9eb758d1fa49848de1e3a0f235c0fad0
  			sourceCache[uuid] = { rejectedOutput = rejectedOutput }
  			return source, triggerRate, source and cacheSkillUUID(source, env)
  		elseif sourceCache then
-@@ -532,24 +534,27 @@
+@@ -531,24 +533,27 @@
  				if breakdown then
  					t_insert(breakdown.EffectiveSourceRate, s_format("^8(min(%.2f * %.2f, %d) = %.2f average number of exerted attacks capped by exerted count)", trigRate, infernalCryDuration, infernalCryExertsCount, infernalCryHits))
  					t_insert(breakdown.EffectiveSourceRate, s_format("= %.2f / (%.2f + %.2f) ^8(the calculated number of exerted attacks happens every cooldown + duration)", infernalCryHits, infernalCryCastTime, infernalCryCooldown))
@@ -13157,10 +13373,10 @@ index 9134e1080f39f5b146c5ff792f45c7ac2308b1b6..bf87cc058fd6b13122cfbead99d0f2c6
  		fullEnv.limitedSkills[uuid] = true
  	end
 diff --git a/src/Modules/Common.lua b/src/Modules/Common.lua
-index 6cc8691de34dd19a63803cf8ee06a9a4173ad65f..a4b2cdfc5b55a3016a17d41e93fb015ef0e98aae 100644
+index e8c7dfd03fb1a4d3bec6066d196982bc9d3c5112..96e56388966ee5c83ae8729b57cbe5af5b305869 100644
 --- a/src/Modules/Common.lua
 +++ b/src/Modules/Common.lua
-@@ -513,37 +513,37 @@
+@@ -514,37 +514,37 @@
  	if modDB then
  		srcDB:AddDB(modDB)
  		for k,v in pairs(modDB.conditions) do
@@ -13197,7 +13413,7 @@ index 6cc8691de34dd19a63803cf8ee06a9a4173ad65f..a4b2cdfc5b55a3016a17d41e93fb015e
  end
  
  -- Wipe all keys from the table and return it, or return a new table if no table
- -- provided. This is useful to avoid alllocations in hot paths if a table can be reused. Using LuaJIT's `table.clear()` is another alternative to this, but this performs similarly on small tables, or tables which are often already empty.
+ -- provided. This is useful to avoid allocations in hot paths if a table can be reused. Using LuaJIT's `table.clear()` is another alternative to this, but this performs similarly on small tables, or tables which are often already empty.
  ---@param tbl table?
  ---@return table tbl
  function wipeTable(tbl)
@@ -13268,7 +13484,7 @@ index 2143336c6f8d9838ce02df04cb83df7f1036c43b..db31ce2844329b3dc3652ea58ea5fbc0
  
  return M
 diff --git a/src/Modules/Data.lua b/src/Modules/Data.lua
-index a1134c87915f657ae734d9268d04709368e94a62..ecb7b59a429818bce412401f012cbd0923abc672 100644
+index d3aa27f93129cdd669e9bc6d0dcf0d9511647d8d..4911e50df72e3e4d6412e9754cd51290845b0453 100644
 --- a/src/Modules/Data.lua
 +++ b/src/Modules/Data.lua
 @@ -115,30 +115,32 @@
@@ -13548,10 +13764,10 @@ index 0000000000000000000000000000000000000000..5c5d7c47be149a1d1c124eeb508bff16
 +
 +return socketControls
 diff --git a/src/Modules/Main.lua b/src/Modules/Main.lua
-index 294fb64c24b7766c4aa7f7a307a71da09d5bc14c..ba137678649df496950c11751ad609b8d8232f8f 100644
+index 91e220c78b01d6479c9f5b567c1bfebbd2901060..6da393655e2cd4fd9030fab3a3fc2006aacac201 100644
 --- a/src/Modules/Main.lua
 +++ b/src/Modules/Main.lua
-@@ -212,25 +212,25 @@
+@@ -227,25 +227,25 @@
  					-- split
  					for _, line in pairs(mod.tradeHashes) do
  						local rangedLine = itemLib.applyRange(table.concat(line, " "), 0.5)
@@ -13578,7 +13794,7 @@ index 294fb64c24b7766c4aa7f7a307a71da09d5bc14c..ba137678649df496950c11751ad609b8
  	self.controls.applyUpdate = new("ButtonControl"):ButtonControl({"BOTTOMLEFT",self.anchorMain,"BOTTOMLEFT"}, {0, -24, 140, 20}, "^x50E050Update Ready", function()
  		self:OpenUpdatePopup()
  	end)
-@@ -240,29 +240,29 @@
+@@ -255,29 +255,29 @@
  	self.controls.checkUpdate = new("ButtonControl"):ButtonControl({"BOTTOMLEFT",self.anchorMain,"BOTTOMLEFT"}, {0, -24, 140, 20}, "", function()
  		launch:CheckForUpdate()
  	end)
@@ -13610,7 +13826,7 @@ index 294fb64c24b7766c4aa7f7a307a71da09d5bc14c..ba137678649df496950c11751ad609b8
  
  	-- Initialize toast notification system
  	ToastNotification:Init(self.anchorMain)
-@@ -420,27 +420,27 @@
+@@ -435,27 +435,27 @@
  			ToastNotification:Add("Update Available\nAn update has been downloaded and is ready\nto be applied.")
  			self.updateAvailableShown = true
  		end

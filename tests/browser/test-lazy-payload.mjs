@@ -10,6 +10,8 @@ import { loadInput } from '../../scripts/lib/fixture-loader.mjs';
 const origin = process.env.DESKTOP_POB_ORIGIN ?? 'http://127.0.0.1:3010';
 const app = new URL('../../', import.meta.url);
 const manifest = JSON.parse(await readFile(new URL('./.runtime/payload/manifest.json', app), 'utf8'));
+const currentTrees = manifest.packages.filter(pkg => pkg.startup && /^tree-\d+_\d+$/.test(pkg.id) && pkg.id !== 'tree-3_19');
+assert.equal(currentTrees.length, 1, 'Exactly one current tree must be on the startup path');
 const historical = (await readFile(new URL('./fixtures/dominating blow of inspiring guardian 328.txt', app), 'utf8')).trim();
 const timelessXml = loadInput(fileURLToPath(new URL('./fixtures/abyss timeless reclaimed malevolence 329.json', app))).xml;
 const timeless = deflateSync(timelessXml).toString('base64url');
@@ -54,7 +56,7 @@ async function verifyDemandAndOverlay() {
     console.log('Lazy startup profile:', JSON.stringify(startup.filesystem.payload));
     assert.equal(startup.filesystem.payload.packagesBeforeReady, 5);
     assert.ok(startup.filesystem.payload.bytesBeforeReady <= 97_438_098);
-    assert.deepEqual(startup.filesystem.payload.packageOpens, ['core', 'timeless-shared', 'tree-3_29', 'tree-3_19', 'tree-legion']);
+    assert.deepEqual(startup.filesystem.payload.packageOpens, ['core', 'timeless-shared', currentTrees[0].id, 'tree-3_19', 'tree-legion']);
     await page.waitForTimeout(1_100);
     assert.equal(await page.locator('.payload-progress').isHidden(), true);
 

@@ -305,10 +305,10 @@ index 5221d30b8e530a549d97f0fcb861755a8aacfc4b..43f1adc2fa36fd456192741423748d56
  			effectNode.sd[i] = sd
  		end
 diff --git a/src/Modules/CalcPerform.lua b/src/Modules/CalcPerform.lua
-index 5e3b8a5966d77e1af711cef79e241ce98f43c5be..b183b01bdfa0777eeb7ccacea3e7783a2df806e7 100644
+index 397c0ecc63e1a1a5e072e0a752766ca3ee3bafc7..997d256c46fe43f8411990b6d68a601c8436e34e 100644
 --- a/src/Modules/CalcPerform.lua
 +++ b/src/Modules/CalcPerform.lua
-@@ -54,24 +54,42 @@
+@@ -55,24 +55,42 @@
  				if modLib.compareModParams(mod, destMod) then
  					if type(destMod.value) == "number" and mod.value > destMod.value then
  						dest[index] = mod
@@ -351,7 +351,7 @@ index 5e3b8a5966d77e1af711cef79e241ce98f43c5be..b183b01bdfa0777eeb7ccacea3e7783a
  	local condList = modDB.conditions
  
  	local lowLifePerc = modDB:Sum("BASE", nil, "LowLifePercentage")
-@@ -617,25 +635,25 @@
+@@ -631,25 +649,25 @@
  end
  
  local function applyEnemyModifiers(actor, clearCache)
@@ -378,7 +378,7 @@ index 5e3b8a5966d77e1af711cef79e241ce98f43c5be..b183b01bdfa0777eeb7ccacea3e7783a
  	local enemyDB = actor.enemy.modDB
  	---@class Output
  	local output = actor.output
-@@ -1969,26 +1987,25 @@
+@@ -2015,26 +2033,25 @@
  		-- Merge keystones again to catch any that were added by flasks
  		modLib.mergeKeystones(env, env.modDB)
  	end
@@ -406,7 +406,7 @@ index 5e3b8a5966d77e1af711cef79e241ce98f43c5be..b183b01bdfa0777eeb7ccacea3e7783a
  			end
  		end
  		doActorAttribsConditions(env, env.minion)
-@@ -2798,37 +2815,24 @@
+@@ -2870,37 +2887,24 @@
  					if not activeSkill.skillModList:Flag(activeSkill.skillCfg, "CannotIgnite") then
  						local value = activeSkill.skillModList:Sum("BASE", activeSkill.skillCfg, "CombustionFireResist")
  						enemyDB:NewMod("FireResist", "BASE", value, "Combustion", { type = "GlobalEffect", effectType = "Debuff", effectName = "Combustion" }, { type = "Condition", var = "Ignited" })
@@ -444,7 +444,7 @@ index 5e3b8a5966d77e1af711cef79e241ce98f43c5be..b183b01bdfa0777eeb7ccacea3e7783a
  								modDB.conditions["AffectedBy"..buff.name:gsub(" ","")] = true
  								local srcList = calcs.newModList(env)
  								local inc = modStore:Sum("INC", skillCfg, "BuffEffect", "BuffEffectOnPlayer") + modDB:Sum("INC", nil, "BuffEffectOnSelf")
-@@ -2888,50 +2892,50 @@
+@@ -2960,50 +2964,50 @@
  									local more = skillModList:More(skillCfg, "AuraEffect", "BuffEffect", "AuraBuffEffect") * modDB:More(skillCfg, "BuffEffectOnSelf", "AuraEffectOnSelf")
  									local mult = (1 + inc / 100) * more
  									if not allyBuffs["Aura"] or not allyBuffs["Aura"][buff.name] or allyBuffs["Aura"][buff.name].effectMult / 100 <= mult then
@@ -498,7 +498,7 @@ index 5e3b8a5966d77e1af711cef79e241ce98f43c5be..b183b01bdfa0777eeb7ccacea3e7783a
  									local srcList = calcs.newModList(env)
  									local inc = skillModList:Sum("INC", skillCfg, "AuraEffect", "BuffEffect", "AuraBuffEffect")
  									local more = skillModList:More(skillCfg, "AuraEffect", "BuffEffect", "AuraBuffEffect")
-@@ -2946,25 +2950,25 @@
+@@ -3018,25 +3022,25 @@
  												totemMod.name = "Totem"..totemMod.name
  												if scale ~= 1 then
  													if type(totemMod.value) == "number" then
@@ -613,7 +613,7 @@ index bbff6c0891bdef6529fb131b6082639fbe8ef804..33afd6822026480ed5044aa337d3f8c8
  		if not self:IsIrrelevant(node) then
  			return false
 diff --git a/src/Modules/CalcSetup.lua b/src/Modules/CalcSetup.lua
-index 18d189024d76c02f2acc4c7590c509be5326a910..17b268b5c008f8b8e1cda2127e6b9fde73fabeda 100644
+index d4d8784f7cc10f1e08dc63e7ed68fd853a3b4fc2..c72d6e5c66c51ade4af6fb5f1cd94db8182ad592 100644
 --- a/src/Modules/CalcSetup.lua
 +++ b/src/Modules/CalcSetup.lua
 @@ -563,48 +563,177 @@
@@ -811,12 +811,12 @@ index 18d189024d76c02f2acc4c7590c509be5326a910..17b268b5c008f8b8e1cda2127e6b9fde
 +	elseif specEnv.reuseSetup then
 +		-- Copy rather than link the cached base mods so every query keeps a fresh
 +		-- environment's mod order and shares one set of global limits.
-+		env.modDB.parent = nil
-+		env.enemyDB.parent = nil
++		env.modDB.parent = false
++		env.enemyDB.parent = false
 +		mergeDB(env.modDB, cachedPlayerDB)
 +		mergeDB(env.enemyDB, cachedEnemyDB)
 +		if cachedMinionDB and env.minion then
-+			env.minion.modDB.parent = nil
++			env.minion.modDB.parent = false
 +			mergeDB(env.minion.modDB, cachedMinionDB)
 +		end
  	else
@@ -871,9 +871,9 @@ index 18d189024d76c02f2acc4c7590c509be5326a910..17b268b5c008f8b8e1cda2127e6b9fde
  				if not build.spec.treeVersion:find("3_27") then
  					goto continue
  				end
- 			end
- 			-- ignore item in Ring 3 if The Unseen Hand is not allocated
-@@ -1427,25 +1578,30 @@
+ 			elseif (slotName == "Head" or slotName == "Body" or slotName == "Arm" or slotName == "Leg") and not env.spec.treeVersion:find("3_30") then
+ 				goto continue
+@@ -1452,25 +1603,30 @@
  			else
  				env.flasks[override.toggleFlask] = true
  			end
@@ -896,16 +896,16 @@ index 18d189024d76c02f2acc4c7590c509be5326a910..17b268b5c008f8b8e1cda2127e6b9fde
  	-- Merge env.itemModDB with env.ModDB
  	mergeDB(env.modDB, env.itemModDB)
  
- 	-- Add granted passives (e.g., amulet anoints)
+ 	-- Add granted passives (e.g., amulet anoints or Putrid Seed passives)
  	if not accelerate.nodeAlloc then
- 		for _, passive in pairs(env.modDB:List(nil, "GrantedPassive")) do
+ 		for _, passive in pairs(tableConcat(env.modDB:List(nil, "GrantedPassive"), env.initialNodeModDB:List(nil, "GrantedPassive"))) do
  			local node = env.spec.tree.notableMap[passive] or env.spec.tree.ascendancyMap[passive]
  			local specNode = node and env.spec.nodes[node.id] -- use the conquered node data, if available
  			node = node or build.latestTree.ascendancyMap[passive]
  			if node and (not override.removeNodes or not override.removeNodes[node.id]) then
  				env.allocNodes[node.id] = specNode or node
  				env.grantedPassives[node.id] = true
-@@ -1492,27 +1648,29 @@
+@@ -1517,43 +1673,45 @@
  
  	-- Find skills granted by tree nodes
  	if not accelerate.nodeAlloc then
@@ -921,6 +921,22 @@ index 18d189024d76c02f2acc4c7590c509be5326a910..17b268b5c008f8b8e1cda2127e6b9fde
 +	setSetupObservation(specEnv, queryObserver, true)
  	-- Merge Granted Skills Tables
  	env.grantedSkills = tableConcat(env.grantedSkillsNodes, env.grantedSkillsItems)
+ 	-- Create skill groups for influence-gated curses entered in Custom Modifiers, just like item-granted curses.
+ 	for _, skill in ipairs(calcs.observedModList(env, build.configTab.modList):List(nil, "ExtraSkill")) do
+ 		if skill.itemRequirement and env.data.skills[skill.skillId] then
+ 			local grantedSkill = copyTable(skill)
+ 			grantedSkill.source = "Config"
+ 			grantedSkill.nameSpec = env.data.skills[skill.skillId].name
+ 			t_insert(env.grantedSkills, grantedSkill)
+ 		end
+ 	end
+ 	-- Only grant these curses while enough items of the required influence are equipped.
+ 	for index = #env.grantedSkills, 1, -1 do
+ 		local requirement = env.grantedSkills[index].itemRequirement
+ 		if requirement and env.itemModDB:GetMultiplier(requirement.multiplier) < requirement.count then
+ 			t_remove(env.grantedSkills, index)
+ 		end
+ 	end
  
 +	local skillPhase = markSetupPhase(specEnv, env)
  	if not accelerate.skills then
@@ -935,7 +951,7 @@ index 18d189024d76c02f2acc4c7590c509be5326a910..17b268b5c008f8b8e1cda2127e6b9fde
  				calcLib.validateGemLevel(normalizedGrantedSkill)
  				return normalizedGrantedSkill.level
  			end
-@@ -1991,24 +2149,25 @@
+@@ -2056,24 +2214,25 @@
  				quality = 0,
  				enabled = true,
  			}
@@ -961,7 +977,7 @@ index 18d189024d76c02f2acc4c7590c509be5326a910..17b268b5c008f8b8e1cda2127e6b9fde
  			end
  			-- These mods were modified with special expressions in buildActiveSkillModList() use old one to avoid more calculations
  			activeSkill.skillData.manaReservationPercent = skillData.manaReservationPercent
-@@ -2016,17 +2175,19 @@
+@@ -2081,17 +2240,19 @@
  			activeSkill.skillData.storedUses = skillData.storedUses
  			activeSkill.skillData.CritChance = skillData.CritChance
  			activeSkill.skillData.attackTime = skillData.attackTime

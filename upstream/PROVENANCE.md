@@ -43,7 +43,7 @@ and [#10381](https://github.com/PathOfBuildingCommunity/PathOfBuilding/pull/1038
 at their exact recorded heads. Their individual diffs and SHA-256 values are
 preserved under `../patches/upstream/`; `../patches/pob-pr-composite.patch`
 records the composition onto dev revision
-`3dbca4463c0a59079d9f7f032d8240cf868e09da`, including the semantic resolution
+`5606cc64fa9f15694e69001a52b90aa968d01a86` (PoB 2.69.0), including the semantic resolution
 where #10371 and #10372 both change `ItemDBControl.lua`, and where #10313 is
 applied after #10373, followed by #10381. Those three PRs overlap in
 `CalcsTab.lua` and `TestPowerReport_spec.lua`; the resolution keeps #10373's
@@ -53,8 +53,8 @@ Report patches described below. PR #10360 is recorded through head
 `dddd929e190e46af36dd185f842ef53726c1d28a`, including its always-visible node
 power controls and heat-map-gated Power Report action without metric selection
 enabling the heat map. The composite SHA-256 is
-`5555ec791f81a5d9b953a5ac4d8d6b353989c1f9741ca292a57ec8db3ed23c65`
-and its result tree is `c2873408bc2f764641a34160d58fac93f8269392`.
+`c1e6983c4444e7f411224cb9d57eae7c1370a5235fad71e3e738f406833671ff`
+and its result tree is `7ba807fce2a596a53727d7630d28668598818dcd`.
 PR #10371 is absorbed by this base; its original diff remains historical.
 The rebase retains new upstream specs alongside local regressions. The catalyst
 regression uses the unified quality control retained by #10360; its underlying
@@ -67,6 +67,17 @@ The exact #10360, #10372 and #10313 evidence diffs remain byte-preserved against
 their recorded PR bases. Their `conflictResolutionBase` ledger fields record that
 their non-applying contexts were manually resolved in this composite at the
 selected pin; those fields are invalid after any pin movement.
+
+The composite carries two narrow 2.69.0 compatibility fixes. The unique trade
+name is already a string when it is lowercased, so the call uses Lua syntax
+accepted by the browser interpreter. Defensive Life pools initialize Energy
+Shield from the minion and skill being evaluated, including a secondary
+spectre when the selected skill summons no minion.
+
+The relevance layer observes the new influence-gated skill query through a
+calculation-local view of the configured modifiers. The reuse layer starts
+merged modifier databases with the same parent state as fresh databases,
+including when a minion's output retains a reference to its source skill.
 
 The maintainer-supplied 2026-09-30 gem-dropdown hover patch is preserved in
 `../patches/gem-dropdown-hover-tooltip.patch` (SHA-256
