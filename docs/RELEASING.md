@@ -6,8 +6,12 @@ other production secrets. Source ownership and deployment authority are separate
 
 ## Build a candidate
 
-1. Select a full reviewed commit on public `main`. Its exact-SHA `ci.yml` push
-   run must pass `fast-gates`, `native-and-browser`, both named jobs
+1. Open a pull request from a topic branch to public `main`, wait for the
+   required `fast-gates` check, then merge through GitHub. Branch protection
+   enforces the pull request and status checks for administrators too.
+   Use the full SHA of the resulting commit on `main` for release.
+   Its exact-SHA `ci.yml` push run must pass `fast-gates`, `native-and-browser`,
+   both named jobs
    `browser-harnesses-comparisons` and `browser-harnesses-interaction-and-loading`,
    and the final `browser-harnesses` aggregate in one complete attempt.
 2. On push/main, `native-and-browser` builds the release tree, inventory, record,
