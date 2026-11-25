@@ -5,7 +5,7 @@ test("checked ImportTab overlay hides OAuth without removing public/manual impor
   assert.equal(createHash("sha256").update(patch).digest("hex"), pin.adapters.importTabHostCapabilities.patchSha256);
   const text=patch.toString(); assert.match(text,/PobHostCapabilities\.oauth/); assert.match(text,/sectionCharSiteImport/); assert.doesNotMatch(text,/^-.*addAccountNameControls/m); assert.doesNotMatch(text,/^-.*Build Sharing/m);
   let prepared;
-  try { prepared=await readFile(".runtime/prepared/src/Classes/ImportTab.lua","utf8"); }
+  try { prepared=await readFile(`.runtime/source-${pin.compositePatch.patchSha256.slice(0, 12)}/src/Classes/ImportTab.lua`,"utf8"); }
   catch (error) { if (error?.code === "ENOENT") { t.skip("prepared PoB checkout is not present"); return; } throw error; }
   const source=prepared.replaceAll("\r\n","\n");
   assert.doesNotThrow(()=>applyImportTabHostPatch(source,patch,pin.adapters.importTabHostCapabilities));

@@ -1,7 +1,7 @@
 // Adapted from atty303/pob-web packages/packer/src/pack.ts (MIT).
 // This entry point consumes an already pinned/patched local checkout; it never
 // chooses a release or writes the existing headless Browser-PoB assets.
-import { copy, ensureDir, walk } from "@std/fs";
+import { ensureDir, walk } from "@std/fs";
 import { dirname, relative, resolve } from "@std/path";
 import * as zstd from "@bokuweb/zstd-wasm";
 import AdmZip from "adm-zip";
@@ -62,6 +62,19 @@ const imageIndex: string[] = [];
 const basePath = `${repoDir}/src`;
 const timelessSeedHelper = await Deno.readTextFile(new URL("./timeless-seeds.lua", import.meta.url));
 const timelessInflateHelper = await Deno.readTextFile(new URL("./timeless-inflate.lua", import.meta.url));
+
+async function addImage(relPath: string, content: Uint8Array) {
+  const dimensions = relPath.endsWith(".dds.zst") ? ddsSize(content) : imageDimensionsFromData(content);
+  if (!dimensions) throw new Error(`Unsupported or invalid image: ${relPath}`);
+  imageIndex.push(`${relPath}\t${dimensions.width}\t${dimensions.height}`);
+  zip.addFile(relPath, Buffer.alloc(0));
+  if (!stage) {
+    const assetPath = `${payloadDir}/root/${relPath}`;
+    await ensureDir(dirname(assetPath));
+    await Deno.writeFile(assetPath, content);
+  }
+}
+
 // Stable traversal makes the metadata and archive ordering reproducible.
 const entries = [];
 for await (const entry of walk(basePath, { includeDirs: true, followSymlinks: false })) entries.push(entry);
@@ -74,19 +87,8 @@ for (const entry of entries) {
     continue;
   }
   const kind = sourceKind(relPath);
-  const isDDS = entry.path.endsWith(".dds.zst");
   if (kind === "image") {
-    const dimensions = isDDS
-      ? ddsSize(await Deno.readFile(entry.path))
-      : imageDimensionsFromData(await Deno.readFile(entry.path));
-    if (!dimensions) throw new Error(`Unsupported or invalid image: ${entry.path}`);
-    imageIndex.push(`${relPath}\t${dimensions.width}\t${dimensions.height}`);
-    zip.addFile(relPath, Buffer.alloc(0));
-    if (!stage) {
-      const assetPath = `${payloadDir}/root/${relPath}`;
-      await ensureDir(dirname(assetPath));
-      await copy(entry.path, assetPath, { overwrite: true });
-    }
+    await addImage(relPath, await Deno.readFile(entry.path));
   }
   if (kind === "data") {
     const content = await Deno.readFile(entry.path);
@@ -157,6 +159,26 @@ for (const entry of entries) {
       ? appendModCacheSupplement(newContent, modCacheSupplement, pin.generated.masteryModCacheSupplement)
       : newContent;
     zip.addFile(newRelPath, Buffer.from(adapted));
+  }
+}
+// PoB 2.69.0's 3.30 trees declare these same CDN atlases as 3.29 but
+// omit the PNGs. Use the exact matching upstream bytes from the same checkout.
+for (const [file, version, hash] of [
+  ["jewel-3.png", "b4c992ca", "c2a3134f8e0ece177c46cfc531937038e4448cd4185a80243acb04d72bac7525"],
+  ["jewel-radius.png", "1011b076", "84dfda13fd672dd02a56bb6d6a031ddcc079691c8a2c1a4002a3bb6c124d1b87"],
+]) {
+  const url = `https://web.poecdn.com/image/passive-skill/${file}?${version}`;
+  const declaration = `["filename"]= "${url}"`;
+  for (const tree of ["3_30", "3_30_ruthless"]) {
+    const targetDir = `TreeData/${tree}`;
+    const targetPath = `${targetDir}/${file}`;
+    if (zip.getEntry(targetPath) || !zip.getEntry(`${targetDir}/sprites.lua`)) continue;
+    if (!zip.readAsText(`${targetDir}/sprites.lua`).includes(declaration)) continue;
+    const content = await Deno.readFile(`${basePath}/TreeData/3_29/${file}`);
+    if (!zip.readAsText("TreeData/3_29/sprites.lua").includes(declaration) || await sha256(content) !== hash) {
+      throw new Error(`Cannot restore ${targetPath}: the 3.29 source does not match ${url}`);
+    }
+    await addImage(targetPath, content);
   }
 }
 if (modCacheSupplement && !zip.getEntry("Data/ModCache.lua")) {

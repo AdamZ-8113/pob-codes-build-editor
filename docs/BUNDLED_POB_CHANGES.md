@@ -47,6 +47,10 @@ Viscera database uses the same responsive dimensions as the other databases.
 The unified modifier editor uses the upstream slot-aware comparison when it
 previews Crucible changes.
 
+The 3.30 and 3.30 Ruthless sprite declarations reference the same jewel and
+jewel-radius atlases as 3.29. Where the pinned checkout omits the PNGs, the
+packer restores their SHA-256-verified bytes from 3.29 in the same checkout.
+
 ## Required local source patches
 
 `power-report-relevance-pruning` is retained in
